@@ -7,6 +7,7 @@ import OptionsSign from "./components/optionsighn";
 import Studentsighnup from "./components/studentsighnup";
 import Develporsighnup from "./components/develporsighn1";
 import AdvanceSearch from "./components/AdvanceSearch";
+import DevelporDashboard from "./components/develpordashboard";
 const App = () => {
   return (
     <Router>
@@ -19,6 +20,7 @@ const App = () => {
         <Route path="/studentsighnup" element={<Studentsighnup />} />
         <Route path="/develporsighn1" element={<Develporsighnup />} />
         <Route path="/advancesearch" element={<AdvanceSearch/>}/>
+        <Route path="/develpordashboard" element={<DevelporDashboard />} />
       </Routes>
     </Router>
   );
