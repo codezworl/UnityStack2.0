@@ -1,97 +1,119 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import bgLogo from "../assets/Vector.png"; // Assuming this is the correct path for your logo
-import "@fortawesome/fontawesome-free/css/all.min.css"; // Importing Font Awesome
+import bgLogo from "../assets/Vector.png"; // Replace with your actual logo path
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // State to control mobile menu visibility
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleMenuToggle = () => {
-    setIsMenuOpen(!isMenuOpen); // Toggle the menu visibility
+    setIsMenuOpen(!isMenuOpen);
   };
 
   return (
-    <header className="bg-white py-3 border-bottom">
-      <div className="container-fluid d-flex align-items-center justify-content-between px-0">
+    <header
+      style={{
+        fontFamily: "Poppins, sans-serif",
+        backgroundColor: "#f9fafb", // Light background
+        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+        position: "relative",
+        zIndex: "1000",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "15px 30px",
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
         {/* Logo Section */}
-        <div className="d-flex align-items-center ms-3">
-          <img src={bgLogo} alt="Logo" className="me-2" style={{ width: "200px", height: "40px",objectFit:"cover" }} />
-          
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <img
+            src={bgLogo}
+            alt="Logo"
+            style={{
+              width: "120px",
+              height: "auto",
+              objectFit: "contain",
+              cursor: "pointer",
+            }}
+          />
         </div>
 
-        {/* Search Bar (Hidden on Mobile) */}
-        <div
-          className="d-flex flex-grow-1 mx-3 d-none d-lg-flex"
-          style={{ maxWidth: "600px", marginLeft: "20px", marginRight: "20px" }}
+        {/* Navigation Links */}
+        <nav
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "20px",
+            fontSize: "16px",
+            fontWeight: "500",
+          }}
         >
-          <div className="input-group">
-            <input
-              type="text"
-              className="form-control border-end-0"
-              placeholder="What service are you looking for today?"
-              style={{ paddingLeft: "20px", paddingRight: "20px" }}
-            />
-            <button
-              className="btn"
+          {["Home", "Explore", "Expert Help", "Projects"].map((text, index) => (
+            <Link
+              key={index}
+              to={`/${text.toLowerCase().replace(" ", "")}`}
               style={{
-                backgroundColor: "blue",
-                color: "white",
-                borderColor: "blue",
+                textDecoration: "none",
+                color: "#64748b", // Gray shade for text
+                position: "relative",
+                overflow: "hidden",
+                transition: "color 0.3s ease-in-out",
+                fontWeight: "500",
               }}
+              onMouseOver={(e) => (e.target.style.color = "#1d4ed8")} // Blue on hover
+              onMouseOut={(e) => (e.target.style.color = "#64748b")} // Back to gray
             >
-              <i className="fas fa-search" style={{ color: "white" }}></i>
-            </button>
-          </div>
-        </div>
-
-        {/* Desktop Navigation Links */}
-        <div className="d-flex align-items-center d-none d-lg-flex me-3">
-          <Link
-            to="/question"
-            className="text-decoration-none me-3"
-            style={{ color: "blue" }}
-          >
-            Questions
-          </Link>
-          <Link
-            to="/alldevelopers"
-            className="text-decoration-none me-3"
-            style={{ color: "blue" }}
-          >
-            All Developers
-          </Link>
-          <Link
-            to="/projects"
-            className="text-decoration-none me-3"
-            style={{ color: "blue" }}
-          >
-            Projects
-          </Link>
+              {text}
+              <span
+                style={{
+                  position: "absolute",
+                  left: "0",
+                  bottom: "-2px",
+                  width: "100%",
+                  height: "2px",
+                  backgroundColor: "#1d4ed8", // Blue underline
+                  transform: "scaleX(0)",
+                  transformOrigin: "left",
+                  transition: "transform 0.3s ease-in-out",
+                }}
+                className="underline"
+              ></span>
+            </Link>
+          ))}
           <Link
             to="/login"
-            className="text-decoration-none me-3"
             style={{
-              color: "blue",
-              border: "1px solid blue",
-              padding: "5px 10px",
+              textDecoration: "none",
+              color: "#ffffff",
+              backgroundColor: "#1d4ed8", // Blue background for button
+              padding: "8px 20px",
               borderRadius: "5px",
+              fontWeight: "500",
+              transition: "all 0.3s ease-in-out",
             }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = "blue";
-              e.target.style.color = "white";
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = "white";
-              e.target.style.color = "blue";
+            onMouseOver={(e) => (e.target.style.backgroundColor = "#2563eb")}
+            onMouseOut={(e) => (e.target.style.backgroundColor = "#1d4ed8")}
+          >
+            Log in
+          </Link>
+        </nav>
+
+        {/* Mobile Menu Icon */}
+        <div style={{ display: "none", cursor: "pointer" }}>
+          <button
+            onClick={handleMenuToggle}
+            style={{
+              border: "none",
+              background: "transparent",
+              fontSize: "24px",
             }}
           >
-            Join
-          </Link>
-        </div>
-
-        {/* Mobile Menu Icon (Visible on Mobile) */}
-        <div className="d-flex d-lg-none">
-          <button onClick={handleMenuToggle} className="btn btn-light">
             <i className="fas fa-bars"></i>
           </button>
         </div>
@@ -99,21 +121,36 @@ const Header = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="mobile-menu bg-light p-3 d-lg-none">
-          <div className="d-flex flex-column">
-            <Link to="/questions" className="text-decoration-none text-dark py-2">
-              Questions
-            </Link>
-            <Link to="/alldevelopers" className="text-decoration-none text-dark py-2">
-              All Developers
-            </Link>
-            <Link to="/projects" className="text-decoration-none text-dark py-2">
-              Projects
-            </Link>
-            <Link to="/login" className="text-decoration-none text-dark py-2">
-              Join
-            </Link>
-          </div>
+        <div
+          style={{
+            backgroundColor: "#f9fafb",
+            padding: "20px",
+            position: "absolute",
+            top: "100%",
+            left: "0",
+            width: "100%",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          }}
+        >
+          {["Home", "Explore", "Expert Help", "Projects", "Log in"].map(
+            (text, index) => (
+              <Link
+                key={index}
+                to={`/${text.toLowerCase().replace(" ", "")}`}
+                style={{
+                  display: "block",
+                  padding: "10px 0",
+                  color: "#64748b", // Gray text
+                  textDecoration: "none",
+                  fontWeight: "500",
+                }}
+                onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+                onMouseOut={(e) => (e.target.style.color = "#64748b")}
+              >
+                {text}
+              </Link>
+            )
+          )}
         </div>
       )}
     </header>
