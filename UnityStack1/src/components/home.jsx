@@ -349,7 +349,7 @@ const Home = () => {
         <div style={cardGridStyle}>
           <div style={cardStyle}>
             <img
-              src="{cardimage1}"
+              src="/public/section3A"
               alt="Technologies illustration"
               style={illustrationStyle}
             />
