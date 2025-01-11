@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import Header from "./header";
 import Footer from "./footer";
 import mentorshipImage from "../assets/mentorship@2x.jpg";
+import Projectimage from "../assets/freelance-job.png";
 import { Link } from "react-router-dom";
+import { Code, Rocket, MessageCircle } from "lucide-react";
 
 const Home = () => {
-  
   const [displayedSubText, setDisplayedSubText] = useState(""); // Typing animation for subheading
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0); // Current phrase index
   const [charIndex, setCharIndex] = useState(0); // Character index
@@ -13,7 +14,7 @@ const Home = () => {
     "Real-time collaboration.",
     "Q/A Sessions.",
     "Projects & resources.",
-  ];
+  ]; // Subheading phrases to cycle through
 
   useEffect(() => {
     const typeSubText = () => {
@@ -33,7 +34,6 @@ const Home = () => {
     const subInterval = setTimeout(typeSubText, 100);
     return () => clearTimeout(subInterval);
   }, [charIndex, currentPhraseIndex, phrases]);
-  
 
   // Styles for the design
   const heroStyle = {
@@ -114,14 +114,14 @@ const Home = () => {
   const mentorshipHeadingStyle = {
     fontSize: "36px",
     fontWeight: "bold",
-    color: "Black",
+    color: "Black", // Updated to blue color
     marginBottom: "20px",
   };
 
   const subheadingStyle = {
     fontSize: "24px",
     fontWeight: "bold",
-    color: "Dark Blue",
+    color: "Black", // Updated to blue color
     marginBottom: "20px",
   };
 
@@ -245,6 +245,56 @@ const Home = () => {
     },
   };
 
+  const whatWeProvideSectionStyle = {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    padding: "4rem 2rem",
+    textAlign: "center",
+  };
+
+  const whatWeProvideHeadingStyle = {
+    fontSize: "2.5rem",
+    fontWeight: "bold",
+    color: "#1E293B",
+    marginBottom: "3rem",
+  };
+
+  const cardGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "2rem",
+    marginTop: "2rem",
+  };
+
+  const cardStyle = {
+    backgroundColor: "white",
+    borderRadius: "1rem",
+    padding: "2rem",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "1.5rem",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+    transition: "transform 0.2s",
+  };
+
+  const illustrationStyle = {
+    width: "200px",
+    height: "160px",
+    objectFit: "contain",
+  };
+
+  const cardTitleStyle = {
+    fontSize: "1.5rem",
+    fontWeight: "600",
+    color: "#1E293B",
+  };
+
+  const cardDescriptionStyle = {
+    color: "#64748B",
+    lineHeight: "1.6",
+  };
+
   return (
     <div>
       <Header />
@@ -278,8 +328,8 @@ const Home = () => {
           <button style={searchButtonStyle}>Find Help</button>
         </div>
 
-        <Link
-          to="/advancesearch"
+        <a
+          href="/advancesearch"
           style={{
             display: "block",
             marginTop: "1rem",
@@ -288,15 +338,102 @@ const Home = () => {
           }}
         >
           Advanced search
-        </Link>
+        </a>
       </main>
+
+      {/* What We Provide Section */}
+      <section style={whatWeProvideSectionStyle}>
+        <h2 style={whatWeProvideHeadingStyle}>
+          What you'll find on UnityStack
+        </h2>
+        <div style={cardGridStyle}>
+          <div style={cardStyle}>
+            <img
+              src="{cardimage1}"
+              alt="Technologies illustration"
+              style={illustrationStyle}
+            />
+            <h3 style={cardTitleStyle}>Get Answers</h3>
+            <p style={cardDescriptionStyle}>
+              Get Answer in multiple stacks. find the nearest/best solution for
+              your projects.
+            </p>
+          </div>
+
+          <div style={cardStyle}>
+            <img
+              src="F:/Final Year Project/UnityStack2.0/UnityStack1/src/assets/section 3 - B.png"
+              alt="Code review illustration"
+              style={illustrationStyle}
+            />
+            <h3 style={cardTitleStyle}>Real-time collaboration</h3>
+            <p style={cardDescriptionStyle}>
+              Get immediate help through live coding sessions, code reviews, and
+              pair programming with experienced developers.
+            </p>
+          </div>
+
+          <div style={cardStyle}>
+            <img
+              src="F:/Final Year Project/UnityStack2.0/UnityStack1/src/assets/section 3 - C.png"
+              alt="Setup illustration"
+              style={illustrationStyle}
+            />
+            <h3 style={cardTitleStyle}>Find Projects</h3>
+            <p style={cardDescriptionStyle}>
+              Get Project tasks done form others and get project form
+              organizations.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Expert Help Section */}
+      <section style={sectionStyle}>
+        {/* Text Content */}
+        <div style={textContainerStyle}>
+          <h2 style={mentorshipHeadingStyle}>
+            Expert Help from Vetted Developers
+          </h2>
+          <h3 style={subheadingStyle}>One-on-one live mentorship</h3>
+          <ul style={listStyle}>
+            <li style={listItemStyle}>
+              <span style={iconStyle}>💻</span> Debug with the help of an expert
+            </li>
+            <li style={listItemStyle}>
+              <span style={iconStyle}>📚</span> Personalize your learning
+              experience
+            </li>
+            <li style={listItemStyle}>
+              <span style={iconStyle}>🧠</span> Get answers to complex problems
+            </li>
+          </ul>
+          <button
+            style={buttonStyle}
+            onMouseOver={(e) =>
+              (e.target.style.backgroundColor =
+                buttonHoverStyle.backgroundColor)
+            }
+            onMouseOut={(e) =>
+              (e.target.style.backgroundColor = buttonStyle.backgroundColor)
+            }
+          >
+            FIND AN EXPERT
+          </button>
+        </div>
+
+        {/* Image */}
+        <div style={imageContainerStyle}>
+          <img src={mentorshipImage} alt="Mentorship" style={imageStyle} />
+        </div>
+      </section>
 
       {/* Popular Categories Section */}
       <section style={categoriesStyle}>
         <h2
           style={{ ...headingStyle, textAlign: "center", fontSize: "2.5rem" }}
         >
-          Most popular categories
+          Questions Asked in Popular Categories
         </h2>
         <div style={categoriesGridStyle}>
           <div style={categoryCardStyle}>
@@ -393,43 +530,281 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Expert Help Section */}
-      <section style={sectionStyle}>
-        {/* Text Content */}
-        <div style={textContainerStyle}>
-          <h2 style={mentorshipHeadingStyle}>
-            Get help from vetted software developers
+      {/* Project Assessment Section */}
+      <section
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "60px 20px",
+          backgroundColor: "#F9FAFB",
+          fontFamily: "Poppins, sans-serif",
+        }}
+      >
+        {/* Left Section (Image Container) */}
+         {/* Image */}
+         <div style={imageContainerStyle}>
+          <img src={Projectimage} alt="Projects" style={imageStyle} />
+        </div>
+        {/* Right Section (Text Content) */}
+        <div
+          style={{
+            flex: "1",
+            padding: "20px",
+            textAlign: "left",
+            marginLeft: "20px", // Add space on the left
+            marginRight: "10px", // Add space on the right
+            marginTop: "25px", // Optional: Add top margin
+            marginBottom: "25px", // Optional: Add bottom margin
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "36px",
+              fontWeight: "bold",
+              color: "#1E293B",
+              marginBottom: "20px",
+            }}
+          >
+            Project assessment work
           </h2>
-          <h3 style={subheadingStyle}>One - on - one live Session</h3>
-          <ul style={listStyle}>
-            <li style={listItemStyle}>
-              <span style={iconStyle}>💻</span> Debug with the help of an expert
+          <ul
+            style={{
+              listStyle: "none",
+              padding: "0",
+              margin: "0",
+              fontSize: "16px",
+              lineHeight: "1.8",
+              color: "#64748B",
+            }}
+          >
+            <li
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "15px",
+              }}
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  backgroundColor: "#EFF6FF",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: "10px",
+                }}
+              >
+                <span role="img" aria-label="Code Review Icon">
+                  📄
+                </span>
+              </div>
+              Find experts for on-demand code review
             </li>
-            <li style={listItemStyle}>
-              <span style={iconStyle}>📚</span> Personalize your learning
-              experience
+            <li
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "15px",
+              }}
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  backgroundColor: "#EFF6FF",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: "10px",
+                }}
+              >
+                <span role="img" aria-label="Teamwork Icon">
+                  👥
+                </span>
+              </div>
+              Build features for your existing product
             </li>
-            <li style={listItemStyle}>
-              <span style={iconStyle}>🧠</span> Get answers to complex problems
+            <li
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "15px",
+              }}
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  backgroundColor: "#EFF6FF",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: "10px",
+                }}
+              >
+                <span role="img" aria-label="Rocket Icon">
+                  🚀
+                </span>
+              </div>
+              Turn your idea into an MVP
             </li>
           </ul>
           <button
-            style={buttonStyle}
-            onMouseOver={(e) =>
-              (e.target.style.backgroundColor =
-                buttonHoverStyle.backgroundColor)
-            }
-            onMouseOut={(e) =>
-              (e.target.style.backgroundColor = buttonStyle.backgroundColor)
-            }
+            style={{
+              marginTop: "20px",
+              backgroundColor: "#2563EB",
+              color: "white",
+              padding: "10px 20px",
+              border: "none",
+              borderRadius: "5px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              transition: "background-color 0.3s ease",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = "#1E40AF";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = "#2563EB";
+            }}
           >
-            FIND AN EXPERT
+            GET STARTED
           </button>
         </div>
+      </section>
 
-        {/* Image */}
-        <div style={imageContainerStyle}>
-          <img src={mentorshipImage} alt="Mentorship" style={imageStyle} />
+      <section
+        style={{
+          background: "linear-gradient(to bottom, #2563EB, #F9FAFB)", // Blue to white gradient
+          padding: "60px 20px",
+          textAlign: "center",
+          fontFamily: "Poppins, sans-serif",
+          color: "white",
+        }}
+      >
+        {/* Logo */}
+        <div
+          style={{
+            width: "80px", // Width of the square
+            height: "80px", // Height of the square
+            margin: "0 auto 20px", // Centering and spacing
+            backgroundColor: "white", // Background color
+            borderRadius: "16px", // Rounds the corners
+            display: "flex", // Centers content
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", // Adds shadow
+            transform: "rotate(15deg)", // Tilts the square
+          }}
+        >
+          <span
+            style={{
+              fontSize: "38px",
+              fontWeight: "bold",
+              color: "#2563EB", // Blue color for the text
+              transform: "rotate(-15deg)", // Rotates content back to align correctly
+            }}
+          >
+            {"< >"}
+          </span>
+        </div>
+
+        {/* Heading */}
+        <h2
+          style={{
+            fontSize: "36px",
+            fontWeight: "bold",
+            marginBottom: "20px",
+            textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)",
+          }}
+        >
+          Connect with expert developers and grow together
+        </h2>
+
+        {/* Subheading */}
+        <p
+          style={{
+            fontSize: "18px",
+            color: "#E2E8F0",
+            marginBottom: "30px",
+          }}
+        >
+          Join our community of developers, share knowledge, and build amazing
+          projects together
+        </p>
+
+        {/* Buttons */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "20px",
+          }}
+        >
+          <a
+            href="/get-started"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "10px 20px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              textDecoration: "none",
+              backgroundColor: "white",
+              color: "#2563EB",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              transition: "background-color 0.3s ease, color 0.3s ease",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = "white";
+              e.target.style.color = "#2563EB";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = "#2563EB";
+              e.target.style.color = "white";
+            }}
+          >
+            🚀 Get Started Now
+          </a>
+
+          <a
+            href="/contact"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "10px 20px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              border: "2px solid white",
+              borderRadius: "5px",
+              cursor: "pointer",
+              textDecoration: "none",
+              backgroundColor: "transparent",
+              color: "white",
+              transition: "background-color 0.3s ease, color 0.3s ease",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = "white";
+              e.target.style.color = "#2563EB";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = "transparent";
+              e.target.style.color = "white";
+            }}
+          >
+            💬 Contact Us
+          </a>
         </div>
       </section>
 

@@ -54,7 +54,7 @@ const Header = () => {
             fontWeight: "500",
           }}
         >
-          {["Home", "Explore", "Expert Help", "Projects"].map((text, index) => (
+          {["Home","About Us", "Explore", "Get Help", "Projects"].map((text, index) => (
             <Link
               key={index}
               to={`/${text.toLowerCase().replace(" ", "")}`}
@@ -132,7 +132,7 @@ const Header = () => {
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           }}
         >
-          {["Home", "Explore", "Expert Help", "Projects", "Log in"].map(
+          {["Home","About Us", "Explore", "Get Help", "Projects", "Log in"].map(
             (text, index) => (
               <Link
                 key={index}
