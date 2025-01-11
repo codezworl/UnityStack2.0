@@ -10,6 +10,10 @@ import AdvanceSearch from "./components/AdvanceSearch";
 import DevelporDashboard from "./components/develpordashboard";
 import Chat from "./pages/Chat";
 import ProjectPage from "./pages/project";// comment
+import StudentDashboard from "./components/Studentdashboard";
+import SessionShedule from "./pages/sessionShedule";
+import SessionHistory from "./pages/SessionHistory";
+import Account from "./pages/account";
 const App = () => {
   return (
     <Router>
@@ -25,6 +29,10 @@ const App = () => {
         <Route path="/develpordashboard" element={<DevelporDashboard />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/project" element={<ProjectPage />} />
+        <Route path="/studentdashboard" element={<StudentDashboard />} />
+        <Route path="/sessionShedule" element={<SessionShedule />} />
+        <Route path="/SessionHistory" element={<SessionHistory />} />
+        <Route path="/account" element={<Account />} />
       </Routes>
     </Router>
   );

@@ -15,7 +15,7 @@ const StudentSignUp = () => {
     github: "",
     password: "",
     confirmPassword: "",
-    profilePicture: null, // Added for profile picture upload
+    profilePicture: null,
   });
 
   const [errors, setErrors] = useState({});
@@ -383,6 +383,94 @@ const StudentSignUp = () => {
           }}
         />
       </div>
+
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div
+          className="modal d-block"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Verify OTP</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowOtpModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Please enter the 6-digit OTP sent to your email.</p>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                />
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleVerifyOtp}
+                >
+                  Verify OTP
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowOtpModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showModal && (
+        <div
+          className="modal d-block"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Success</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Your account has been created successfully!</p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-primary"
+                 
+                >
+                  <a
+          href="/studentdashboard"
+          style={{ textDecoration: "none", color: "white" }} // Ensures black text and no underline
+        >
+         Go to Dashboard
+        </a>
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
