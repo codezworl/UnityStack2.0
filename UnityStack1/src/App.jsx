@@ -10,6 +10,7 @@ import AdvanceSearch from "./components/AdvanceSearch";
 import DevelporDashboard from "./components/develpordashboard";
 import Chat from "./pages/Chat";
 import ProjectPage from "./pages/project";// comment
+import Getexperthelp from "./pages/Get-expert-help";
 const App = () => {
   return (
     <Router>
@@ -25,6 +26,7 @@ const App = () => {
         <Route path="/develpordashboard" element={<DevelporDashboard />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/project" element={<ProjectPage />} />
+        <Route path="/Getexperthelp" element={<Getexperthelp/>}/>
       </Routes>
     </Router>
   );
