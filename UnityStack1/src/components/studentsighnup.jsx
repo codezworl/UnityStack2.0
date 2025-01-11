@@ -8,12 +8,14 @@ const StudentSignUp = () => {
     lastName: "",
     email: "",
     university: "",
+    universityEmail: "",
     semester: "",
     domain: "",
     linkedIn: "",
     github: "",
     password: "",
     confirmPassword: "",
+    profilePicture: null, // Added for profile picture upload
   });
 
   const [errors, setErrors] = useState({});
@@ -29,17 +31,31 @@ const StudentSignUp = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  // File upload handler
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    setFormData({ ...formData, profilePicture: file });
+  };
+
   // Validate form
   const validateForm = () => {
     const newErrors = {};
     Object.keys(formData).forEach((key) => {
-      if (!formData[key]) {
+      if (!formData[key] && key !== "profilePicture") {
         newErrors[key] = "This field is required";
       }
     });
 
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (formData.universityEmail && !/\S+@\S+\.\S+/.test(formData.universityEmail)) {
+      newErrors.universityEmail = "Invalid email format";
+    }
+
+    if (!formData.profilePicture) {
+      newErrors.profilePicture = "Profile picture is required";
     }
 
     setErrors(newErrors);
@@ -56,7 +72,8 @@ const StudentSignUp = () => {
 
   // Verify OTP
   const handleVerifyOtp = () => {
-    if (otp === "123456") { // Dummy OTP for frontend
+    if (otp === "123456") {
+      // Dummy OTP for frontend
       setShowOtpModal(false); // Close OTP modal
       setShowModal(true); // Show success modal
     } else {
@@ -91,7 +108,6 @@ const StudentSignUp = () => {
           overflowY: "auto",
         }}
       >
-        {/* Left Side Heading */}
         <div style={{ marginBottom: "20px" }}>
           <h2
             style={{
@@ -112,13 +128,12 @@ const StudentSignUp = () => {
           ></div>
         </div>
 
-        {/* Form Content */}
         <div className="d-flex flex-column justify-content-center align-items-center">
           <form
             style={{ width: "100%", maxWidth: "350px" }}
             onSubmit={handleSubmit}
           >
-            {/* Add original form fields */}
+            {/* Name Fields */}
             <div className="d-flex gap-3 mb-3">
               <input
                 type="text"
@@ -147,6 +162,8 @@ const StudentSignUp = () => {
                 style={inputStyle}
               />
             </div>
+
+            {/* Email Fields */}
             <div className="mb-3">
               <input
                 type="email"
@@ -175,6 +192,23 @@ const StudentSignUp = () => {
                 style={inputStyle}
               />
             </div>
+            <div className="mb-3">
+              <input
+                type="email"
+                className={`form-control ${
+                  errors.universityEmail ? "is-invalid" : ""
+                }`}
+                placeholder="University Email"
+                name="universityEmail"
+                value={formData.universityEmail}
+                onChange={handleChange}
+                onFocus={focusStyle}
+                onBlur={blurStyle}
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Dropdown Fields */}
             <div className="mb-3">
               <select
                 className={`form-control ${
@@ -215,6 +249,8 @@ const StudentSignUp = () => {
                 )}
               </select>
             </div>
+
+            {/* LinkedIn and GitHub */}
             <div className="d-flex gap-3 mb-3">
               <input
                 type="text"
@@ -241,6 +277,26 @@ const StudentSignUp = () => {
                 style={inputStyle}
               />
             </div>
+
+            {/* Profile Picture */}
+            <div className="mb-3">
+              <label htmlFor="profilePicture" className="form-label">
+                Upload Profile Picture
+              </label>
+              <input
+                type="file"
+                className="form-control"
+                id="profilePicture"
+                name="profilePicture"
+                onChange={handleFileUpload}
+                style={inputStyle}
+              />
+              {errors.profilePicture && (
+                <div className="text-danger">{errors.profilePicture}</div>
+              )}
+            </div>
+
+            {/* Password Fields */}
             <div className="mb-3 position-relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -258,7 +314,11 @@ const StudentSignUp = () => {
               <button
                 type="button"
                 className="btn btn-link position-absolute"
-                style={{ top: "50%", right: "10px", transform: "translateY(-50%)" }}
+                style={{
+                  top: "50%",
+                  right: "10px",
+                  transform: "translateY(-50%)",
+                }}
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? "🙈" : "👁"}
@@ -281,7 +341,11 @@ const StudentSignUp = () => {
               <button
                 type="button"
                 className="btn btn-link position-absolute"
-                style={{ top: "50%", right: "10px", transform: "translateY(-50%)" }}
+                style={{
+                  top: "50%",
+                  right: "10px",
+                  transform: "translateY(-50%)",
+                }}
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               >
                 {showConfirmPassword ? "🙈" : "👁"}
@@ -319,89 +383,6 @@ const StudentSignUp = () => {
           }}
         />
       </div>
-
-      {/* OTP Modal */}
-      {showOtpModal && (
-        <div
-          className="modal d-block"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Verify OTP</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowOtpModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Please enter the 6-digit OTP sent to your email.</p>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                />
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-primary"
-                  onClick={handleVerifyOtp}
-                >
-                  Verify OTP
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowOtpModal(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Modal */}
-      {showModal && (
-        <div
-          className="modal d-block"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Success</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Your account has been created successfully!</p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-primary"
-                  onClick={() => alert("Navigate to dashboard")}
-                >
-                  Go to Dashboard
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

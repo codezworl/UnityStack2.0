@@ -7,7 +7,7 @@ import OptionsSign from "./components/optionsighn";
 import Studentsighnup from "./components/studentsighnup";
 import Develporsighnup from "./components/develporsighn1";
 import AdvanceSearch from "./components/AdvanceSearch";
-import DevelporDashboard from "./components/develpordashboard";
+import DevelporDashboard from "./components/develpordashboard";//develpor
 import Chat from "./pages/Chat";
 import ProjectPage from "./pages/project";// comment
 const App = () => {
