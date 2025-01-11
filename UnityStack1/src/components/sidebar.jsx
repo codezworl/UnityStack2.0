@@ -1,6 +1,6 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHouse, faMessage, faBell, faChartSimple, faComments } from '@fortawesome/free-solid-svg-icons'; // Add faComments for the Discussion Forum icon
+import { faHouse, faChartSimple, faComments, faProjectDiagram, faVideo, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'; // Add icons for new options
 import { useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import profileBg from '../assets/silver1.jpeg';
@@ -10,7 +10,7 @@ const Sidebar = ({ onSelectPage }) => {
   const location = useLocation();
 
   // Determine the user role based on the URL
-  const userRole = location.pathname.includes('developerdashboard') ? 'Developer' : 'Student';
+  const userRole = location.pathname.includes('developerdashboard') ? 'Developer' : 'Develpor';
 
   const handleNavigation = (path) => {
     onSelectPage(path);
@@ -70,23 +70,12 @@ const Sidebar = ({ onSelectPage }) => {
               style={{ cursor: 'pointer' }}
             >
               <FontAwesomeIcon icon={faHouse} className="me-3" />
-              Home
-            </li>
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('messages')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faMessage} className="me-3" />
-              Messages
-            </li>
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('notifications')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faBell} className="me-3" />
-              Notifications
+              <a
+          href="/"
+          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
+        >
+          Home
+        </a>
             </li>
             <li
               className="d-flex align-items-center px-4 py-2 text-dark"
@@ -94,19 +83,61 @@ const Sidebar = ({ onSelectPage }) => {
               style={{ cursor: 'pointer' }}
             >
               <FontAwesomeIcon icon={faChartSimple} className="me-3" />
-              Dashboard
+              <a
+          href="/develpordashboard"
+          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
+        >
+          Dashboard
+        </a>
             </li>
-            {/* Add Discussion Forum link */}
             <li
               className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('forum')}
+              onClick={() => handleNavigation('chat')}
               style={{ cursor: 'pointer' }}
             >
               <FontAwesomeIcon icon={faComments} className="me-3" />
-              Discussion Forum
+              <a
+          href="/chat"
+          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
+        >
+          Chat
+        </a>
+            </li>
+            <li
+              className="d-flex align-items-center px-4 py-2 text-dark"
+              onClick={() => handleNavigation('projects')}
+              style={{ cursor: 'pointer' }}
+            >
+              <FontAwesomeIcon icon={faProjectDiagram} className="me-3" />
+              <a
+          href="/project"
+          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
+        >
+          Work
+        </a>
+            </li>
+            <li
+              className="d-flex align-items-center px-4 py-2 text-dark"
+              onClick={() => handleNavigation('sessions')}
+              style={{ cursor: 'pointer' }}
+            >
+              <FontAwesomeIcon icon={faVideo} className="me-3" />
+              Sessions
             </li>
           </ul>
         </nav>
+
+        {/* Log Out Button */}
+        <div className="mt-5 px-4">
+          <button
+            className="btn btn-danger w-100 d-flex align-items-center justify-content-center"
+            onClick={() => handleNavigation('logout')}
+            style={{ cursor: 'pointer' }}
+          >
+            <FontAwesomeIcon icon={faSignOutAlt} className="me-2" />
+            Log Out
+          </button>
+        </div>
       </aside>
 
       {/* Bottom Navbar for Smaller Screens */}
@@ -117,10 +148,10 @@ const Sidebar = ({ onSelectPage }) => {
         <ul className="d-flex justify-content-around align-items-center list-unstyled m-0 p-0 h-100">
           {[ 
             { icon: faHouse, label: 'Home', path: 'home' },
-            { icon: faMessage, label: 'Messages', path: 'messages' },
-            { icon: faBell, label: 'Notifications', path: 'notifications' },
             { icon: faChartSimple, label: 'Dashboard', path: 'dashboard' },
-            { icon: faComments, label: 'Forum', path: 'forum' }  // Change label to 'Forum' for mobile view
+            { icon: faComments, label: 'Chat', path: 'chat' },
+            { icon: faProjectDiagram, label: 'Projects', path: 'projects' },
+            { icon: faVideo, label: 'Sessions', path: 'sessions' },
           ].map(({ icon, label, path }) => (
             <li
               key={path}
