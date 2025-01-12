@@ -14,6 +14,7 @@ import StudentDashboard from "./components/Studentdashboard";
 import SessionShedule from "./pages/sessionShedule";
 import SessionHistory from "./pages/SessionHistory";
 import Account from "./pages/account";
+import Profile from "./pages/profile";
 const App = () => {
   return (
     <Router>
@@ -33,6 +34,7 @@ const App = () => {
         <Route path="/sessionShedule" element={<SessionShedule />} />
         <Route path="/SessionHistory" element={<SessionHistory />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>
   );

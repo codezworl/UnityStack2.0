@@ -75,7 +75,7 @@ const Header = () => {
           >
             Home
           </Link>
-          {[, "About Us", "Get Help"].map((text, index) => (
+          {["About Us"].map((text, index) => (
             <Link
               key={index}
               to={`/${text.toLowerCase().replace(" ", "")}`}
@@ -92,7 +92,22 @@ const Header = () => {
             >
               {text}
             </Link>
+
           ))}
+          <Link
+            to="/Getexperthelp"
+            style={{
+              textDecoration: "none",
+              color: "#64748b",
+              padding: "8px 10px",
+              fontWeight: "500",
+              transition: "color 0.3s ease-in-out",
+            }}
+            onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+            onMouseOut={(e) => (e.target.style.color = "#64748b")}
+          >
+            Get Help
+          </Link>
           {/* Dropdown for Explore */}
           <div
             style={{
