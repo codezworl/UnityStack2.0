@@ -15,6 +15,9 @@ import SessionShedule from "./pages/sessionShedule";
 import SessionHistory from "./pages/SessionHistory";
 import Account from "./pages/account";
 import Profile from "./pages/profile";
+import Companies from "./components/Companies";
+import CompanyProfile from "./pages/CompaniesProfile";
+import Organizationsighnup from "./components/Organizationsighnup";
 const App = () => {
   return (
     <Router>
@@ -35,6 +38,9 @@ const App = () => {
         <Route path="/SessionHistory" element={<SessionHistory />} />
         <Route path="/account" element={<Account />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/companies" element={<Companies />} />
+        <Route path="/companiesprofile" element={<CompanyProfile />} />
+        <Route path="/organizationsighnup" element={<Organizationsighnup />} />
       </Routes>
     </Router>
   );
