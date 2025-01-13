@@ -11,6 +11,9 @@ import DevelporDashboard from "./components/develpordashboard";
 import Chat from "./pages/Chat";
 import ProjectPage from "./pages/project";// comment
 import Getexperthelp from "./pages/Get-expert-help";
+import Questiontread from "./pages/Question Thread";
+// import AnswerEditor from "./pages/Awnsereditor";
+import Dashboard from "./pages/Admin Panel/Dashboard";
 const App = () => {
   return (
     <Router>
@@ -27,6 +30,9 @@ const App = () => {
         <Route path="/chat" element={<Chat />} />
         <Route path="/project" element={<ProjectPage />} />
         <Route path="/Getexperthelp" element={<Getexperthelp/>}/>
+        <Route path="/questionthread/:id" element={<Questiontread />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        {/* <Route path="/answereditor/:id" element={<AnswerEditor />} /> */}
       </Routes>
     </Router>
   );
