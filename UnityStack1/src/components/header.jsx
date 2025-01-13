@@ -5,9 +5,14 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleDropdownToggle = () => {
+    setIsDropdownOpen(!isDropdownOpen);
   };
 
   return (
@@ -32,16 +37,18 @@ const Header = () => {
       >
         {/* Logo Section */}
         <div style={{ display: "flex", alignItems: "center" }}>
-          <img
-            src={bgLogo}
-            alt="Logo"
-            style={{
-              width: "120px",
-              height: "auto",
-              objectFit: "contain",
-              cursor: "pointer",
-            }}
-          />
+          <Link to="/">
+            <img
+              src={bgLogo}
+              alt="Logo"
+              style={{
+                width: "120px",
+                height: "auto",
+                objectFit: "contain",
+                cursor: "pointer",
+              }}
+            />
+          </Link>
         </div>
 
         {/* Navigation Links */}
@@ -54,7 +61,21 @@ const Header = () => {
             fontWeight: "500",
           }}
         >
-          {["Home", "Explore", "Expert Help", "Projects"].map((text, index) => (
+          <Link
+            to="/"
+            style={{
+              textDecoration: "none",
+              color: "#64748b",
+              padding: "8px 10px",
+              fontWeight: "500",
+              transition: "color 0.3s ease-in-out",
+            }}
+            onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+            onMouseOut={(e) => (e.target.style.color = "#64748b")}
+          >
+            Home
+          </Link>
+          {["About Us"].map((text, index) => (
             <Link
               key={index}
               to={`/${text.toLowerCase().replace(" ", "")}`}
@@ -70,22 +91,96 @@ const Header = () => {
               onMouseOut={(e) => (e.target.style.color = "#64748b")} // Back to gray
             >
               {text}
-              <span
+            </Link>
+
+          ))}
+          <Link
+            to="/Getexperthelp"
+            style={{
+              textDecoration: "none",
+              color: "#64748b",
+              padding: "8px 10px",
+              fontWeight: "500",
+              transition: "color 0.3s ease-in-out",
+            }}
+            onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+            onMouseOut={(e) => (e.target.style.color = "#64748b")}
+          >
+            Get Help
+          </Link>
+          {/* Dropdown for Explore */}
+          <div
+            style={{
+              position: "relative",
+              display: "inline-block",
+            }}
+            onMouseEnter={() => setIsDropdownOpen(true)}
+            onMouseLeave={() => setIsDropdownOpen(false)}
+          >
+            <span
+              style={{
+                cursor: "pointer",
+                color: "#64748b",
+                fontWeight: "500",
+                transition: "color 0.3s ease-in-out",
+              }}
+              onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+              onMouseOut={(e) => (e.target.style.color = "#64748b")}
+            >
+              Explore
+            </span>
+            {isDropdownOpen && (
+              <div
                 style={{
                   position: "absolute",
+                  top: "100%",
                   left: "0",
-                  bottom: "-2px",
-                  width: "100%",
-                  height: "2px",
-                  backgroundColor: "#1d4ed8", // Blue underline
-                  transform: "scaleX(0)",
-                  transformOrigin: "left",
-                  transition: "transform 0.3s ease-in-out",
+                  backgroundColor: "#ffffff",
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  padding: "10px",
+                  borderRadius: "5px",
                 }}
-                className="underline"
-              ></span>
-            </Link>
-          ))}
+              >
+                {/* Q&A module with a specific link */}
+                <Link
+                  to="/question"
+                  style={{
+                    display: "block",
+                    textDecoration: "none",
+                    color: "#64748b",
+                    padding: "8px 10px",
+                    fontWeight: "500",
+                    transition: "color 0.3s ease-in-out",
+                  }}
+                  onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+                  onMouseOut={(e) => (e.target.style.color = "#64748b")}
+                >
+                  Questions
+                </Link>
+                <Link
+                  to="/companies"
+                  style={{
+                    display: "block",
+                    textDecoration: "none",
+                    color: "#64748b",
+                    padding: "8px 10px",
+                    fontWeight: "500",
+                    transition: "color 0.3s ease-in-out",
+                  }}
+                  onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+                  onMouseOut={(e) => (e.target.style.color = "#64748b")}
+                >
+                  Companies
+                </Link>
+
+                
+              </div>
+            )}
+          </div>
+
+         
+
+          {/* Login Button */}
           <Link
             to="/login"
             style={{
@@ -132,25 +227,30 @@ const Header = () => {
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           }}
         >
-          {["Home", "Explore", "Expert Help", "Projects", "Log in"].map(
-            (text, index) => (
-              <Link
-                key={index}
-                to={`/${text.toLowerCase().replace(" ", "")}`}
-                style={{
-                  display: "block",
-                  padding: "10px 0",
-                  color: "#64748b", // Gray text
-                  textDecoration: "none",
-                  fontWeight: "500",
-                }}
-                onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-                onMouseOut={(e) => (e.target.style.color = "#64748b")}
-              >
-                {text}
-              </Link>
-            )
-          )}
+          {[
+            "Home",
+            "About Us",
+            "Explore",
+            "Get Help",
+            "Community",
+            "Log in",
+          ].map((text, index) => (
+            <Link
+              key={index}
+              to={`/${text.toLowerCase().replace(" ", "")}`}
+              style={{
+                display: "block",
+                padding: "10px 0",
+                color: "#64748b", // Gray text
+                textDecoration: "none",
+                fontWeight: "500",
+              }}
+              onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+              onMouseOut={(e) => (e.target.style.color = "#64748b")}
+            >
+              {text}
+            </Link>
+          ))}
         </div>
       )}
     </header>
