@@ -155,48 +155,30 @@ const Header = () => {
                   onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
                   onMouseOut={(e) => (e.target.style.color = "#64748b")}
                 >
-                  Q&A
+                  Questions
+                </Link>
+                <Link
+                  to="/companies"
+                  style={{
+                    display: "block",
+                    textDecoration: "none",
+                    color: "#64748b",
+                    padding: "8px 10px",
+                    fontWeight: "500",
+                    transition: "color 0.3s ease-in-out",
+                  }}
+                  onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
+                  onMouseOut={(e) => (e.target.style.color = "#64748b")}
+                >
+                  Companies
                 </Link>
 
-                {/* Projects and Tutorials */}
-                {["Projects", "Tutorials"].map((dropdownItem, index) => (
-                  <Link
-                    key={index}
-                    to={`/explore/${dropdownItem.toLowerCase()}`}
-                    style={{
-                      display: "block",
-                      textDecoration: "none",
-                      color: "#64748b",
-                      padding: "8px 10px",
-                      fontWeight: "500",
-                      transition: "color 0.3s ease-in-out",
-                    }}
-                    onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-                    onMouseOut={(e) => (e.target.style.color = "#64748b")}
-                  >
-                    {dropdownItem}
-                  </Link>
-                ))}
+                
               </div>
             )}
           </div>
 
-          {/* Community Link */}
-          <Link
-            to="/community"
-            style={{
-              textDecoration: "none",
-              color: "#64748b",
-              position: "relative",
-              overflow: "hidden",
-              transition: "color 0.3s ease-in-out",
-              fontWeight: "500",
-            }}
-            onMouseOver={(e) => (e.target.style.color = "#1d4ed8")} // Blue on hover
-            onMouseOut={(e) => (e.target.style.color = "#64748b")} // Back to gray
-          >
-            Community
-          </Link>
+         
 
           {/* Login Button */}
           <Link

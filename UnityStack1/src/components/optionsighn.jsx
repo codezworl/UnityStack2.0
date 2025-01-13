@@ -33,7 +33,12 @@ const SignUp = () => {
     },
     {
       id: "organization",
-      label: "As an Organization",
+      label: <a
+      href="/organizationsighnup"
+      style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
+    >
+      As an Organization 
+    </a>,
       logo: OrganizationLogo,
     },
   ];
