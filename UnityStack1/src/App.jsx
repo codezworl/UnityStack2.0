@@ -56,7 +56,7 @@ const App = () => {
         <Route path="/organizationsighnup" element={<Organizationsighnup />} />
 >>>>>>> 15744b7eed52b37f9ec800e04d87676025425811
       </Routes>
-    </Router>
+    </Router>// routes
   );
 };
 
