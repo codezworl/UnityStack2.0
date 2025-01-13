@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
+import DashboardHome from "./DashboardHome";
+import UsersPage from "../UsersPage";
 
 const DashboardLayout = ({ children }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showNotificationsDropdown, setShowNotificationsDropdown] =
-    useState(false);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [activePage, setActivePage] = useState("Home"); // State to track active page
 
   const profileDropdownRef = useRef(null);
   const notificationsDropdownRef = useRef(null);
@@ -60,6 +62,18 @@ const DashboardLayout = ({ children }) => {
     },
   ];
 
+  // Render the active page based on state
+  const renderActivePage = () => {
+    switch (activePage) {
+      case "Home":
+        return <DashboardHome />;
+      case "Users":
+        return <UsersPage />;
+      default:
+        return <DashboardHome />;
+    }
+  };
+
   return (
     <div
       style={{
@@ -80,43 +94,46 @@ const DashboardLayout = ({ children }) => {
         }}
       >
         <div
-          style={{ marginBottom: "30px", fontSize: "20px", fontWeight: "bold" }}
+          style={{
+            marginBottom: "30px",
+            fontSize: "20px",
+            fontWeight: "bold",
+          }}
         >
-          <span style={{ display: "flex", alignItems: "center" }}>
-            <div
-              style={{
-                backgroundColor: "#0074D9",
-                width: "30px",
-                height: "30px",
-                borderRadius: "50%",
-                marginRight: "10px",
-              }}
-            ></div>
-            <span>Admin Panel</span>
-          </span>
+          Admin Panel
         </div>
         <nav>
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {["Dashboard", "Users", "Transactions", "Analytics", "Settings"].map(
-              (item, index) => (
-                <li
-                  key={index}
-                  style={{
-                    padding: "10px 0",
-                    cursor: "pointer",
-                    transition: "background-color 0.3s",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.target.style.backgroundColor = "#004080")
-                  }
-                  onMouseOut={(e) =>
-                    (e.target.style.backgroundColor = "transparent")
-                  }
-                >
-                  {item}
-                </li>
-              )
-            )}
+            {[
+              { name: "Home", value: "Home" },
+              { name: "Users", value: "Users" },
+              { name: "Transactions", value: "Transactions" },
+              { name: "Analytics", value: "Analytics" },
+              { name: "Settings", value: "Settings" },
+            ].map((item, index) => (
+              <li
+                key={index}
+                onClick={() => setActivePage(item.value)} // Set active page on click
+                style={{
+                  padding: "10px 15px",
+                  cursor: "pointer",
+                  backgroundColor:
+                    activePage === item.value ? "#004080" : "transparent",
+                  color: activePage === item.value ? "#FFD700" : "#ffffff",
+                  borderRadius: "5px",
+                  transition: "background-color 0.3s",
+                }}
+                onMouseOver={(e) =>
+                  (e.target.style.backgroundColor = "#004080")
+                }
+                onMouseOut={(e) =>
+                  (e.target.style.backgroundColor =
+                    activePage === item.value ? "#004080" : "transparent")
+                }
+              >
+                {item.name}
+              </li>
+            ))}
           </ul>
         </nav>
       </aside>
@@ -147,6 +164,7 @@ const DashboardLayout = ({ children }) => {
                 outline: "none",
                 fontSize: "16px",
                 paddingRight: "40px",
+                marginRight: "100px",
               }}
             />
             <span
@@ -409,7 +427,7 @@ const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Main Content Area */}
-        <main style={{ padding: "20px" }}>{children}</main>
+        <main style={{ padding: "20px" }}>{renderActivePage()}</main>
       </div>
     </div>
   );
