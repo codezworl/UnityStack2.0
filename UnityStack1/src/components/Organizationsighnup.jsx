@@ -11,7 +11,6 @@ const OrganizationRegister = () => {
     operatingCities: [],
     website: "",
     companyEmail: "",
-    logo: null,
     password: "",
     confirmPassword: "",
     whoYouAre: "",
@@ -20,6 +19,8 @@ const OrganizationRegister = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const cities = ["Lahore", "Karachi", "Islamabad", "Peshawar", "Quetta"];
   const services = [
@@ -36,10 +37,10 @@ const OrganizationRegister = () => {
   ];
 
   const handleChange = (e) => {
-    const { name, value, type, files } = e.target;
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: type === "file" ? files[0] : value,
+      [name]: value,
     });
   };
 
@@ -61,12 +62,72 @@ const OrganizationRegister = () => {
     });
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.companyName) newErrors.companyName = "Company Name is required.";
+    if (!formData.address) newErrors.address = "Address is required.";
+    if (!formData.companyEmail || !/\S+@\S+\.\S+/.test(formData.companyEmail))
+      newErrors.companyEmail = "Valid email is required.";
+    if (!formData.password) newErrors.password = "Password is required.";
+    if (formData.password !== formData.confirmPassword)
+      newErrors.confirmPassword = "Passwords do not match.";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleNext = () => {
-    setCurrentPage((prev) => Math.min(prev + 1, 3));
+    if (currentPage === 1 && validateForm()) {
+      setCurrentPage((prev) => Math.min(prev + 1, 3));
+    } else if (currentPage !== 1) {
+      setCurrentPage((prev) => Math.min(prev + 1, 3));
+    }
   };
 
   const handlePrevious = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmit = async () => {
+    if (validateForm()) {
+      setIsSubmitting(true);
+      try {
+        const response = await fetch("http://localhost:5000/api/organizations/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formData,
+            operatingCities: formData.operatingCities,
+            selectedServices: formData.selectedServices,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setShowModal(true);
+          setFormData({
+            companyName: "",
+            address: "",
+            branches: "",
+            operatingCities: [],
+            website: "",
+            companyEmail: "",
+            password: "",
+            confirmPassword: "",
+            whoYouAre: "",
+            selectedServices: [],
+          });
+        } else {
+          alert(data.message || "Registration failed. Please try again.");
+        }
+      } catch (error) {
+        alert("An error occurred. Please try again later.");
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
   };
 
   const renderProgressBar = () => (
@@ -101,7 +162,8 @@ const OrganizationRegister = () => {
     <>
       <div style={{ marginBottom: "20px", textAlign: "left" }}>
         <h2>
-          <span style={{ color: "black", fontWeight: "bold" }}>Company</span> <span style={{ color: "#007bff" }}>Registration</span>
+          <span style={{ color: "black", fontWeight: "bold" }}>Company</span>{" "}
+          <span style={{ color: "#007bff" }}>Registration</span>
         </h2>
       </div>
       {renderProgressBar()}
@@ -120,7 +182,9 @@ const OrganizationRegister = () => {
                 <label className="form-label">Company Name</label>
                 <input
                   type="text"
-                  className="form-control rounded-pill"
+                  className={`form-control rounded-pill ${
+                    errors.companyName ? "is-invalid" : ""
+                  }`}
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
@@ -130,7 +194,9 @@ const OrganizationRegister = () => {
                 <label className="form-label">Address</label>
                 <input
                   type="text"
-                  className="form-control rounded-pill"
+                  className={`form-control rounded-pill ${
+                    errors.address ? "is-invalid" : ""
+                  }`}
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
@@ -190,28 +256,23 @@ const OrganizationRegister = () => {
                 <label className="form-label">Company Email</label>
                 <input
                   type="email"
-                  className="form-control rounded-pill"
+                  className={`form-control rounded-pill ${
+                    errors.companyEmail ? "is-invalid" : ""
+                  }`}
                   name="companyEmail"
                   value={formData.companyEmail}
                   onChange={handleChange}
                 />
               </div>
             </div>
-            <div className="mb-3">
-              <label className="form-label">Upload Logo</label>
-              <input
-                type="file"
-                className="form-control rounded-pill"
-                name="logo"
-                onChange={handleChange}
-              />
-            </div>
             <div className="row mb-3">
               <div className="col">
                 <label className="form-label">Password</label>
                 <input
                   type="password"
-                  className="form-control rounded-pill"
+                  className={`form-control rounded-pill ${
+                    errors.password ? "is-invalid" : ""
+                  }`}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -221,7 +282,9 @@ const OrganizationRegister = () => {
                 <label className="form-label">Confirm Password</label>
                 <input
                   type="password"
-                  className="form-control rounded-pill"
+                  className={`form-control rounded-pill ${
+                    errors.confirmPassword ? "is-invalid" : ""
+                  }`}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -280,7 +343,8 @@ const OrganizationRegister = () => {
               <strong>Branches:</strong> {formData.branches}
             </p>
             <p>
-              <strong>Operating Cities:</strong> {formData.operatingCities.join(", ")}
+              <strong>Operating Cities:</strong>{" "}
+              {formData.operatingCities.join(", ")}
             </p>
             <p>
               <strong>Website:</strong> {formData.website}
@@ -289,7 +353,8 @@ const OrganizationRegister = () => {
               <strong>Who You Are:</strong> {formData.whoYouAre}
             </p>
             <p>
-              <strong>Selected Services:</strong> {formData.selectedServices.join(", ")}
+              <strong>Selected Services:</strong>{" "}
+              {formData.selectedServices.join(", ")}
             </p>
           </div>
         );
@@ -334,24 +399,10 @@ const OrganizationRegister = () => {
             <button
               className="btn btn-success"
               type="button"
-              onClick={() => {
-                setShowModal(true);
-                setFormData({
-                  companyName: "",
-                  address: "",
-                  branches: "",
-                  operatingCities: [],
-                  website: "",
-                  companyEmail: "",
-                  logo: null,
-                  password: "",
-                  confirmPassword: "",
-                  whoYouAre: "",
-                  selectedServices: [],
-                });
-              }}
+              onClick={handleSubmit}
+              disabled={isSubmitting}
             >
-              Submit
+              {isSubmitting ? "Submitting..." : "Submit"}
             </button>
           )}
         </div>

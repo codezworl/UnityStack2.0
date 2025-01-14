@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Logo from "../assets/vector.png";
 import GoogleSvg from "../assets/icons8-google.svg";
@@ -10,6 +11,39 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError(""); // Clear any previous errors
+
+    try {
+      const response = await fetch("http://localhost:5000/api/students/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store the token in local storage (or cookies if preferred)
+        localStorage.setItem("token", data.token);
+
+        // Redirect to student dashboard
+        navigate("/studentdashboard");
+      } else {
+        // Display error message
+        setError(data.message || "Invalid login credentials");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Something went wrong. Please try again later.");
+    }
+  };
 
   return (
     <div className="d-flex flex-column flex-md-row vh-100">
@@ -101,7 +135,15 @@ const Login = () => {
           </div>
 
           {/* Login Form */}
-          <form style={{ flexGrow: 1 }}>
+          <form style={{ flexGrow: 1 }} onSubmit={handleLogin}>
+            {error && (
+              <div
+                className="alert alert-danger text-center"
+                style={{ fontSize: "1rem" }}
+              >
+                {error}
+              </div>
+            )}
             {/* Email Input */}
             <div className="mb-3">
               <input
@@ -175,7 +217,7 @@ const Login = () => {
                 type="button"
                 className="btn btn-link p-0 text-decoration-none"
               >
-                Forgot password?
+                <a href="/forgotpassword">Forgot password?</a>
               </button>
             </div>
 
