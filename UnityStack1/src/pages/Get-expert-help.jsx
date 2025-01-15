@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { Search, MessageSquare, Bookmark, Star } from "lucide-react";
-import Header from "F:/Final Year Project/UnityStack2.0/UnityStack1/src/components/header.jsx";
-import Footer from "F:/Final Year Project/UnityStack2.0/UnityStack1/src/components/footer";
+import Header from "../components/header.jsx";
+import Footer from "../components/footer";
 
 const developers = [
   {
@@ -669,8 +669,9 @@ export default function GetHelp() {
                           color: "#2563EB",
                           fontWeight: "500",
                         }}
-                      >
+                      > <a href="/profile" >
                         View Profile
+                        </a>
                       </button>
                     </div>
                   </div>

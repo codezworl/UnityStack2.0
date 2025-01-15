@@ -16,20 +16,9 @@ const DeveloperSignUp = () => {
     state: "",
     country: "",
     zipCode: "",
-    selectPosition: "",
-    selectDivision: "",
     password: "",
     confirmPassword: "",
-    profileImage: null,
     experience: "",
-    degrees: [
-      {
-        type: "",
-        startYear: "",
-        endYear: "",
-        degreeImage: null,
-      },
-    ],
     domainTags: [],
   });
 
@@ -37,53 +26,58 @@ const DeveloperSignUp = () => {
   const [errors, setErrors] = useState({});
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [otp, setOtp] = useState("");
 
   const handleChange = (e) => {
-    const { name, value, type, files } = e.target;
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: type === "file" ? files[0] : value,
+      [name]: value,
     });
   };
 
-  const addDegree = () => {
-    setFormData({
-      ...formData,
-      degrees: [
-        ...formData.degrees,
-        {
-          type: "",
-          startYear: "",
-          endYear: "",
-          degreeImage: null,
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.firstName) newErrors.firstName = "First name is required.";
+    if (!formData.lastName) newErrors.lastName = "Last name is required.";
+    if (!formData.email) newErrors.email = "Email is required.";
+    if (!formData.password) newErrors.password = "Password is required.";
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match.";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    try {
+      const response = await fetch("http://localhost:5000/api/developers/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      ],
-    });
-  };
+        body: JSON.stringify(formData),
+      });
 
-  const handleNext = () => {
-    if (currentPage === 4) {
-      setShowOtpModal(true);
-    } else {
-      setCurrentPage((prev) => Math.min(prev + 1, 4));
+      if (response.ok) {
+        setShowOtpModal(false);
+        setShowSuccessModal(true);
+      } else {
+        const result = await response.json();
+        alert(result.message || "Registration failed.");
+      }
+    } catch (error) {
+      console.error("Error during registration:", error);
+      alert("Something went wrong. Please try again.");
     }
   };
 
-  const handlePrevious = () => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  };
-
-  const renderProgressBar = () => {
-    const steps = [
-      "Contact Information",
-      "Personal Information",
-      "Domains",
-      "Review",
-    ];
-
-    return (
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        {steps.map((step, index) => (
+  const renderProgressBar = () => (
+    <div className="d-flex justify-content-between align-items-center mb-4">
+      {["Personal & Contact Info", "Domains", "Review & Submit"].map(
+        (step, index) => (
           <div
             key={index}
             className={`text-center flex-fill ${
@@ -105,20 +99,9 @@ const DeveloperSignUp = () => {
             </div>
             <div>{step}</div>
           </div>
-        ))}
-      </div>
-    );
-  };
-
-  const renderHeadingAndProgress = () => (
-    <>
-      <div style={{ marginBottom: "20px", textAlign: "left" }}>
-        <h2>
-          <span style={{ color: "black", fontWeight: "bold" }}>Developer</span> <span style={{ color: "#007bff" }}>Register</span>
-        </h2>
-      </div>
-      {renderProgressBar()}
-    </>
+        )
+      )}
+    </div>
   );
 
   const renderPageContent = () => {
@@ -126,7 +109,11 @@ const DeveloperSignUp = () => {
       case 1:
         return (
           <div style={{ paddingBottom: "20px" }}>
-            {renderHeadingAndProgress()}
+            <h2>
+              <span style={{ color: "black", fontWeight: "bold" }}>Developer</span>{" "}
+              <span style={{ color: "#007bff" }}>Register</span>
+            </h2>
+            {renderProgressBar()}
             <div className="row mb-3">
               <div className="col">
                 <label className="form-label">First Name</label>
@@ -164,19 +151,6 @@ const DeveloperSignUp = () => {
                 />
               </div>
               <div className="col">
-                <label className="form-label">Home Number</label>
-                <input
-                  type="text"
-                  className="form-control rounded-pill"
-                  placeholder="Home Number"
-                  name="homeNumber"
-                  value={formData.homeNumber}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="row mb-3">
-              <div className="col">
                 <label className="form-label">Date of Birth</label>
                 <input
                   type="date"
@@ -187,6 +161,8 @@ const DeveloperSignUp = () => {
                   onChange={handleChange}
                 />
               </div>
+            </div>
+            <div className="row mb-3">
               <div className="col">
                 <label className="form-label">Email</label>
                 <input
@@ -198,15 +174,41 @@ const DeveloperSignUp = () => {
                   onChange={handleChange}
                 />
               </div>
+              <div className="col">
+                <label className="form-label">Address</label>
+                <input
+                  type="text"
+                  className="form-control rounded-pill"
+                  placeholder="Address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
             <div className="row mb-3">
-              <label className="form-label">Profile Photo</label>
-              <input
-                type="file"
-                className="form-control rounded-pill"
-                name="profileImage"
-                onChange={handleChange}
-              />
+              <div className="col">
+                <label className="form-label">City</label>
+                <input
+                  type="text"
+                  className="form-control rounded-pill"
+                  placeholder="City"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="col">
+                <label className="form-label">State</label>
+                <input
+                  type="text"
+                  className="form-control rounded-pill"
+                  placeholder="State"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
             <div className="row mb-3">
               <div className="col">
@@ -237,159 +239,61 @@ const DeveloperSignUp = () => {
       case 2:
         return (
           <div style={{ paddingBottom: "20px" }}>
-            {renderHeadingAndProgress()}
-            <h5 className="mb-4">Personal Information</h5>
-            <div className="mb-3">
-              <label>Year of Experience</label>
-              <select
-                className="form-control rounded-pill"
-                name="experience"
-                value={formData.experience}
-                onChange={handleChange}
-              >
-                <option value="">Select</option>
-                <option value="1">1 Year</option>
-                <option value="2">2 Years</option>
-                <option value="3">3 Years</option>
-              </select>
-            </div>
-            <h5 className="text-primary mb-3">Educational Details</h5>
-            {formData.degrees.map((degree, index) => (
-              <div key={index} className="mb-4">
-                <div className="row mb-3">
-                  <div className="col">
-                    <select
-                      className="form-control rounded-pill"
-                      value={degree.type}
-                      onChange={(e) => {
-                        const updatedDegrees = [...formData.degrees];
-                        updatedDegrees[index].type = e.target.value;
-                        setFormData({ ...formData, degrees: updatedDegrees });
-                      }}
-                    >
-                      <option value="">Select Degree</option>
-                      <option value="BS">BS</option>
-                      <option value="MS">MS</option>
-                      <option value="Diploma">Diploma</option>
-                    </select>
-                  </div>
-                  <div className="col">
-                    <input
-                      type="date"
-                      className="form-control rounded-pill"
-                      placeholder="Start Year"
-                      value={degree.startYear}
-                      onChange={(e) => {
-                        const updatedDegrees = [...formData.degrees];
-                        updatedDegrees[index].startYear = e.target.value;
-                        setFormData({ ...formData, degrees: updatedDegrees });
-                      }}
-                    />
-                  </div>
-                  <div className="col">
-                    <input
-                      type="date"
-                      className="form-control rounded-pill"
-                      placeholder="End Year"
-                      value={degree.endYear}
-                      onChange={(e) => {
-                        const updatedDegrees = [...formData.degrees];
-                        updatedDegrees[index].endYear = e.target.value;
-                        setFormData({ ...formData, degrees: updatedDegrees });
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label>Upload Certificate</label>
-                  <input
-                    type="file"
-                    className="form-control rounded-pill"
-                    onChange={(e) => {
-                      const updatedDegrees = [...formData.degrees];
-                      updatedDegrees[index].degreeImage = e.target.files[0];
-                      setFormData({ ...formData, degrees: updatedDegrees });
+            <h2>
+              <span style={{ color: "black", fontWeight: "bold" }}>Developer</span>{" "}
+              <span style={{ color: "#007bff" }}>Domains</span>
+            </h2>
+            {renderProgressBar()}
+            <h5 className="mb-4">Select Your Domains</h5>
+            <div className="row">
+              {["MERN", "Django", "Data Analyst", "AI/ML"].map((domain, idx) => (
+                <div key={idx} className="col-3">
+                  <div
+                    className={`card p-3 text-center rounded ${
+                      formData.domainTags.includes(domain)
+                        ? "border-primary"
+                        : "border-secondary"
+                    }`}
+                    onClick={() => {
+                      const tags = formData.domainTags.includes(domain)
+                        ? formData.domainTags.filter((tag) => tag !== domain)
+                        : [...formData.domainTags, domain];
+                      setFormData({ ...formData, domainTags: tags });
                     }}
-                  />
+                    style={{ cursor: "pointer" }}
+                  >
+                    {domain}
+                  </div>
                 </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={addDegree}
-            >
-              + Add Another Degree
-            </button>
+              ))}
+            </div>
           </div>
         );
       case 3:
         return (
           <div style={{ paddingBottom: "20px" }}>
-            {renderHeadingAndProgress()}
-            <h5 className="mb-4">Domains</h5>
-            <div className="mb-3">
-              {formData.domainTags.map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="badge bg-primary text-white me-2 rounded-pill"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <div className="row">
-              {["MERN", "Django", "Data Analyst", "AI/ML"].map(
-                (domain, idx) => (
-                  <div key={idx} className="col-3">
-                    <div
-                      className={`card p-3 text-center rounded ${
-                        formData.domainTags.includes(domain)
-                          ? "border-primary"
-                          : "border-secondary"
-                      }`}
-                      onClick={() => {
-                        const tags = formData.domainTags.includes(domain)
-                          ? formData.domainTags.filter((tag) => tag !== domain)
-                          : [...formData.domainTags, domain];
-                        setFormData({ ...formData, domainTags: tags });
-                      }}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {domain}
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-        );
-      case 4:
-        return (
-          <div style={{ paddingBottom: "20px" }}>
-            {renderHeadingAndProgress()}
-            <h5 className="mb-4">Review Your Details</h5>
+            <h2>
+              <span style={{ color: "black", fontWeight: "bold" }}>Review</span>{" "}
+              <span style={{ color: "#007bff" }}>Your Details</span>
+            </h2>
+            {renderProgressBar()}
+            <h5 className="mb-4">Personal Information</h5>
             <p>
-              <strong>Name:</strong> {formData.firstName} {formData.lastName}
+              <strong>First Name:</strong> {formData.firstName}
+            </p>
+            <p>
+              <strong>Last Name:</strong> {formData.lastName}
             </p>
             <p>
               <strong>Email:</strong> {formData.email}
             </p>
             <p>
-              <strong>City:</strong> {formData.city}
+              <strong>Phone Number:</strong> {formData.phoneNumber}
             </p>
             <p>
-              <strong>Experience:</strong> {formData.experience}
+              <strong>Date of Birth:</strong> {formData.dateOfBirth}
             </p>
-            <h6>Degrees:</h6>
-            {formData.degrees.map((degree, idx) => (
-              <div key={idx}>
-                <p>
-                  {degree.type} ({degree.startYear} - {degree.endYear})
-                </p>
-              </div>
-            ))}
-            <h6>Domain Tags:</h6>
+            <h5 className="mt-4">Domain Tags</h5>
             <p>{formData.domainTags.join(", ")}</p>
           </div>
         );
@@ -417,16 +321,16 @@ const DeveloperSignUp = () => {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={handlePrevious}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             >
               Previous
             </button>
           )}
-          {currentPage < 4 ? (
+          {currentPage < 3 ? (
             <button
               type="button"
               className="btn btn-primary"
-              onClick={handleNext}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, 3))}
             >
               Next
             </button>
@@ -434,7 +338,7 @@ const DeveloperSignUp = () => {
             <button
               className="btn btn-success"
               type="button"
-              onClick={() => setShowOtpModal(true)}
+              onClick={handleSubmit}
             >
               Submit
             </button>
@@ -471,6 +375,8 @@ const DeveloperSignUp = () => {
             type="text"
             className="form-control"
             placeholder="Enter OTP"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
           />
         </Modal.Body>
         <Modal.Footer>
@@ -497,14 +403,11 @@ const DeveloperSignUp = () => {
         <Modal.Footer>
           <Button
             variant="primary"
-            onClick={() => alert("Redirecting to Dashboard")}
+            onClick={() => {
+              window.location.href = "/developer/login";
+            }}
           >
-            <a
-          href="/develpordashboard"
-          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
-        >
-          Go to Dashboard
-        </a>
+            Go to Login
           </Button>
         </Modal.Footer>
       </Modal>
