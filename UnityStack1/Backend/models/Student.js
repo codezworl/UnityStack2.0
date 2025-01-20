@@ -63,7 +63,15 @@ const studentSchema = new mongoose.Schema(
       type: String, 
       required: true,
       minlength: [6, "Password must be at least 6 characters long"]
-    }
+    },
+    isVerified: {
+      type: Boolean,
+      default: false, // Default to false until verified
+    },
+    verificationCode: {
+      type: String, // Stores the OTP or verification code
+      required: false, // Only present when an account is created or verification is pending
+    },
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt timestamps
 );

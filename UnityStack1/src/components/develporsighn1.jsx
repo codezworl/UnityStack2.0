@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import SignupImage from "../assets/develpor.png";
 import { Modal, Button } from "react-bootstrap";
@@ -27,6 +28,8 @@ const DeveloperSignUp = () => {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [otp, setOtp] = useState("");
+  const [serverOtp, setServerOtp] = useState(""); // Optional for debugging
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -61,15 +64,43 @@ const DeveloperSignUp = () => {
         body: JSON.stringify(formData),
       });
 
+      const result = await response.json();
+
       if (response.ok) {
-        setShowOtpModal(false);
-        setShowSuccessModal(true);
+        setServerOtp(result.otp); // Store OTP for debugging (optional)
+        setShowOtpModal(true); // Show OTP Modal
       } else {
-        const result = await response.json();
         alert(result.message || "Registration failed.");
       }
     } catch (error) {
       console.error("Error during registration:", error);
+      alert("Something went wrong. Please try again.");
+    }
+  };
+
+  const handleOtpVerification = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/developers/verifyemail", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          code: otp,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setShowOtpModal(false);
+        setShowSuccessModal(true);
+      } else {
+        alert(result.message || "Invalid OTP. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error during OTP verification:", error);
       alert("Something went wrong. Please try again.");
     }
   };
@@ -107,160 +138,197 @@ const DeveloperSignUp = () => {
   const renderPageContent = () => {
     switch (currentPage) {
       case 1:
-        return (
-          <div style={{ paddingBottom: "20px" }}>
-            <h2>
-              <span style={{ color: "black", fontWeight: "bold" }}>Developer</span>{" "}
-              <span style={{ color: "#007bff" }}>Register</span>
-            </h2>
-            {renderProgressBar()}
-            <div className="row mb-3">
-              <div className="col">
-                <label className="form-label">First Name</label>
-                <input
-                  type="text"
-                  className="form-control rounded-pill"
-                  placeholder="First Name"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col">
-                <label className="form-label">Last Name</label>
-                <input
-                  type="text"
-                  className="form-control rounded-pill"
-                  placeholder="Last Name"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="row mb-3">
-              <div className="col">
-                <label className="form-label">Phone Number</label>
-                <input
-                  type="text"
-                  className="form-control rounded-pill"
-                  placeholder="Phone Number"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col">
-                <label className="form-label">Date of Birth</label>
-                <input
-                  type="date"
-                  className="form-control rounded-pill"
-                  placeholder="Date of Birth"
-                  name="dateOfBirth"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="row mb-3">
-              <div className="col">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  className="form-control rounded-pill"
-                  placeholder="Email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col">
-                <label className="form-label">Address</label>
-                <input
-                  type="text"
-                  className="form-control rounded-pill"
-                  placeholder="Address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="row mb-3">
-              <div className="col">
-                <label className="form-label">City</label>
-                <input
-                  type="text"
-                  className="form-control rounded-pill"
-                  placeholder="City"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col">
-                <label className="form-label">State</label>
-                <input
-                  type="text"
-                  className="form-control rounded-pill"
-                  placeholder="State"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="row mb-3">
-              <div className="col">
-                <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  className="form-control rounded-pill"
-                  placeholder="Password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col">
-                <label className="form-label">Confirm Password</label>
-                <input
-                  type="password"
-                  className="form-control rounded-pill"
-                  placeholder="Confirm Password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-          </div>
-        );
+  return (
+    <div>
+      <h2>Personal & Contact Info</h2>
+      {renderProgressBar()}
+      <div className="row">
+        <div className="col-md-6">
+          <label>First Name</label>
+          <input
+            type="text"
+            className="form-control"
+            name="firstName"
+            placeholder="Enter your first name"
+            value={formData.firstName}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label>Last Name</label>
+          <input
+            type="text"
+            className="form-control"
+            name="lastName"
+            placeholder="Enter your last name"
+            value={formData.lastName}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+
+      <div className="row mt-3">
+        <div className="col-md-6">
+          <label>Phone Number</label>
+          <input
+            type="text"
+            className="form-control"
+            name="phoneNumber"
+            placeholder="Enter your phone number"
+            value={formData.phoneNumber}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label>Home Number</label>
+          <input
+            type="text"
+            className="form-control"
+            name="homeNumber"
+            placeholder="Enter your home number"
+            value={formData.homeNumber}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+
+      <div className="row mt-3">
+        <div className="col-md-6">
+          <label>Date of Birth</label>
+          <input
+            type="date"
+            className="form-control"
+            name="dateOfBirth"
+            value={formData.dateOfBirth}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label>Email</label>
+          <input
+            type="email"
+            className="form-control"
+            name="email"
+            placeholder="Enter your email address"
+            value={formData.email}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+
+      <div className="row mt-3">
+        <div className="col-md-12">
+          <label>Address</label>
+          <input
+            type="text"
+            className="form-control"
+            name="address"
+            placeholder="Enter your address"
+            value={formData.address}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+
+      <div className="row mt-3">
+        <div className="col-md-6">
+          <label>City</label>
+          <input
+            type="text"
+            className="form-control"
+            name="city"
+            placeholder="Enter your city"
+            value={formData.city}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label>State</label>
+          <input
+            type="text"
+            className="form-control"
+            name="state"
+            placeholder="Enter your state"
+            value={formData.state}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+
+      <div className="row mt-3">
+        <div className="col-md-6">
+          <label>Country</label>
+          <input
+            type="text"
+            className="form-control"
+            name="country"
+            placeholder="Enter your country"
+            value={formData.country}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label>Zip Code</label>
+          <input
+            type="text"
+            className="form-control"
+            name="zipCode"
+            placeholder="Enter your zip code"
+            value={formData.zipCode}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+
+      <div className="row mt-3">
+        <div className="col-md-6">
+          <label>Password</label>
+          <input
+            type="password"
+            className="form-control"
+            name="password"
+            placeholder="Enter your password"
+            value={formData.password}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label>Confirm Password</label>
+          <input
+            type="password"
+            className="form-control"
+            name="confirmPassword"
+            placeholder="Confirm your password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
       case 2:
         return (
-          <div style={{ paddingBottom: "20px" }}>
-            <h2>
-              <span style={{ color: "black", fontWeight: "bold" }}>Developer</span>{" "}
-              <span style={{ color: "#007bff" }}>Domains</span>
-            </h2>
+          <div>
+            <h2>Domains</h2>
             {renderProgressBar()}
-            <h5 className="mb-4">Select Your Domains</h5>
             <div className="row">
-              {["MERN", "Django", "Data Analyst", "AI/ML"].map((domain, idx) => (
-                <div key={idx} className="col-3">
+              {["MERN", "Django", "AI/ML", "Data Analyst"].map((domain, index) => (
+                <div className="col-3" key={index}>
                   <div
-                    className={`card p-3 text-center rounded ${
+                    className={`card p-3 ${
                       formData.domainTags.includes(domain)
                         ? "border-primary"
                         : "border-secondary"
                     }`}
-                    onClick={() => {
-                      const tags = formData.domainTags.includes(domain)
-                        ? formData.domainTags.filter((tag) => tag !== domain)
-                        : [...formData.domainTags, domain];
-                      setFormData({ ...formData, domainTags: tags });
-                    }}
-                    style={{ cursor: "pointer" }}
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        domainTags: formData.domainTags.includes(domain)
+                          ? formData.domainTags.filter((d) => d !== domain)
+                          : [...formData.domainTags, domain],
+                      }))
+                    }
                   >
                     {domain}
                   </div>
@@ -271,30 +339,10 @@ const DeveloperSignUp = () => {
         );
       case 3:
         return (
-          <div style={{ paddingBottom: "20px" }}>
-            <h2>
-              <span style={{ color: "black", fontWeight: "bold" }}>Review</span>{" "}
-              <span style={{ color: "#007bff" }}>Your Details</span>
-            </h2>
+          <div>
+            <h2>Review & Submit</h2>
             {renderProgressBar()}
-            <h5 className="mb-4">Personal Information</h5>
-            <p>
-              <strong>First Name:</strong> {formData.firstName}
-            </p>
-            <p>
-              <strong>Last Name:</strong> {formData.lastName}
-            </p>
-            <p>
-              <strong>Email:</strong> {formData.email}
-            </p>
-            <p>
-              <strong>Phone Number:</strong> {formData.phoneNumber}
-            </p>
-            <p>
-              <strong>Date of Birth:</strong> {formData.dateOfBirth}
-            </p>
-            <h5 className="mt-4">Domain Tags</h5>
-            <p>{formData.domainTags.join(", ")}</p>
+            <pre>{JSON.stringify(formData, null, 2)}</pre>
           </div>
         );
       default:
@@ -304,6 +352,7 @@ const DeveloperSignUp = () => {
 
   return (
     <div className="d-flex vh-100" style={{ backgroundColor: "#f8f9fa" }}>
+      {/* Left Side: Form */}
       <div
         className="d-flex flex-column p-4"
         style={{
@@ -345,6 +394,8 @@ const DeveloperSignUp = () => {
           )}
         </div>
       </div>
+
+      {/* Right Side: Image */}
       <div
         className="d-flex justify-content-center align-items-center"
         style={{
@@ -354,7 +405,7 @@ const DeveloperSignUp = () => {
       >
         <img
           src={SignupImage}
-          alt="Developer"
+          alt="Developer Signup"
           style={{
             width: "80%",
             height: "90%",
@@ -366,31 +417,28 @@ const DeveloperSignUp = () => {
 
       {/* OTP Modal */}
       <Modal show={showOtpModal} onHide={() => setShowOtpModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Enter OTP</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Please enter the OTP sent to your email address.</p>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Enter OTP"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-          />
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setShowOtpModal(false);
-              setShowSuccessModal(true);
-            }}
-          >
-            Verify OTP
-          </Button>
-        </Modal.Footer>
-      </Modal>
+  <Modal.Header closeButton>
+    <Modal.Title>Enter OTP</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    <p>Please enter the OTP sent to your email address.</p>
+    <input
+      type="text"
+      className="form-control"
+      placeholder="Enter OTP"
+      value={otp}
+      onChange={(e) => setOtp(e.target.value)}
+    />
+  </Modal.Body>
+  <Modal.Footer>
+    <Button
+      variant="primary"
+      onClick={handleOtpVerification} // Use the correct function name
+    >
+      Verify OTP
+    </Button>
+  </Modal.Footer>
+</Modal>
 
       {/* Success Modal */}
       <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)} centered>
@@ -403,9 +451,7 @@ const DeveloperSignUp = () => {
         <Modal.Footer>
           <Button
             variant="primary"
-            onClick={() => {
-              window.location.href = "/developer/login";
-            }}
+            onClick={() => navigate("/login")} // Redirect to login
           >
             Go to Login
           </Button>

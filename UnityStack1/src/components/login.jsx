@@ -19,7 +19,7 @@ const Login = () => {
     setError(""); // Clear any previous errors
 
     try {
-      const response = await fetch("http://localhost:5000/api/students/login", {
+      const response = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -30,11 +30,20 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store the token in local storage (or cookies if preferred)
+        // Store the token and role in local storage (or cookies if preferred)
         localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.role);
 
-        // Redirect to student dashboard
-        navigate("/studentdashboard");
+        // Redirect based on role
+        if (data.role === "student") {
+          navigate("/studentdashboard");
+        } else if (data.role === "developer") {
+          navigate("/develpordashboard");
+        } else if (data.role === "organization") {
+          navigate("/companydashboard");
+        } else {
+          setError("Invalid role. Please contact support.");
+        }
       } else {
         // Display error message
         setError(data.message || "Invalid login credentials");

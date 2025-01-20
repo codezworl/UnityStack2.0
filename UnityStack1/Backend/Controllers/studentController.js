@@ -1,8 +1,9 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Student = require("../models/Student");
+const { SendVerificationCode } = require("../middleware/Email"); // Ensure this is the correct path
 
-// Signup handler
+// Signup handler with verification
 const signupStudent = async (req, res) => {
   try {
     const {
@@ -32,6 +33,9 @@ const signupStudent = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate a verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     // Create new student
     const newStudent = new Student({
       firstName,
@@ -44,13 +48,43 @@ const signupStudent = async (req, res) => {
       domain,
       linkedIn,
       github,
+      verificationCode, // Store the verification code
+      isVerified: false, // Default to not verified
     });
 
     await newStudent.save();
 
-    res.status(201).json({ message: "Student registered successfully" });
+    // Send verification code to the student's email
+    await SendVerificationCode(email, verificationCode);
+
+    res.status(201).json({
+      message: "Student registered successfully. Verification email sent.",
+    });
   } catch (error) {
     console.error("Error in signup:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Verify email handler
+const verifyStudentEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    // Find student by email and verification code
+    const student = await Student.findOne({ email, verificationCode: code });
+    if (!student) {
+      return res.status(404).json({ message: "Invalid verification code or email." });
+    }
+
+    // Mark as verified and clear the verification code
+    student.isVerified = true;
+    student.verificationCode = undefined;
+    await student.save();
+
+    res.status(200).json({ message: "Email verified successfully." });
+  } catch (error) {
+    console.error("Error in email verification:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -66,20 +100,25 @@ const loginStudent = async (req, res) => {
     }
 
     // Check if the student exists
-    const existingStudent = await Student.findOne({ email });
-    if (!existingStudent) {
+    const student = await Student.findOne({ email });
+    if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
 
+    // Check if the email is verified
+    if (!student.isVerified) {
+      return res.status(403).json({ message: "Email not verified. Please verify your email." });
+    }
+
     // Compare password
-    const isPasswordValid = await bcrypt.compare(password, existingStudent.password);
+    const isPasswordValid = await bcrypt.compare(password, student.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid password" });
     }
 
     // Generate JWT Token
     const token = jwt.sign(
-      { id: existingStudent._id, email: existingStudent.email },
+      { id: student._id, email: student.email },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -88,10 +127,10 @@ const loginStudent = async (req, res) => {
       message: "Login successful",
       token,
       student: {
-        id: existingStudent._id,
-        firstName: existingStudent.firstName,
-        lastName: existingStudent.lastName,
-        email: existingStudent.email,
+        id: student._id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        email: student.email,
       },
     });
   } catch (error) {
@@ -100,4 +139,8 @@ const loginStudent = async (req, res) => {
   }
 };
 
-module.exports = { signupStudent, loginStudent };
+module.exports = {
+  signupStudent,
+  verifyStudentEmail, // Add the email verification handler
+  loginStudent,
+};

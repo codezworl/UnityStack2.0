@@ -5,6 +5,9 @@ import mentorshipImage from "../assets/mentorship@2x.jpg";
 import Projectimage from "../assets/freelance-job.png";
 import { Link } from "react-router-dom";
 import { Code, Rocket, MessageCircle } from "lucide-react";
+import img1 from "../assets/section3A.png";
+import img2 from "../assets/section3B.png";
+import img3 from "../assets/section3C.png";
 
 const Home = () => {
   const [displayedSubText, setDisplayedSubText] = useState(""); // Typing animation for subheading
@@ -352,11 +355,7 @@ const Home = () => {
         </h2>
         <div style={cardGridStyle}>
           <div style={cardStyle}>
-            <img
-              src="/public/section3A"
-              alt="Technologies illustration"
-              style={illustrationStyle}
-            />
+          <img src={img1} alt="Projects" style={imageStyle} />
             <h3 style={cardTitleStyle}>Get Answers</h3>
             <p style={cardDescriptionStyle}>
               Get Answer in multiple stacks. find the nearest/best solution for
@@ -365,11 +364,7 @@ const Home = () => {
           </div>
 
           <div style={cardStyle}>
-            <img
-              src="F:/Final Year Project/UnityStack2.0/UnityStack1/src/assets/section 3 - B.png"
-              alt="Code review illustration"
-              style={illustrationStyle}
-            />
+          <img src={img2} alt="Projects" style={imageStyle} />
             <h3 style={cardTitleStyle}>Real-time collaboration</h3>
             <p style={cardDescriptionStyle}>
               Get immediate help through live coding sessions, code reviews, and
@@ -378,11 +373,7 @@ const Home = () => {
           </div>
 
           <div style={cardStyle}>
-            <img
-              src="F:/Final Year Project/UnityStack2.0/UnityStack1/src/assets/section 3 - C.png"
-              alt="Setup illustration"
-              style={illustrationStyle}
-            />
+          <img src={img3} alt="Projects" style={imageStyle} />
             <h3 style={cardTitleStyle}>Find Projects</h3>
             <p style={cardDescriptionStyle}>
               Get Project tasks done form others and get project form
@@ -421,8 +412,12 @@ const Home = () => {
             onMouseOut={(e) =>
               (e.target.style.backgroundColor = buttonStyle.backgroundColor)
             }
-          >
-            FIND AN EXPERT
+          >  <a
+          href="/Getexperthelp"
+          style={{ textDecoration: "none", color: "white" }} // Ensures black text and no underline
+        >
+          FInd an expert
+        </a>
           </button>
         </div>
 
@@ -515,7 +510,7 @@ const Home = () => {
               +10K Answers
             </h3>
             <p style={{ opacity: 0.9 }}>Available now!</p>
-            <a href="/jobs" style={viewAllStyle}>
+            <a href="/question" style={viewAllStyle}>
               View all
               <svg
                 width="20"
