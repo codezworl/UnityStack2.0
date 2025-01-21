@@ -12,7 +12,8 @@ const organizationSchema = new mongoose.Schema(
         validator: function (v) {
           return Array.isArray(v) && v.every((city) => typeof city === "string" && city.trim().length > 0);
         },
-        message: (props) => `Operating cities must be a non-empty array of valid city names!`,
+        message: (props) =>
+          `Operating cities must be a non-empty array of valid city names!`,
       },
     },
     website: {
@@ -20,7 +21,9 @@ const organizationSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?[a-z0-9.-]+\.[a-z]{2,}$/.test(v) : true; // Basic website URL validation
+          return v
+            ? /^(https?:\/\/)?(www\.)?[a-z0-9.-]+\.[a-z]{2,}$/.test(v)
+            : true; // Basic website URL validation
         },
         message: (props) => `${props.value} is not a valid website URL!`,
       },
@@ -49,8 +52,17 @@ const organizationSchema = new mongoose.Schema(
         validator: function (v) {
           return Array.isArray(v) && v.every((service) => typeof service === "string" && service.trim().length > 0);
         },
-        message: (props) => `Selected services must be a non-empty array of valid service names!`,
+        message: (props) =>
+          `Selected services must be a non-empty array of valid service names!`,
       },
+    },
+    isVerified: {
+      type: Boolean,
+      default: false, // Default to not verified
+    },
+    verificationCode: {
+      type: String, // Stores the OTP or verification code
+      required: false, // Only present during verification
     },
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt timestamps

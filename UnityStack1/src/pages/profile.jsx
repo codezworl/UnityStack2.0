@@ -270,7 +270,7 @@ const Profile = () => {
           </p>
           <div style={styles.footerItem}>
             <div>
-              <strong style={{ color: "#007bff" }}>US$25.00</strong>
+              <strong style={{ color: "#007bff" }}>Rs 2000/hour</strong>
               <p>For every 15 mins</p>
             </div>
             <div>
@@ -278,7 +278,7 @@ const Profile = () => {
               <p>Sessions/Jobs</p>
             </div>
             <div>
-              <BsClock /> Eastern Time (US & Canada) (-05:00)
+              <BsClock /> Eastern Time (Pakistan) (-05:00)
               <br />
               <BsCalendar3 /> Joined February 2017
             </div>

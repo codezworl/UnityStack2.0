@@ -3,8 +3,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { Link } from "react-router-dom"; // Import Link from react-router-dom
 import { FaMapMarkerAlt, FaBuilding } from "react-icons/fa";
 
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import Header from "../components/header";
+import Footer from "../components/footer";
 
 const Companies = () => {
   const [selectedTags, setSelectedTags] = useState([]);

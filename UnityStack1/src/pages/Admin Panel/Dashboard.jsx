@@ -6,6 +6,8 @@ const DashboardLayout = ({ children }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [activePage, setActivePage] = useState("Home"); // State to track active page
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [activePage, setActivePage] = useState("Home"); // State to track active page
 
   const profileDropdownRef = useRef(null);
   const notificationsDropdownRef = useRef(null);
@@ -74,6 +76,18 @@ const DashboardLayout = ({ children }) => {
     }
   };
 
+  // Render the active page based on state
+  const renderActivePage = () => {
+    switch (activePage) {
+      case "Home":
+        return <DashboardHome />;
+      case "Users":
+        return <UsersPage />;
+      default:
+        return <DashboardHome />;
+    }
+  };
+
   return (
     <div
       style={{
@@ -101,9 +115,46 @@ const DashboardLayout = ({ children }) => {
           }}
         >
           Admin Panel
+          style={{
+            marginBottom: "30px",
+            fontSize: "20px",
+            fontWeight: "bold",
+          }}
+        >
+          Admin Panel
         </div>
         <nav>
           <ul style={{ listStyle: "none", padding: 0 }}>
+            {[
+              { name: "Home", value: "Home" },
+              { name: "Users", value: "Users" },
+              { name: "Transactions", value: "Transactions" },
+              { name: "Analytics", value: "Analytics" },
+              { name: "Settings", value: "Settings" },
+            ].map((item, index) => (
+              <li
+                key={index}
+                onClick={() => setActivePage(item.value)} // Set active page on click
+                style={{
+                  padding: "10px 15px",
+                  cursor: "pointer",
+                  backgroundColor:
+                    activePage === item.value ? "#004080" : "transparent",
+                  color: activePage === item.value ? "#FFD700" : "#ffffff",
+                  borderRadius: "5px",
+                  transition: "background-color 0.3s",
+                }}
+                onMouseOver={(e) =>
+                  (e.target.style.backgroundColor = "#004080")
+                }
+                onMouseOut={(e) =>
+                  (e.target.style.backgroundColor =
+                    activePage === item.value ? "#004080" : "transparent")
+                }
+              >
+                {item.name}
+              </li>
+            ))}
             {[
               { name: "Home", value: "Home" },
               { name: "Users", value: "Users" },
@@ -164,6 +215,7 @@ const DashboardLayout = ({ children }) => {
                 outline: "none",
                 fontSize: "16px",
                 paddingRight: "40px",
+                marginRight: "100px",
                 marginRight: "100px",
               }}
             />
@@ -427,6 +479,7 @@ const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Main Content Area */}
+        <main style={{ padding: "20px" }}>{renderActivePage()}</main>
         <main style={{ padding: "20px" }}>{renderActivePage()}</main>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { useNavigate } from "react-router-dom";
 import CompanyImage from "../assets/organization.jpg";
 import { Modal, Button } from "react-bootstrap";
 
@@ -19,8 +20,11 @@ const OrganizationRegister = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState("");
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   const cities = ["Lahore", "Karachi", "Islamabad", "Peshawar", "Quetta"];
   const services = [
@@ -106,19 +110,7 @@ const OrganizationRegister = () => {
         const data = await response.json();
 
         if (response.ok) {
-          setShowModal(true);
-          setFormData({
-            companyName: "",
-            address: "",
-            branches: "",
-            operatingCities: [],
-            website: "",
-            companyEmail: "",
-            password: "",
-            confirmPassword: "",
-            whoYouAre: "",
-            selectedServices: [],
-          });
+          setShowOtpModal(true); // Show OTP modal
         } else {
           alert(data.message || "Registration failed. Please try again.");
         }
@@ -127,6 +119,31 @@ const OrganizationRegister = () => {
       } finally {
         setIsSubmitting(false);
       }
+    }
+  };
+  const handleVerifyOtp = async () => {
+    setIsVerifyingOtp(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/organizations/verify-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: formData.companyEmail, otp }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("OTP verified successfully!");
+        navigate("/login"); // Navigate to the login page
+      } else {
+        alert(data.message || "Invalid OTP. Please try again.");
+      }
+    } catch (error) {
+      alert("An error occurred while verifying the OTP. Please try again.");
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -424,21 +441,29 @@ const OrganizationRegister = () => {
       </div>
 
       {/* Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+      <Modal show={showOtpModal} onHide={() => setShowOtpModal(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Registration Submitted</Modal.Title>
+          <Modal.Title>Verify OTP</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>Thank you for registering! Our team will review your application shortly.</p>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Enter OTP"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+          />
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowModal(false)}>
-            Close
+          <Button variant="secondary" onClick={() => setShowOtpModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleVerifyOtp} disabled={isVerifyingOtp}>
+            {isVerifyingOtp ? "Verifying..." : "Verify OTP"}
           </Button>
         </Modal.Footer>
       </Modal>
     </div>
   );
 };
-
 export default OrganizationRegister;
