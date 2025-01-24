@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import DashboardHome from "./DashboardHome";
-import UsersPage from "../UsersPage";
+import UsersPage from "/Final Year Project/UnityStack2.0/UnityStack1/src/pages/UsersPage";
 
 const DashboardLayout = ({ children }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -93,13 +93,13 @@ const DashboardLayout = ({ children }) => {
           padding: "20px",
         }}
       >
-        <div>
-          Admin Panel
+        <div
           style={{
             marginBottom: "30px",
             fontSize: "20px",
             fontWeight: "bold",
           }}
+        >
           Admin Panel
         </div>
         <nav>
@@ -164,7 +164,6 @@ const DashboardLayout = ({ children }) => {
                 outline: "none",
                 fontSize: "16px",
                 paddingRight: "40px",
-                marginRight: "100px",
                 marginRight: "100px",
               }}
             />
@@ -428,7 +427,6 @@ const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Main Content Area */}
-        <main style={{ padding: "20px" }}>{renderActivePage()}</main>
         <main style={{ padding: "20px" }}>{renderActivePage()}</main>
       </div>
     </div>
