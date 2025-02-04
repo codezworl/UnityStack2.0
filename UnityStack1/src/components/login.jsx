@@ -6,6 +6,9 @@ import GoogleSvg from "../assets/icons8-google.svg";
 import LinkedInSvg from "../assets/linkedin.png";
 import LoginPic from "../assets/loginpic.png";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
+import { IoMdClose } from "react-icons/io";
+import { motion } from "framer-motion";
+
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,7 +19,7 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError(""); // Clear any previous errors
+    setError("");
 
     try {
       const response = await fetch("http://localhost:5000/api/login", {
@@ -30,22 +33,19 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store the token and role in local storage (or cookies if preferred)
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", data.role);
 
-        // Redirect based on role
         if (data.role === "student") {
           navigate("/studentdashboard");
         } else if (data.role === "developer") {
-          navigate("/develpordashboard");
+          navigate("/developerdashboard");
         } else if (data.role === "organization") {
           navigate("/companydashboard");
         } else {
           setError("Invalid role. Please contact support.");
         }
       } else {
-        // Display error message
         setError(data.message || "Invalid login credentials");
       }
     } catch (err) {
@@ -56,224 +56,241 @@ const Login = () => {
 
   return (
     <div className="d-flex flex-column flex-md-row vh-100">
+      {/* Header */}
+      <motion.header
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="w-100"
+        style={{
+          position: "fixed",
+          top: 0,
+          zIndex: 10,
+          background: "#ffffff",
+          boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+          padding: "10px 20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <img src={Logo} alt="Logo" style={{ height: "40px" }} />
+        </div>
+        <button
+          onClick={() => navigate("/")}
+          style={{
+            background: "transparent",
+            border: "none",
+            fontSize: "1.5rem",
+            cursor: "pointer",
+          }}
+        >
+          <IoMdClose />
+        </button>
+      </motion.header>
+
       {/* Left Section - Form */}
-      <div
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
         className="col-12 col-md-6 d-flex justify-content-center align-items-center"
         style={{
-          overflowY: "hidden",
-          marginTop: "20px",
+          marginTop: "70px",
           marginBottom: "0px",
         }}
       >
         <div
           className="w-75 shadow"
           style={{
-            borderRadius: "30px",
+            borderRadius: "20px",
             backgroundColor: "#f9f9f9",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            padding: "20px",
-            border: "2px solid black",
-            boxSizing: "border-box",
-            height: "95%",
+            padding: "30px",
+            border: "1px solid #e0e0e0",
           }}
         >
-          {/* Logo */}
-          <div className="text-center mb-3">
-            <img
-              src={Logo}
-              alt="Logo"
-              className="img-fluid"
-              style={{
-                maxWidth: "25%",
-              }}
-            />
-          </div>
-
           {/* Welcome Text */}
           <div className="text-center mb-4">
-            <h2 className="mb-2" style={{ fontSize: "3rem" }}>
-              Welcome back!
+            <h2 style={{ fontSize: "1.8rem", fontWeight: "bold" }}>
+              Login Into Your Account
             </h2>
-            <p>Please enter your details here</p>
+            <p style={{ color: "#6c757d" }}>
+              Welcome Back! Select method to Login:
+            </p>
+          </div>
 
-            {/* Social Login Options */}
-            <div className="d-flex justify-content-center gap-4 mt-3">
-              <a
-                href="#"
-                className="d-flex align-items-center shadow p-3 rounded"
+          {/* Social Login Options */}
+          <div className="d-flex justify-content-center gap-3 mb-4">
+            <button
+              className="btn shadow-sm"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 20px",
+                borderRadius: "8px",
+                backgroundColor: "#ffffff",
+                border: "1px solid #e0e0e0",
+                boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) =>
+                (e.currentTarget.style.transform = "scale(1.05)")
+              }
+              onMouseOut={(e) =>
+                (e.currentTarget.style.transform = "scale(1)")
+              }
+            >
+              <img src={GoogleSvg} alt="Google" style={{ width: "20px" }} />
+              Google
+            </button>
+            <button
+              className="btn shadow-sm"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 20px",
+                borderRadius: "8px",
+                backgroundColor: "#ffffff",
+                border: "1px solid #e0e0e0",
+                boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) =>
+                (e.currentTarget.style.transform = "scale(1.05)")
+              }
+              onMouseOut={(e) =>
+                (e.currentTarget.style.transform = "scale(1)")
+              }
+            >
+              <img src={LinkedInSvg} alt="LinkedIn" style={{ width: "20px" }} />
+              LinkedIn
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="text-center mb-4">
+            <div
+              style={{
+                borderTop: "1px solid #e0e0e0",
+                position: "relative",
+              }}
+            >
+              <span
                 style={{
-                  textDecoration: "none",
-                  color: "inherit",
-                  gap: "8px",
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #e0e0e0",
-                  boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                  borderRadius: "50px",
+                  position: "absolute",
+                  top: "-10px",
+                  background: "#f9f9f9",
+                  padding: "0 10px",
+                  fontSize: "0.9rem",
+                  color: "#6c757d",
                 }}
               >
-                <img
-                  src={GoogleSvg}
-                  alt="Google"
-                  style={{ maxWidth: "30px" }}
-                />
-                <span>Login with Google</span>
-              </a>
-              <a
-                href="#"
-                className="d-flex align-items-center shadow p-3 rounded"
-                style={{
-                  textDecoration: "none",
-                  color: "inherit",
-                  gap: "8px",
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #e0e0e0",
-                  boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                  borderRadius: "50px",
-                }}
-              >
-                <img
-                  src={LinkedInSvg}
-                  alt="LinkedIn"
-                  style={{ maxWidth: "30px" }}
-                />
-                <span>Login with LinkedIn</span>
-              </a>
+                or continue with email
+              </span>
             </div>
           </div>
 
-          {/* Login Form */}
-          <form style={{ flexGrow: 1 }} onSubmit={handleLogin}>
+          <form onSubmit={handleLogin}>
             {error && (
-              <div
-                className="alert alert-danger text-center"
-                style={{ fontSize: "1rem" }}
-              >
-                {error}
-              </div>
+              <div className="alert alert-danger mb-3">{error}</div>
             )}
-            {/* Email Input */}
-            <div className="mb-3">
-              <input
-                type="email"
-                className="form-control mx-auto"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                style={{
-                  width: "85%",
-                  border: "1px solid black",
-                }}
-                onFocus={(e) => (e.target.style.border = "2px solid darkblue")}
-                onBlur={(e) => (e.target.style.border = "1px solid black")}
-              />
-            </div>
-
-            {/* Password Input */}
-            <div className="mb-3 position-relative">
+            <input
+              type="email"
+              placeholder="Email"
+              className="form-control mb-3"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{
+                borderRadius: "8px",
+                padding: "10px",
+                border: "1px solid #e0e0e0",
+              }}
+            />
+            <div className="position-relative">
               <input
                 type={showPassword ? "text" : "password"}
-                className="form-control mx-auto"
                 placeholder="Password"
+                className="form-control mb-3"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 style={{
-                  width: "85%",
-                  border: "1px solid black",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  border: "1px solid #e0e0e0",
                 }}
-                onFocus={(e) => (e.target.style.border = "2px solid darkblue")}
-                onBlur={(e) => (e.target.style.border = "1px solid black")}
               />
               <span
-                className="position-absolute"
+                onClick={() => setShowPassword(!showPassword)}
                 style={{
-                  right: "10%",
+                  position: "absolute",
+                  right: "15px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   cursor: "pointer",
                 }}
-                onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </span>
             </div>
 
-            {/* Options */}
-            <div
-              className="d-flex justify-content-between align-items-center mb-4 flex-column flex-md-row gap-2"
-              style={{ fontSize: "1.3rem" }}
-            >
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="remember-checkbox"
-                  style={{
-                    border: "1px solid black",
-                  }}
-                />
-                <label
-                  className="form-check-label"
-                  htmlFor="remember-checkbox"
-                >
-                  Remember me
-                </label>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <input type="checkbox" id="remember" />{" "}
+                <label htmlFor="remember">Remember Me</label>
               </div>
-              <button
-                type="button"
-                className="btn btn-link p-0 text-decoration-none"
-              >
-                <a href="/forgotpassword">Forgot password?</a>
-              </button>
-            </div>
-
-            {/* Buttons */}
-            <div className="d-grid gap-3">
-              <button
-                type="submit"
-                className="btn mx-auto"
-                style={{
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  borderRadius: "20px",
-                  fontWeight: "bold",
-                  padding: "10px 20px",
-                  border: "none",
-                  width: "50%",
-                }}
-              >
-                Log In
-              </button>
-            </div>
-          </form>
-
-          {/* Sign Up Link */}
-          <div className="text-center mt-4">
-            <p style={{ marginBottom: "0" }}>
-              Don't have an account?{" "}
-              <a
-                href="/optionsighn"
-                className="btn btn-link text-decoration-none"
-              >
-                Sign Up
+              <a href="/forgotpassword" className="text-primary">
+                Forgot Password?
               </a>
-            </p>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary w-100"
+              style={{
+                borderRadius: "8px",
+                fontWeight: "bold",
+              }}
+            >
+              Log In
+            </button>
+          </form>
+           {/* Sign Up Link */}
+           <div className="text-center mt-4">
+          <p className="text-center mt-3"
+          style={{
+            fontSize: "1.1rem",
+            color: "#6c757d",
+            marginTop: "20px",
+            marginBottom: "10px",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}>
+            Don't have an account?{" "}
+            <a href="/optionsighn" className="text-primary">
+              Create an account
+            </a>
+          </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Right Section - Image */}
-      <div
-        className="col-md-6 d-none d-md-flex justify-content-center align-items-center position-relative"
+      {/* Right Section */}
+      <motion.div
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+        className="col-md-6 d-none d-md-flex"
         style={{
           backgroundImage: `url(${LoginPic})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
-      ></div>
+      />
     </div>
   );
 };
