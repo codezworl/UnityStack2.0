@@ -1,29 +1,38 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-const ForgotPassword = () => {
-  const [email, setEmail] = useState("");
+const ResetPassword = () => {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/send-otp", {
+      const response = await fetch("http://localhost:5000/api/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, newPassword }),
       });
 
       const data = await response.json();
       if (response.ok) {
-        navigate("/codeVerification", { state: { email } });
+        alert("Password reset successful! Redirecting to login...");
+        navigate("/login");
       } else {
         alert(data.message);
       }
     } catch (error) {
-      console.error("Error sending OTP:", error);
+      console.error("Error resetting password:", error);
       alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -52,15 +61,27 @@ const ForgotPassword = () => {
           textAlign: "center",
         }}
       >
-        <h2 style={{ marginBottom: "20px", color: "#0074D9" }}>Forgot Password</h2>
-        <p style={{ marginBottom: "20px", color: "#555" }}>
-          Enter your email address and proceed to verification.
-        </p>
+        <h2 style={{ marginBottom: "20px", color: "#0074D9" }}>Change Your Password</h2>
         <input
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          type="password"
+          placeholder="Enter new password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          required
+          style={{
+            width: "100%",
+            padding: "10px",
+            marginBottom: "20px",
+            borderRadius: "5px",
+            border: "1px solid #ddd",
+            fontSize: "14px",
+          }}
+        />
+        <input
+          type="password"
+          placeholder="Confirm password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
           required
           style={{
             width: "100%",
@@ -84,11 +105,11 @@ const ForgotPassword = () => {
             fontSize: "16px",
           }}
         >
-          {loading ? "Sending..." : "Proceed"}
+          {loading ? "Changing..." : "Change Password"}
         </button>
       </form>
     </div>
   );
 };
 
-export default ForgotPassword;
+export default ResetPassword;

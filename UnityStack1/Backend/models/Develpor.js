@@ -20,20 +20,20 @@ const developerSchema = new mongoose.Schema(
     },
     phoneNumber: { type: String, trim: true },
     homeNumber: { type: String, trim: true },
-    dateOfBirth: { type: Date }, // Using Date type for date of birth
+    dateOfBirth: { type: Date },
     address: { type: String, trim: true },
     city: { type: String, trim: true },
     state: { type: String, trim: true },
     country: { type: String, trim: true },
     zipCode: { type: String, trim: true },
-    experience: { type: String, trim: true }, // Keep as string unless numerical operations are needed
-    domainTags: [{ type: String, trim: true }], // Array of technology domains or tags
+    experience: { type: String, trim: true },
+    domainTags: [{ type: String, trim: true }],
     github: {
       type: String,
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?github\.com\/.*$/.test(v) : true; // GitHub URL validation
+          return v ? /^(https?:\/\/)?(www\.)?github\.com\/.*$/.test(v) : true;
         },
         message: (props) => `${props.value} is not a valid GitHub profile URL!`,
       },
@@ -43,7 +43,7 @@ const developerSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/.test(v) : true; // LinkedIn URL validation
+          return v ? /^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/.test(v) : true;
         },
         message: (props) => `${props.value} is not a valid LinkedIn profile URL!`,
       },
@@ -53,14 +53,33 @@ const developerSchema = new mongoose.Schema(
       required: true,
       minlength: [6, "Password must be at least 6 characters long"],
     },
-    isVerified:{
-      type:Boolean,
-      default:false,
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
-    verificationCode:String
+    verificationCode: String,
+
+    // ✅ New Profile Setup Fields
+    profileImage: { type: String, trim: true }, // Profile picture URL
+    about: { type: String, trim: true }, // About Me section
+    hourlyRate: { type: String, trim: true }, // Per-hour price
+    availability: { type: String, trim: true }, // Availability status
+    expertise: [
+      {
+        technology: { type: String, trim: true },
+        experienceYears: { type: Number, default: 0 },
+      },
+    ],
+    employment: [
+      {
+        companyName: { type: String, trim: true },
+        technology: { type: String, trim: true },
+        years: { type: Number, default: 0 },
+      },
+    ],
   },
-  
-  { timestamps: true } // Automatically adds createdAt and updatedAt timestamps
+
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Developer", developerSchema);
