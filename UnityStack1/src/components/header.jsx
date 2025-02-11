@@ -1,25 +1,57 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import bgLogo from "../assets/Vector.png"; // Replace with your actual logo path
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import bgLogo from "../assets/Vector.png";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isExploreDropdownOpen, setIsExploreDropdownOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
 
-  const handleMenuToggle = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/user", {
+          method: "GET",
+          credentials: "include", // ✅ Send cookies
+        });
 
-  const handleDropdownToggle = () => {
-    setIsDropdownOpen(!isDropdownOpen);
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        setUser(null);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:5000/api/logout", {
+        method: "POST",
+        credentials: "include", // ✅ Send cookies
+      });
+
+      setUser(null);
+      navigate("/login"); // ✅ Navigate back to login after logout
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
   };
 
   return (
     <header
       style={{
         fontFamily: "Poppins, sans-serif",
-        backgroundColor: "#f9fafb", // Light background
+        backgroundColor: "#f9fafb",
         boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
         position: "relative",
         zIndex: "1000",
@@ -35,7 +67,6 @@ const Header = () => {
           margin: "0 auto",
         }}
       >
-        {/* Logo Section */}
         <div style={{ display: "flex", alignItems: "center" }}>
           <Link to="/">
             <img
@@ -51,7 +82,6 @@ const Header = () => {
           </Link>
         </div>
 
-        {/* Navigation Links */}
         <nav
           style={{
             display: "flex",
@@ -61,75 +91,20 @@ const Header = () => {
             fontWeight: "500",
           }}
         >
-          <Link
-            to="/"
-            style={{
-              textDecoration: "none",
-              color: "#64748b",
-              padding: "8px 10px",
-              fontWeight: "500",
-              transition: "color 0.3s ease-in-out",
-            }}
-            onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-            onMouseOut={(e) => (e.target.style.color = "#64748b")}
-          >
-            Home
-          </Link>
-          {["About Us"].map((text, index) => (
-            <Link
-              key={index}
-              to={`/${text.toLowerCase().replace(" ", "")}`}
-              style={{
-                textDecoration: "none",
-                color: "#64748b", // Gray shade for text
-                position: "relative",
-                overflow: "hidden",
-                transition: "color 0.3s ease-in-out",
-                fontWeight: "500",
-              }}
-              onMouseOver={(e) => (e.target.style.color = "#1d4ed8")} // Blue on hover
-              onMouseOut={(e) => (e.target.style.color = "#64748b")} // Back to gray
-            >
-              {text}
-            </Link>
+          <Link to="/" style={{ textDecoration: "none", color: "#64748b" }}>Home</Link>
+          <Link to="/about" style={{ textDecoration: "none", color: "#64748b" }}>About Us</Link>
+          <Link to="/Getexperthelp" style={{ textDecoration: "none", color: "#64748b" }}>Get Help</Link>
 
-          ))}
-          <Link
-            to="/Getexperthelp"
-            style={{
-              textDecoration: "none",
-              color: "#64748b",
-              padding: "8px 10px",
-              fontWeight: "500",
-              transition: "color 0.3s ease-in-out",
-            }}
-            onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-            onMouseOut={(e) => (e.target.style.color = "#64748b")}
-          >
-            Get Help
-          </Link>
-          {/* Dropdown for Explore */}
+          {/* Explore Dropdown */}
           <div
-            style={{
-              position: "relative",
-              display: "inline-block",
-            }}
-            onMouseEnter={() => setIsDropdownOpen(true)}
-            onMouseLeave={() => setIsDropdownOpen(false)}
+            style={{ position: "relative", display: "inline-block" }}
+            onMouseEnter={() => setIsExploreDropdownOpen(true)}
+            onMouseLeave={() => setIsExploreDropdownOpen(false)}
           >
-            <span
-              style={{
-                cursor: "pointer",
-                color: "#64748b",
-                fontWeight: "500",
-                transition: "color 0.3s ease-in-out",
-              }}
-              onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-              onMouseOut={(e) => (e.target.style.color = "#64748b")}
-            >
+            <span style={{ cursor: "pointer", color: "#64748b", fontWeight: "500" }}>
               Explore
             </span>
-            {isDropdownOpen && (
+            {isExploreDropdownOpen && (
               <div
                 style={{
                   position: "absolute",
@@ -141,118 +116,41 @@ const Header = () => {
                   borderRadius: "5px",
                 }}
               >
-                {/* Q&A module with a specific link */}
-                <Link
-                  to="/question"
-                  style={{
-                    display: "block",
-                    textDecoration: "none",
-                    color: "#64748b",
-                    padding: "8px 10px",
-                    fontWeight: "500",
-                    transition: "color 0.3s ease-in-out",
-                  }}
-                  onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-                  onMouseOut={(e) => (e.target.style.color = "#64748b")}
-                >
-                  Questions
-                </Link>
-                <Link
-                  to="/companies"
-                  style={{
-                    display: "block",
-                    textDecoration: "none",
-                    color: "#64748b",
-                    padding: "8px 10px",
-                    fontWeight: "500",
-                    transition: "color 0.3s ease-in-out",
-                  }}
-                  onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-                  onMouseOut={(e) => (e.target.style.color = "#64748b")}
-                >
-                  Companies
-                </Link>
-
-                
+                <Link to="/question" style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}>Questions</Link>
+                <Link to="/companies" style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}>Companies</Link>
               </div>
             )}
           </div>
 
-         
-
-          {/* Login Button */}
-          <Link
-            to="/login"
-            style={{
-              textDecoration: "none",
-              color: "#ffffff",
-              backgroundColor: "#1d4ed8", // Blue background for button
-              padding: "8px 20px",
-              borderRadius: "5px",
-              fontWeight: "500",
-              transition: "all 0.3s ease-in-out",
-            }}
-            onMouseOver={(e) => (e.target.style.backgroundColor = "#2563eb")}
-            onMouseOut={(e) => (e.target.style.backgroundColor = "#1d4ed8")}
-          >
-            Log in
-          </Link>
-        </nav>
-
-        {/* Mobile Menu Icon */}
-        <div style={{ display: "none", cursor: "pointer" }}>
-          <button
-            onClick={handleMenuToggle}
-            style={{
-              border: "none",
-              background: "transparent",
-              fontSize: "24px",
-            }}
-          >
-            <i className="fas fa-bars"></i>
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div
-          style={{
-            backgroundColor: "#f9fafb",
-            padding: "20px",
-            position: "absolute",
-            top: "100%",
-            left: "0",
-            width: "100%",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          }}
-        >
-          {[
-            "Home",
-            "About Us",
-            "Explore",
-            "Get Help",
-            "Community",
-            "Log in",
-          ].map((text, index) => (
-            <Link
-              key={index}
-              to={`/${text.toLowerCase().replace(" ", "")}`}
-              style={{
-                display: "block",
-                padding: "10px 0",
-                color: "#64748b", // Gray text
-                textDecoration: "none",
-                fontWeight: "500",
-              }}
-              onMouseOver={(e) => (e.target.style.color = "#1d4ed8")}
-              onMouseOut={(e) => (e.target.style.color = "#64748b")}
+          {/* User Dropdown */}
+          {user ? (
+            <div
+              style={{ position: "relative", display: "inline-block" }}
+              onMouseEnter={() => setIsUserDropdownOpen(true)}
+              onMouseLeave={() => setIsUserDropdownOpen(false)}
             >
-              {text}
-            </Link>
-          ))}
-        </div>
-      )}
+              <span style={{ cursor: "pointer", color: "#64748b" }}>{user.name}</span>
+              {isUserDropdownOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: "0",
+                    backgroundColor: "#ffffff",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                    padding: "10px",
+                    borderRadius: "5px",
+                  }}
+                >
+                  <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#64748b" }}>Logout</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link to="/login" style={{ textDecoration: "none", color: "#ffffff", backgroundColor: "#1d4ed8", padding: "8px 20px", borderRadius: "5px" }}>Log in</Link>
+          )}
+        </nav>
+      </div>
     </header>
   );
 };

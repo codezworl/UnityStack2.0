@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "react-scripts start",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -14,6 +15,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
+    "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
     "chart.js": "^4.4.7",
     "lucide-react": "^0.469.0",
