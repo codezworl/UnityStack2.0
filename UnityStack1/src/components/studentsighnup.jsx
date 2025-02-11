@@ -45,7 +45,10 @@ const StudentSignUp = () => {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
-    if (formData.universityEmail && !/\S+@\S+\.\S+/.test(formData.universityEmail)) {
+    if (
+      formData.universityEmail &&
+      !/\S+@\S+\.\S+/.test(formData.universityEmail)
+    ) {
       newErrors.universityEmail = "Invalid email format";
     }
 
@@ -58,13 +61,16 @@ const StudentSignUp = () => {
     e.preventDefault();
     if (validateForm()) {
       try {
-        const response = await fetch("http://localhost:5000/api/students/signup", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        });
+        const response = await fetch(
+          "http://localhost:5000/api/students/signup",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(formData),
+          }
+        );
 
         const data = await response.json();
 
@@ -83,16 +89,19 @@ const StudentSignUp = () => {
   // Verify OTP
   const handleVerifyOtp = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/students/verify-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          code: otp,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:5000/api/students/verify-email",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            code: otp,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -136,6 +145,22 @@ const StudentSignUp = () => {
           overflowY: "auto",
         }}
       >
+        {/* Close Button */}
+        <button
+          onClick={() => (window.location.href = "/")}
+          className="position-absolute"
+          style={{
+            top: "25px", // Position close to the top
+            right: "10px", // Position close to the right edge
+            background: "none",
+            border: "none",
+            fontSize: "1rem",
+            cursor: "pointer",
+            color: "black",
+          }}
+        >
+          ✖
+        </button>
         <div style={{ marginBottom: "20px" }}>
           <h2
             style={{
@@ -157,213 +182,220 @@ const StudentSignUp = () => {
         </div>
 
         <form
-  style={{ width: "100%", maxWidth: "350px" }}
-  onSubmit={handleSubmit}
->
-  {/* First Name and Last Name */}
-  <div className="d-flex gap-3 mb-3">
-    <input
-      type="text"
-      className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
-      placeholder="First Name"
-      name="firstName"
-      value={formData.firstName}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-    <input
-      type="text"
-      className={`form-control ${errors.lastName ? "is-invalid" : ""}`}
-      placeholder="Last Name"
-      name="lastName"
-      value={formData.lastName}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-  </div>
+          style={{ width: "100%", maxWidth: "350px" }}
+          onSubmit={handleSubmit}
+        >
+          {/* First Name and Last Name */}
+          <div className="d-flex gap-3 mb-3">
+            <input
+              type="text"
+              className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
+              placeholder="First Name"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+            <input
+              type="text"
+              className={`form-control ${errors.lastName ? "is-invalid" : ""}`}
+              placeholder="Last Name"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+          </div>
 
-  {/* Email */}
-  <div className="mb-3">
-    <input
-      type="email"
-      className={`form-control ${errors.email ? "is-invalid" : ""}`}
-      placeholder="Email"
-      name="email"
-      value={formData.email}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-  </div>
+          {/* Email */}
+          <div className="mb-3">
+            <input
+              type="email"
+              className={`form-control ${errors.email ? "is-invalid" : ""}`}
+              placeholder="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+          </div>
 
-  {/* University */}
-  <div className="mb-3">
-    <input
-      type="text"
-      className={`form-control ${errors.university ? "is-invalid" : ""}`}
-      placeholder="University"
-      name="university"
-      value={formData.university}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-  </div>
+          {/* University */}
+          <div className="mb-3">
+            <input
+              type="text"
+              className={`form-control ${
+                errors.university ? "is-invalid" : ""
+              }`}
+              placeholder="University"
+              name="university"
+              value={formData.university}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+          </div>
 
-  {/* University Email */}
-  <div className="mb-3">
-    <input
-      type="email"
-      className={`form-control ${errors.universityEmail ? "is-invalid" : ""}`}
-      placeholder="University Email"
-      name="universityEmail"
-      value={formData.universityEmail}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-  </div>
+          {/* University Email */}
+          <div className="mb-3">
+            <input
+              type="email"
+              className={`form-control ${
+                errors.universityEmail ? "is-invalid" : ""
+              }`}
+              placeholder="University Email"
+              name="universityEmail"
+              value={formData.universityEmail}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+          </div>
 
-  {/* Semester Dropdown */}
-  <div className="mb-3">
-    <select
-      className={`form-control ${errors.semester ? "is-invalid" : ""}`}
-      name="semester"
-      value={formData.semester}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    >
-      <option value="">Select Semester</option>
-      {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-        <option key={sem} value={sem}>
-          Semester {sem}
-        </option>
-      ))}
-    </select>
-  </div>
+          {/* Semester Dropdown */}
+          <div className="mb-3">
+            <select
+              className={`form-control ${errors.semester ? "is-invalid" : ""}`}
+              name="semester"
+              value={formData.semester}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            >
+              <option value="">Select Semester</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                <option key={sem} value={sem}>
+                  Semester {sem}
+                </option>
+              ))}
+            </select>
+          </div>
 
-  {/* Domain Dropdown */}
-  <div className="mb-3">
-    <select
-      className={`form-control ${errors.domain ? "is-invalid" : ""}`}
-      name="domain"
-      value={formData.domain}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    >
-      <option value="">Select Domain</option>
-      {["Web Development", "AI", "Data Science", ".NET"].map((domain) => (
-        <option key={domain} value={domain}>
-          {domain}
-        </option>
-      ))}
-    </select>
-  </div>
+          {/* Domain Dropdown */}
+          <div className="mb-3">
+            <select
+              className={`form-control ${errors.domain ? "is-invalid" : ""}`}
+              name="domain"
+              value={formData.domain}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            >
+              <option value="">Select Domain</option>
+              {["Web Development", "AI", "Data Science", ".NET"].map(
+                (domain) => (
+                  <option key={domain} value={domain}>
+                    {domain}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
 
-  {/* LinkedIn Profile */}
-  <div className="mb-3">
-    <input
-      type="text"
-      className={`form-control ${errors.linkedIn ? "is-invalid" : ""}`}
-      placeholder="LinkedIn Profile"
-      name="linkedIn"
-      value={formData.linkedIn}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-  </div>
+          {/* LinkedIn Profile */}
+          <div className="mb-3">
+            <input
+              type="text"
+              className={`form-control ${errors.linkedIn ? "is-invalid" : ""}`}
+              placeholder="LinkedIn Profile"
+              name="linkedIn"
+              value={formData.linkedIn}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+          </div>
 
-  {/* GitHub Profile */}
-  <div className="mb-3">
-    <input
-      type="text"
-      className={`form-control ${errors.github ? "is-invalid" : ""}`}
-      placeholder="GitHub Profile"
-      name="github"
-      value={formData.github}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-  </div>
+          {/* GitHub Profile */}
+          <div className="mb-3">
+            <input
+              type="text"
+              className={`form-control ${errors.github ? "is-invalid" : ""}`}
+              placeholder="GitHub Profile"
+              name="github"
+              value={formData.github}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+          </div>
 
-  {/* Password */}
-  <div className="mb-3 position-relative">
-    <input
-      type={showPassword ? "text" : "password"}
-      className={`form-control ${errors.password ? "is-invalid" : ""}`}
-      placeholder="Password"
-      name="password"
-      value={formData.password}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-    <button
-      type="button"
-      className="btn btn-link position-absolute"
-      style={{
-        top: "50%",
-        right: "10px",
-        transform: "translateY(-50%)",
-      }}
-      onClick={() => setShowPassword(!showPassword)}
-    >
-      {showPassword ? "🙈" : "👁"}
-    </button>
-  </div>
+          {/* Password */}
+          <div className="mb-3 position-relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              className={`form-control ${errors.password ? "is-invalid" : ""}`}
+              placeholder="Password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              className="btn btn-link position-absolute"
+              style={{
+                top: "50%",
+                right: "10px",
+                transform: "translateY(-50%)",
+              }}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "🙈" : "👁"}
+            </button>
+          </div>
 
-  {/* Confirm Password */}
-  <div className="mb-3 position-relative">
-    <input
-      type={showConfirmPassword ? "text" : "password"}
-      className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
-      placeholder="Confirm Password"
-      name="confirmPassword"
-      value={formData.confirmPassword}
-      onChange={handleChange}
-      onFocus={focusStyle}
-      onBlur={blurStyle}
-      style={inputStyle}
-    />
-    <button
-      type="button"
-      className="btn btn-link position-absolute"
-      style={{
-        top: "50%",
-        right: "10px",
-        transform: "translateY(-50%)",
-      }}
-      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-    >
-      {showConfirmPassword ? "🙈" : "👁"}
-    </button>
-  </div>
+          {/* Confirm Password */}
+          <div className="mb-3 position-relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              className={`form-control ${
+                errors.confirmPassword ? "is-invalid" : ""
+              }`}
+              placeholder="Confirm Password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onFocus={focusStyle}
+              onBlur={blurStyle}
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              className="btn btn-link position-absolute"
+              style={{
+                top: "50%",
+                right: "10px",
+                transform: "translateY(-50%)",
+              }}
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? "🙈" : "👁"}
+            </button>
+          </div>
 
-  <button
-    className="btn btn-primary w-100 mb-3"
-    style={{ borderRadius: "5px" }}
-    type="submit"
-  >
-    Create Account
-  </button>
-</form>
-
+          <button
+            className="btn btn-primary w-100 mb-3"
+            style={{ borderRadius: "5px" }}
+            type="submit"
+          >
+            Create Account
+          </button>
+        </form>
       </div>
 
       {/* Right Side: Image */}
