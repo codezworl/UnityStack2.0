@@ -3,7 +3,6 @@ import Header from "./header";
 import Footer from "./footer";
 import mentorshipImage from "../assets/mentorship@2x.jpg";
 import Projectimage from "../assets/freelance-job.png";
-import { Link } from "react-router-dom";
 import { Code, Rocket, MessageCircle } from "lucide-react";
 import img1 from "../assets/section3A.png";
 import img2 from "../assets/section3B.jpg";
@@ -12,6 +11,7 @@ import { motion } from "framer-motion";
 import { FaCommentAlt, FaLinkedin, FaTwitter, FaGithub } from "react-icons/fa";
 import { AiFillStar } from "react-icons/ai";
 import homebg1 from "../assets/bg1.jpg";
+import { Link } from "react-router-dom";
 
 const Home = () => {
   const [displayedSubText, setDisplayedSubText] = useState("");
@@ -116,8 +116,9 @@ const Home = () => {
               marginTop: "10px",
             }}
           >
+            <Link to="/login" style={{ textDecoration: 'none' }}>
             <button
-              href="/get-started"
+              
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -145,7 +146,8 @@ const Home = () => {
             >
               🚀 Get Started Now
             </button>
-
+            </Link>
+            <Link to="/login" style={{ textDecoration: 'none' }}>
             <button
               style={{
                 display: "inline-flex",
@@ -173,6 +175,7 @@ const Home = () => {
             >
               Browse Experts
             </button>
+            </Link>
           </div>
           {/* search bar*/}
           <div
