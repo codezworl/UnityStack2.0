@@ -1,9 +1,11 @@
 {
   "dependencies": {
     "@tinymce/tinymce-react": "^5.1.1",
+    "emailjs-com": "^3.2.0",
     "framer-motion": "^12.0.1",
+    "prop-types": "^15.8.1",
+    "quill": "^2.0.3",
     "react-quill": "^0.0.2",
     "react-transition-group": "^4.4.5"
   }
-  
 }

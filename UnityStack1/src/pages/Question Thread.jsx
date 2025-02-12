@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useParams, Link } from "react-router-dom";
-// import AnswerEditor from '/answereditor/:id'; 
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css"; // Import the Quill CSS
+import { useNavigate } from "react-router-dom";
 
 export default function QuestionDetailsPage() {
   const location = useLocation();
@@ -9,12 +11,15 @@ export default function QuestionDetailsPage() {
   const [answers, setAnswers] = useState([]); // To store the answers data
   const [filter, setFilter] = useState("Newest");
   const [bounty, setBounty] = useState(false);
-  // const handleAnswerSubmit = (newAnswer) => {
-  //   console.log('Submitted Answer:', newAnswer);
-  //   // You can integrate this with your backend API to save the answer
-  // };
+  const [answerText, setAnswerText] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    sessionStorage.getItem("user") ? true : false
+  );
+
+  const navigate = useNavigate();
   useEffect(() => {
-    // Check if question data is passed via state
+    const user = sessionStorage.getItem("user"); // Check if user exists
+    setIsLoggedIn(!!user); // Convert to boolean
     if (location.state?.question) {
       setQuestion(location.state.question);
       setAnswers(location.state.question.answers || []);
@@ -22,7 +27,36 @@ export default function QuestionDetailsPage() {
       // If not passed, fetch question data using the ID
       fetchQuestionById(id); // Replace with your API call or mock data
     }
-  }, [location.state, id]);
+  }, []); // Runs only once on mount
+  const handleAnswerSubmit = async () => {
+    if (!answerText.trim()) {
+      alert("Please enter an answer before submitting.");
+      return;
+    }
+
+    const username = sessionStorage.getItem("user") || "Anonymous";
+
+    const newAnswer = {
+      id: answers.length + 1,
+      text: answerText,
+      likes: 0,
+      dislikes: 0,
+      user: username, // Store real username
+      time: "Just now",
+    };
+
+    setAnswers([...answers, newAnswer]); // Update local state
+    setAnswerText(""); // Clear editor after submission
+
+    // If using an API, send data to backend
+    // await fetch("https://your-api-url.com/answers", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify(newAnswer),
+    // });
+
+    alert("Answer submitted successfully!");
+  };
 
   // Mock function to simulate fetching question data by ID
   const fetchQuestionById = (id) => {
@@ -796,8 +830,76 @@ const socket = io('http://localhost:3000');`}
           </div>
         </div>
 
-        {/* Answer Editor */}
-        {/* <AnswerEditor onSubmit={handleAnswerSubmit} /> */}
+        <div
+          style={{
+            backgroundColor: "white",
+            padding: "1.5rem",
+            borderRadius: "8px",
+            border: "1px solid #E2E8F0",
+            marginTop: "2rem",
+            boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          <h2
+            style={{
+              marginBottom: "1rem",
+              color: "#1E293B",
+              fontSize: "1.25rem",
+            }}
+          >
+            Submit Your Answer
+          </h2>
+
+          {isLoggedIn ? (
+            <>
+              {/* Answer Input */}
+              <ReactQuill
+                value={answerText}
+                onChange={setAnswerText}
+                theme="snow"
+                placeholder="Write your answer here..."
+                style={{ height: "200px", marginBottom: "1rem" }}
+              />
+
+              {/* Submit Button */}
+              <button
+                onClick={handleAnswerSubmit}
+                style={{
+                  padding: "12px 20px",
+                  borderRadius: "5px",
+                  border: "none",
+                  background: "#2563EB",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  marginTop: "10px",
+                }}
+              >
+                Submit Answer
+              </button>
+            </>
+          ) : (
+            <>
+              <p style={{ color: "red", marginBottom: "1rem" }}>
+                You need to log in to submit an answer.
+              </p>
+              <button
+                onClick={() => navigate("/login")}
+                style={{
+                  padding: "12px 20px",
+                  borderRadius: "5px",
+                  border: "none",
+                  background: "#2563EB",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                }}
+              >
+                Log in to Answer
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

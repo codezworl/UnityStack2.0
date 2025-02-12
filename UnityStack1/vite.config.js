@@ -3,6 +3,12 @@ import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
 export default defineConfig({
+  optimizeDeps: {
+    include: ["react-quill"],
+  },
+  define: {
+    global: 'globalThis', // Polyfill `global` with `globalThis`
+  },
   plugins: [react()],
   build: {
     outDir: "backend/public", // Ensure output directory is within backend/public

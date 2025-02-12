@@ -1,6 +1,7 @@
 import React from "react";
 import footerLogo from "../assets/Vector.png"; // Replace with your logo path
 import { FaTwitter, FaGithub, FaLinkedin, FaInstagram, FaYoutube } from "react-icons/fa";
+import FeedbackPage from "../pages/Give feedback";
 
 const Footer = () => {
   return (
@@ -123,6 +124,7 @@ const Footer = () => {
               fontWeight: "bold",
               color: "#1E293B",
               marginBottom: "15px",
+              marginLeft: "80px",
             }}
           >
             Product
@@ -131,7 +133,7 @@ const Footer = () => {
             style={{
               listStyle: "none",
               padding: 0,
-              margin: 0,
+              marginLeft: "80px",
               color: "#64748B",
               fontSize: "14px",
               lineHeight: "1.8",
@@ -208,7 +210,7 @@ const Footer = () => {
             <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Community</li>
             <li style={{ cursor: "pointer", transition: "color 0.3s" }}>System Status</li>
             <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Join Discord</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Give Feedback</li>
+            <li src={FeedbackPage} style={{ cursor: "pointer", transition: "color 0.3s" }}>Give Feedback</li>
           </ul>
         </div>
       </div>

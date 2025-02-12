@@ -92,7 +92,7 @@ const Header = () => {
           }}
         >
           <Link to="/" style={{ textDecoration: "none", color: "#64748b" }}>Home</Link>
-          <Link to="/about" style={{ textDecoration: "none", color: "#64748b" }}>About Us</Link>
+          <Link to="/aboutus" style={{ textDecoration: "none", color: "#64748b" }}>About Us</Link>
           <Link to="/Getexperthelp" style={{ textDecoration: "none", color: "#64748b" }}>Get Help</Link>
 
           {/* Explore Dropdown */}
