@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from "react";
-import Header from "./header";
-import Footer from "./footer";
+import Header from '../components/header';
+import Footer from '../components/footer';
 import mentorshipImage from "../assets/mentorship@2x.jpg";
 import Projectimage from "../assets/freelance-job.png";
-import { Code, Rocket, MessageCircle } from "lucide-react";
 import img1 from "../assets/section3A.png";
 import img2 from "../assets/section3B.jpg";
 import img3 from "../assets/section3C.jpg";
 import { motion } from "framer-motion";
 import { FaCommentAlt, FaLinkedin, FaTwitter, FaGithub } from "react-icons/fa";
-import { AiFillStar } from "react-icons/ai";
 import homebg1 from "../assets/bg1.jpg";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
   const [displayedSubText, setDisplayedSubText] = useState("");
@@ -23,6 +22,7 @@ const Home = () => {
     "Projects & resources.",
   ];
 
+  const navigate = useNavigate();
   useEffect(() => {
     const typeSubText = () => {
       const currentPhrase = phrases[currentPhraseIndex];
@@ -37,7 +37,6 @@ const Home = () => {
         }, 1500);
       }
     };
-
     const subInterval = setTimeout(typeSubText, 100);
     return () => clearTimeout(subInterval);
   }, [charIndex, currentPhraseIndex, phrases]);
@@ -116,65 +115,64 @@ const Home = () => {
               marginTop: "10px",
             }}
           >
-            <Link to="/login" style={{ textDecoration: 'none' }}>
-            <button
-              
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "10px 20px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                border: "none",
-                borderRadius: "5px",
-                cursor: "pointer",
-                textDecoration: "none",
-                backgroundColor: "white",
-                color: "#2563EB",
-                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                transition: "background-color 0.3s ease, color 0.3s ease",
-              }}
-              onMouseOver={(e) => (
-                (e.target.style.backgroundColor = "white"),
-                (e.target.style.color = "#2563EB")
-              )}
-              onMouseOut={(e) => (
-                (e.target.style.backgroundColor = "#2563EB"),
-                (e.target.style.color = "white")
-              )}
-            >
-              🚀 Get Started Now
-            </button>
+            <Link to="/login" style={{ textDecoration: "none" }}>
+              <button
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px 20px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                  textDecoration: "none",
+                  backgroundColor: "white",
+                  color: "#2563EB",
+                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                  transition: "background-color 0.3s ease, color 0.3s ease",
+                }}
+                onMouseOver={(e) => (
+                  (e.target.style.backgroundColor = "white"),
+                  (e.target.style.color = "#2563EB")
+                )}
+                onMouseOut={(e) => (
+                  (e.target.style.backgroundColor = "#2563EB"),
+                  (e.target.style.color = "white")
+                )}
+              >
+                🚀 Get Started Now
+              </button>
             </Link>
-            <Link to="/login" style={{ textDecoration: 'none' }}>
-            <button
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "10px 20px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                border: "2px solid black",
-                borderRadius: "5px",
-                cursor: "pointer",
-                textDecoration: "none",
-                backgroundColor: "transparent",
-                color: "black",
-                transition: "background-color 0.3s ease, color 0.3s ease",
-              }}
-              onMouseOver={(e) => (
-                (e.target.style.backgroundColor = "black"),
-                (e.target.style.color = "#2563EB")
-              )}
-              onMouseOut={(e) => (
-                (e.target.style.backgroundColor = "transparent"),
-                (e.target.style.color = "black")
-              )}
-            >
-              Browse Experts
-            </button>
+            <Link to="/login" style={{ textDecoration: "none" }}>
+              <button
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px 20px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  border: "2px solid black",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                  textDecoration: "none",
+                  backgroundColor: "transparent",
+                  color: "black",
+                  transition: "background-color 0.3s ease, color 0.3s ease",
+                }}
+                onMouseOver={(e) => (
+                  (e.target.style.backgroundColor = "black"),
+                  (e.target.style.color = "#2563EB")
+                )}
+                onMouseOut={(e) => (
+                  (e.target.style.backgroundColor = "transparent"),
+                  (e.target.style.color = "black")
+                )}
+              >
+                Browse Experts
+              </button>
             </Link>
           </div>
           {/* search bar*/}
@@ -509,6 +507,9 @@ const Home = () => {
               </li>
             </ul>
             <button
+            onClick={() => {
+              window.location.href = "/findexpert";
+            }}
               style={{
                 marginTop: "20px",
                 backgroundColor: "#2563EB",
@@ -525,7 +526,7 @@ const Home = () => {
               onMouseOut={(e) => (e.target.style.backgroundColor = "#2563EB")}
             >
               <a
-                href="/Getexperthelp"
+                href="/findexpert"
                 style={{ textDecoration: "none", color: "white" }}
               >
                 Find an expert
@@ -1051,6 +1052,7 @@ const Home = () => {
               </li>
             </ul>
             <button
+              onClick={() => navigate("/hire-developer")}
               style={{
                 marginTop: "20px",
                 backgroundColor: "#2563EB",

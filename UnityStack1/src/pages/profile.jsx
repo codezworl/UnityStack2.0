@@ -297,6 +297,7 @@ const handleDeleteJobExperience = async (jobId) => {
     />
 )}
 
+
     <h2>{developer?.firstName || "No Name"}</h2>
     <p>Developer</p>
     <button

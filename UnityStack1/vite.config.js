@@ -27,5 +27,8 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    headers: {
+      "Content-Security-Policy": "img-src 'self' data: https://avatars.abstractapi.com;;"
+    }
   },
 });
