@@ -1,7 +1,7 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import footerLogo from "../assets/Vector.png"; // Replace with your logo path
 import { FaTwitter, FaGithub, FaLinkedin, FaInstagram, FaYoutube } from "react-icons/fa";
-import FeedbackPage from "../pages/Give feedback";
 
 const Footer = () => {
   return (
@@ -11,7 +11,6 @@ const Footer = () => {
         padding: "40px 20px",
         fontFamily: "Poppins, sans-serif",
         color: "#1E293B",
-       
       }}
     >
       {/* Top Section */}
@@ -111,7 +110,7 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Links Section */}
+        {/* Services Section */}
         <div
           style={{
             flex: "1 1 150px",
@@ -127,7 +126,7 @@ const Footer = () => {
               marginLeft: "80px",
             }}
           >
-            Product
+            Services
           </h4>
           <ul
             style={{
@@ -139,14 +138,30 @@ const Footer = () => {
               lineHeight: "1.8",
             }}
           >
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Documentation</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Features</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>API Reference</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Resources</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Pricing</li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/Getexperthelp" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Get Expert Help
+              </Link>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/develporsighn1" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Become an Expert
+              </Link>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/livesessionform" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Live Sessions
+              </Link>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="#" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Code Review
+              </Link>
+            </li>
           </ul>
         </div>
 
+        {/* Company Section */}
         <div
           style={{
             flex: "1 1 150px",
@@ -173,13 +188,30 @@ const Footer = () => {
               lineHeight: "1.8",
             }}
           >
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>About UnityStack</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Careers</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Blog</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Contact Us</li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/aboutus" style={{ textDecoration: 'none', color: 'inherit' }}>
+                About UnityStack
+              </Link>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/careers" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Careers
+              </Link>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/blog" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Blog
+              </Link>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/contact" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Contact Us
+              </Link>
+            </li>
           </ul>
         </div>
 
+        {/* Support Section */}
         <div
           style={{
             flex: "1 1 150px",
@@ -206,11 +238,27 @@ const Footer = () => {
               lineHeight: "1.8",
             }}
           >
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Help Center</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Community</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>System Status</li>
-            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>Join Discord</li>
-            <li src={FeedbackPage} style={{ cursor: "pointer", transition: "color 0.3s" }}>Give Feedback</li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/help-center" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Help Center
+              </Link>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/community" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Community
+              </Link>
+            </li>
+           
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <a href="https://discord.gg/unitystack" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Join Discord
+              </a>
+            </li>
+            <li style={{ cursor: "pointer", transition: "color 0.3s" }}>
+              <Link to="/feedback" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Give Feedback
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
@@ -218,14 +266,14 @@ const Footer = () => {
       {/* Bottom Section */}
       <div
         style={{
-          
+          borderTop: "1px solid #E5E7EB",
           paddingTop: "20px",
           textAlign: "center",
           fontSize: "14px",
           color: "#94A3B8",
         }}
       >
-        <p style={{ marginBottom: "10px" }}>© 2025 UnityStack. All rights reserved.</p>
+        <p style={{ marginBottom: "10px" }}>© 2024 UnityStack. All rights reserved.</p>
         <div
           style={{
             display: "flex",
@@ -233,9 +281,15 @@ const Footer = () => {
             gap: "20px",
           }}
         >
-          <span>Privacy Policy</span>
-          <span>Terms of Service</span>
-          <span>Code of Conduct</span>
+          <Link to="/privacy" style={{ textDecoration: 'none', color: 'inherit' }}>
+            Privacy Policy
+          </Link>
+          <Link to="/terms" style={{ textDecoration: 'none', color: 'inherit' }}>
+            Terms of Service
+          </Link>
+          <Link to="/code-of-conduct" style={{ textDecoration: 'none', color: 'inherit' }}>
+            Code of Conduct
+          </Link>
         </div>
       </div>
     </footer>

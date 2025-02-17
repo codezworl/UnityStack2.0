@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import DashboardHome from "./DashboardHome";
-//
+import UsersPage from "/Final Year Project/UnityStack2.0/UnityStack1/src/pages/UsersPage";
+import TransactionsPage from "./ShowTranssactions";
+import SettingsPage from "./Adminsettings";
+import { useNavigate } from 'react-router-dom';
 
 const DashboardLayout = ({ children }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -9,6 +12,8 @@ const DashboardLayout = ({ children }) => {
 
   const profileDropdownRef = useRef(null);
   const notificationsDropdownRef = useRef(null);
+
+  const navigate = useNavigate();
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -42,7 +47,7 @@ const DashboardLayout = ({ children }) => {
     {
       type: "earlier",
       name: "Joseph William",
-      message: "Purchase New Theme and make payment",
+      message: "arrange session and make payment",
       time: "30 min",
       avatar: "https://via.placeholder.com/40",
     },
@@ -56,7 +61,7 @@ const DashboardLayout = ({ children }) => {
     {
       type: "earlier",
       name: "Suzen",
-      message: "Purchase New Theme and make payment",
+      message: "Session Arranged",
       time: "yesterday",
       avatar: "https://via.placeholder.com/40",
     },
@@ -67,10 +72,37 @@ const DashboardLayout = ({ children }) => {
     switch (activePage) {
       case "Home":
         return <DashboardHome />;
-      
+      case "Users":
+        return <UsersPage />;
+      case "Transactions":
+        return <TransactionsPage />;
+      case "Settings":
+        return <SettingsPage notifications={notifications} />;
       default:
         return <DashboardHome />;
     }
+  };
+
+  // Add handler functions for profile menu items
+  const handleProfileAction = (action) => {
+    switch(action) {
+      case 'My Profile':
+        navigate('/profile');
+        break;
+      case 'Transactions':
+        navigate('/transactions');
+        break;
+      case 'Settings':
+        navigate('/Settings');
+        break;
+      case 'Logout':
+       
+        navigate('/login');
+        break;
+      default:
+        break;
+    }
+    setShowProfileDropdown(false); // Close dropdown after action
   };
 
   return (
@@ -257,60 +289,23 @@ const DashboardLayout = ({ children }) => {
                     </span>
                   </div>
 
+                  {/* New Notifications Section */}
                   <div style={{ padding: "10px" }}>
-                    <p style={{ fontSize: "12px", color: "#555" }}>NEW</p>
+                    <p style={{ fontSize: "12px", color: "#555", fontWeight: "500" }}>NEW</p>
                     {notifications
                       .filter((n) => n.type === "new")
                       .map((n, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            marginBottom: "15px",
-                          }}
-                        >
-                          <img
-                            src={n.avatar}
-                            alt={n.name}
-                            style={{
-                              width: "40px",
-                              height: "40px",
-                              borderRadius: "50%",
-                              marginRight: "10px",
-                            }}
-                          />
-                          <div>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontWeight: "bold",
-                                fontSize: "14px",
-                                color: "black",
-                              }}
-                            >
-                              {n.name}
-                            </p>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: "12px",
-                                color: "#777",
-                              }}
-                            >
-                              {n.message}
-                            </p>
-                          </div>
-                          <span
-                            style={{
-                              marginLeft: "auto",
-                              fontSize: "12px",
-                              color: "#AAA",
-                            }}
-                          >
-                            {n.time}
-                          </span>
-                        </div>
+                        <NotificationItem key={`new-${index}`} notification={n} />
+                      ))}
+                  </div>
+
+                  {/* Earlier Notifications Section */}
+                  <div style={{ padding: "10px" }}>
+                    <p style={{ fontSize: "12px", color: "#555", fontWeight: "500" }}>EARLIER</p>
+                    {notifications
+                      .filter((n) => n.type === "earlier")
+                      .map((n, index) => (
+                        <NotificationItem key={`earlier-${index}`} notification={n} />
                       ))}
                   </div>
                 </div>
@@ -320,10 +315,11 @@ const DashboardLayout = ({ children }) => {
             {/* Profile Dropdown */}
             <div style={{ position: "relative" }} ref={profileDropdownRef}>
               <img
-                src="https://xtreme-react-main.netlify.app/assets/user1-Co5pG0mJ.jpg"
+                src={`https://ui-avatars.com/api/?name=Waqas+Zafar&background=random&rounded=true&size=40`}
                 alt="Profile"
                 style={{
                   width: "40px",
+                  height: "40px",
                   borderRadius: "50%",
                   cursor: "pointer",
                   transition: "transform 0.3s",
@@ -355,10 +351,11 @@ const DashboardLayout = ({ children }) => {
                     }}
                   >
                     <img
-                      src="https://xtreme-react-main.netlify.app/assets/user1-Co5pG0mJ.jpg"
+                      src={`https://ui-avatars.com/api/?name=Waqas+Zafar&background=random&rounded=true&size=50`}
                       alt="Profile"
                       style={{
                         width: "50px",
+                        height: "50px",
                         borderRadius: "50%",
                         marginRight: "10px",
                       }}
@@ -369,6 +366,7 @@ const DashboardLayout = ({ children }) => {
                           margin: 0,
                           fontWeight: "bold",
                           color: "black",
+                          fontFamily: "Poppins, sans-serif",
                         }}
                       >
                         Waqas Zafar
@@ -378,9 +376,10 @@ const DashboardLayout = ({ children }) => {
                           margin: 0,
                           fontSize: "14px",
                           color: "#555",
+                          fontFamily: "Poppins, sans-serif",
                         }}
                       >
-                        info@wrappixel.com
+                        waqaszafar771@gmail.com
                       </p>
                     </div>
                   </div>
@@ -389,18 +388,13 @@ const DashboardLayout = ({ children }) => {
                       listStyle: "none",
                       margin: 0,
                       padding: "10px",
+                      fontFamily: "Poppins, sans-serif",
                     }}
                   >
-                    {[
-                      "My Profile",
-                      "Edit Profile",
-                      "My Balance",
-                      "Notifications",
-                      "Settings",
-                      "Logout",
-                    ].map((item, index) => (
+                    {["My Profile", "Transactions", "Settings", "Logout"].map((item, index) => (
                       <li
                         key={index}
+                        onClick={() => handleProfileAction(item)}
                         style={{
                           padding: "10px 0",
                           cursor: "pointer",
@@ -431,5 +425,66 @@ const DashboardLayout = ({ children }) => {
     </div>
   );
 };
+
+// Add this component for consistent notification styling
+const NotificationItem = ({ notification }) => (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      marginBottom: "15px",
+      padding: "8px",
+      borderRadius: "8px",
+      transition: "background-color 0.3s",
+      cursor: "pointer",
+    }}
+    onMouseOver={(e) => (e.target.style.backgroundColor = "#f5f5f5")}
+    onMouseOut={(e) => (e.target.style.backgroundColor = "transparent")}
+  >
+    <img
+      src={notification.avatar}
+      alt={notification.name}
+      style={{
+        width: "40px",
+        height: "40px",
+        borderRadius: "50%",
+        marginRight: "10px",
+      }}
+    />
+    <div style={{ flex: 1 }}>
+      <p
+        style={{
+          margin: 0,
+          fontWeight: "bold",
+          fontSize: "14px",
+          color: "black",
+          fontFamily: "Poppins, sans-serif",
+        }}
+      >
+        {notification.name}
+      </p>
+      <p
+        style={{
+          margin: 0,
+          fontSize: "12px",
+          color: "#777",
+          fontFamily: "Poppins, sans-serif",
+        }}
+      >
+        {notification.message}
+      </p>
+    </div>
+    <span
+      style={{
+        marginLeft: "auto",
+        fontSize: "12px",
+        color: "#AAA",
+        fontFamily: "Poppins, sans-serif",
+      }}
+    >
+      {notification.time}
+    </span>
+  </div>
+);
 
 export default DashboardLayout;

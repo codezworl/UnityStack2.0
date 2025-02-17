@@ -1,15 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "./header";
 import Footer from "./footer";
 import { Link } from "react-router-dom";
 import AskQuestion from "../pages/askquestion";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
 export default function AllQuestionsPage() {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState("Newest");
   const [isHovered, setIsHovered] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const questionsPerPage = 2;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredQuestions, setFilteredQuestions] = useState([]);
+  const [showNoResultsModal, setShowNoResultsModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const handleTabClick = (tab) => setSelectedTab(tab);
   const handleMoreToggle = () => setIsMoreOpen((prev) => !prev);
   const handleFilterToggle = () => setIsFilterOpen((prev) => !prev);
@@ -72,6 +79,42 @@ export default function AllQuestionsPage() {
     },
   ];
 
+  const guideContent = [
+    {
+      title: "How to Ask a Good Question",
+      icon: "❓",
+      steps: [
+        "Be specific about your problem",
+        "Include relevant code snippets",
+        "Explain what you've tried",
+        "Use proper formatting and tags",
+        "Proofread before posting"
+      ]
+    },
+    {
+      title: "How to Answer Questions",
+      icon: "✍️",
+      steps: [
+        "Read the question carefully",
+        "Provide clear explanations",
+        "Include code examples when relevant",
+        "Be respectful and constructive",
+        "Follow up on clarifications"
+      ]
+    },
+    {
+      title: "Using Filters Effectively",
+      icon: "🔍",
+      steps: [
+        "Use tags to narrow your search",
+        "Filter by question status",
+        "Sort by relevance or date",
+        "Combine multiple filters",
+        "Save common filter combinations"
+      ]
+    }
+  ];
+
   // Styles
   const containerStyle = {
     maxWidth: "1200px",
@@ -111,15 +154,62 @@ export default function AllQuestionsPage() {
     cursor: "pointer",
   };
 
-  // Error handling (if no questions)
-  if (questions.length === 0) {
-    return (
-      <div style={containerStyle}>
-        <h1>No Questions Found</h1>
-        <p>There are currently no questions available. Try again later.</p>
-      </div>
-    );
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    const query = e.target.value.toLowerCase();
+    setSearchQuery(query);
+  };
+
+  // Filter questions based on search query
+  useEffect(() => {
+    const filtered = questions.filter((question) => {
+      const searchString = `${question.title} ${
+        question.description
+      } ${question.tags.join(" ")} ${question.askedBy}`.toLowerCase();
+      return searchString.includes(searchQuery);
+    });
+    setFilteredQuestions(filtered);
+    setCurrentPage(1); // Reset to first page when search changes
+    
+    // Show modal if no results and there's a search query
+    setShowNoResultsModal(filtered.length === 0 && searchQuery.length > 0);
+  }, [searchQuery, questions]);
+
+  // Update pagination calculations to use filteredQuestions
+  const indexOfLastQuestion = currentPage * questionsPerPage;
+  const indexOfFirstQuestion = indexOfLastQuestion - questionsPerPage;
+  const currentQuestions = filteredQuestions.slice(
+    indexOfFirstQuestion,
+    indexOfLastQuestion
+  );
+  const totalPages = Math.ceil(filteredQuestions.length / questionsPerPage);
+
+  // Change page
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Generate page numbers
+  const pageNumbers = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(i);
   }
+
+  // Handle modal close
+  const handleCloseModal = () => {
+    setShowNoResultsModal(false);
+    setSearchQuery(""); // Optional: clear search when closing modal
+  };
+
+  // Calculate total questions count
+  const getTotalQuestionsCount = () => {
+    return questions.length;
+  };
+
+  // Format number with commas
+  const formatNumber = (num) => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
 
   return (
     <div style={{ backgroundColor: "#F8FAFC", minHeight: "100vh" }}>
@@ -186,45 +276,61 @@ export default function AllQuestionsPage() {
                   padding: "1rem",
                   borderRadius: "8px",
                   border: "1px solid #E2E8F0",
+                  marginBottom: "1.5rem",
                 }}
               >
-                <input
-                  type="text"
-                  placeholder="Search questions..."
-                  style={{
-                    flex: 1,
-                    padding: "0.75rem",
-                    borderRadius: "8px",
-                    border: "1px solid #E2E8F0",
-                    fontSize: "0.875rem",
-                  }}
-                />
-                <button
-                  style={{
-                    backgroundColor: "#2563EB",
-                    color: "#FFFFFF",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "8px",
-                    fontSize: "0.875rem",
-                    fontWeight: "600",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
+                <div style={{ position: "relative", flex: 1 }}>
+                  <input
+                    type="text"
+                    placeholder="Search questions..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem 1rem 0.75rem 2.5rem",
+                      borderRadius: "8px",
+                      border: "1px solid #E2E8F0",
+                      fontSize: "0.875rem",
+                      fontFamily: "Poppins, sans-serif",
+                      transition: "all 0.3s ease",
+                      outline: "none",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#2563EB";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(37, 99, 235, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#E2E8F0";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
                   <span
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      fontSize: "1rem",
+                      position: "absolute",
+                      left: "0.75rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#94A3B8",
+                      fontSize: "1.25rem",
                     }}
                   >
                     🔍
-                  </span>{" "}
-                  Search
-                </button>
+                  </span>
+                </div>
+
+                {/* Optional: Search Stats */}
+                {searchQuery && (
+                  <div
+                    style={{
+                      color: "#64748B",
+                      fontSize: "0.875rem",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Found {filteredQuestions.length} results
+                  </div>
+                )}
               </div>
 
               <div style={{ padding: "1rem", backgroundColor: "#F8FAFC" }}>
@@ -328,8 +434,25 @@ export default function AllQuestionsPage() {
                     }}
                   >
                     {/* Question Count */}
-                    <div style={{ fontSize: "0.875rem", color: "#64748B" }}>
-                      24,241,806 questions
+                    <div 
+                      style={{ 
+                        fontSize: "0.875rem", 
+                        color: "#64748B",
+                        fontFamily: "Poppins, sans-serif",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px"
+                      }}
+                    >
+                      <span style={{ fontWeight: "600", color: "#1E293B" }}>
+                        {formatNumber(getTotalQuestionsCount())}
+                      </span>
+                      <span>questions</span>
+                      {searchQuery && (
+                        <span>
+                          (showing {formatNumber(filteredQuestions.length)} results)
+                        </span>
+                      )}
                     </div>
 
                     {/* Filter Button */}
@@ -527,8 +650,14 @@ export default function AllQuestionsPage() {
               </div>
               {/* Question Cards */}
               <div>
-                {questions.map((question) => (
-                  <div key={question.id} style={questionCardStyle}>
+                {currentQuestions.map((question) => (
+                  <motion.div
+                    key={question.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={questionCardStyle}
+                  >
                     {/* Question Title with Dynamic Link */}
                     <h3
                       style={{
@@ -608,23 +737,90 @@ export default function AllQuestionsPage() {
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-              {/* Pagination */}
-              <div style={paginationStyle}>
-                {[1, 2, 3, 4, "...", 10].map((page, index) => (
+              {/* Pagination Controls */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "20px",
+                  padding: "20px",
+                  fontFamily: "Poppins, sans-serif",
+                }}
+              >
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "4px",
+                    border: "1px solid #E2E8F0",
+                    backgroundColor: currentPage === 1 ? "#F1F5F9" : "#FFFFFF",
+                    cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                    color: currentPage === 1 ? "#94A3B8" : "#1E293B",
+                    transition: "all 0.3s ease",
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  Previous
+                </button>
+
+                {pageNumbers.map((number) => (
                   <button
-                    key={index}
+                    key={number}
+                    onClick={() => handlePageChange(number)}
                     style={{
-                      ...buttonStyle,
-                      backgroundColor: page === 1 ? "#2563EB" : "#E5E7EB",
-                      color: page === 1 ? "#FFFFFF" : "#1E293B",
+                      padding: "8px 16px",
+                      borderRadius: "4px",
+                      border: "1px solid #E2E8F0",
+                      backgroundColor:
+                        currentPage === number ? "#2563EB" : "#FFFFFF",
+                      color: currentPage === number ? "#FFFFFF" : "#1E293B",
+                      cursor: "pointer",
+                      transition: "all 0.3s ease",
+                      fontFamily: "Poppins, sans-serif",
+                      fontWeight: currentPage === number ? "600" : "normal",
                     }}
                   >
-                    {page}
+                    {number}
                   </button>
                 ))}
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "4px",
+                    border: "1px solid #E2E8F0",
+                    backgroundColor:
+                      currentPage === totalPages ? "#F1F5F9" : "#FFFFFF",
+                    cursor:
+                      currentPage === totalPages ? "not-allowed" : "pointer",
+                    color: currentPage === totalPages ? "#94A3B8" : "#1E293B",
+                    transition: "all 0.3s ease",
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+
+              {/* Optional: Page info */}
+              <div
+                style={{
+                  textAlign: "center",
+                  color: "#64748B",
+                  fontSize: "14px",
+                  marginTop: "10px",
+                  fontFamily: "Poppins, sans-serif",
+                }}
+              >
+                Page {currentPage} of {totalPages}
               </div>
             </div>
 
@@ -726,29 +922,305 @@ export default function AllQuestionsPage() {
                     fontSize: "1.25rem",
                     fontWeight: "600",
                     marginBottom: "1rem",
+                    fontFamily: "Poppins, sans-serif",
                   }}
                 >
                   Need Help?
                 </h3>
-                <p style={{ color: "#64748B", fontSize: "0.875rem" }}>
+                <p style={{ 
+                  color: "#64748B", 
+                  fontSize: "0.875rem",
+                  fontFamily: "Poppins, sans-serif",
+                  marginBottom: "1rem"
+                }}>
                   Check out our guide on how to ask good questions and get
                   better answers from the community.
                 </p>
                 <button
+                  onClick={() => setShowGuideModal(true)}
                   style={{
-                    ...buttonStyle,
                     width: "100%",
+                    padding: "0.75rem 1rem",
                     backgroundColor: "#059669",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontFamily: "Poppins, sans-serif",
+                    fontSize: "0.875rem",
+                    transition: "background-color 0.3s ease",
                   }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = "#047857"}
+                  onMouseOut={(e) => e.target.style.backgroundColor = "#059669"}
                 >
                   View Guide
                 </button>
+
+                {/* Guide Modal */}
+                <AnimatePresence>
+                  {showGuideModal && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 1000,
+                        padding: "20px"
+                      }}
+                      onClick={() => setShowGuideModal(false)}
+                    >
+                      <motion.div
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.5, opacity: 0 }}
+                        transition={{ type: "spring", damping: 20 }}
+                        style={{
+                          backgroundColor: "white",
+                          borderRadius: "12px",
+                          maxWidth: "600px",
+                          width: "100%",
+                          maxHeight: "80vh",
+                          overflow: "auto",
+                          padding: "2rem",
+                          position: "relative"
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Close Button */}
+                        <button
+                          onClick={() => setShowGuideModal(false)}
+                          style={{
+                            position: "absolute",
+                            top: "1rem",
+                            right: "1rem",
+                            background: "none",
+                            border: "none",
+                            fontSize: "1.5rem",
+                            cursor: "pointer",
+                            color: "#64748B",
+                            padding: "5px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "color 0.3s ease",
+                          }}
+                        >
+                          ×
+                        </button>
+
+                        {/* Guide Content */}
+                        <h2 style={{
+                          fontSize: "1.5rem",
+                          fontWeight: "600",
+                          color: "#1E293B",
+                          marginBottom: "1.5rem",
+                          textAlign: "center",
+                          fontFamily: "Poppins, sans-serif"
+                        }}>
+                          UnityStack Community Guide
+                        </h2>
+
+                        {guideContent.map((section, index) => (
+                          <div
+                            key={index}
+                            style={{
+                              marginBottom: "2rem",
+                              padding: "1.5rem",
+                              backgroundColor: "#F8FAFC",
+                              borderRadius: "8px",
+                              border: "1px solid #E2E8F0"
+                            }}
+                          >
+                            <div style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              marginBottom: "1rem"
+                            }}>
+                              <span style={{ fontSize: "1.5rem" }}>{section.icon}</span>
+                              <h3 style={{
+                                fontSize: "1.25rem",
+                                fontWeight: "600",
+                                color: "#1E293B",
+                                fontFamily: "Poppins, sans-serif"
+                              }}>
+                                {section.title}
+                              </h3>
+                            </div>
+                            <ul style={{
+                              listStyle: "none",
+                              padding: 0,
+                              margin: 0
+                            }}>
+                              {section.steps.map((step, stepIndex) => (
+                                <li
+                                  key={stepIndex}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.5rem",
+                                    marginBottom: "0.5rem",
+                                    color: "#4B5563",
+                                    fontSize: "0.875rem",
+                                    fontFamily: "Poppins, sans-serif"
+                                  }}
+                                >
+                                  <span style={{
+                                    color: "#2563EB",
+                                    fontWeight: "600"
+                                  }}>
+                                    {stepIndex + 1}.
+                                  </span>
+                                  {step}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </aside>
           </div>
         </div>
         <Footer />
       </motion.div>
+
+      {/* Replace the old No Results message with this Modal */}
+      <AnimatePresence>
+        {showNoResultsModal && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 1000,
+              }}
+              onClick={handleCloseModal}
+            >
+              {/* Modal */}
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.5, opacity: 0 }}
+                transition={{ type: "spring", damping: 20 }}
+                style={{
+                  backgroundColor: "white",
+                  padding: "2rem",
+                  borderRadius: "12px",
+                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                  maxWidth: "400px",
+                  width: "90%",
+                  textAlign: "center",
+                  position: "relative",
+                }}
+                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking modal content
+              >
+                {/* Close Button */}
+                <button
+                  onClick={handleCloseModal}
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "10px",
+                    background: "none",
+                    border: "none",
+                    fontSize: "1.5rem",
+                    cursor: "pointer",
+                    color: "#64748B",
+                    padding: "5px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "color 0.3s ease",
+                  }}
+                  onMouseOver={(e) => e.target.style.color = "#1E293B"}
+                  onMouseOut={(e) => e.target.style.color = "#64748B"}
+                >
+                  ×
+                </button>
+
+                {/* Icon */}
+                <div
+                  style={{
+                    fontSize: "3rem",
+                    marginBottom: "1rem",
+                    color: "#2563EB",
+                  }}
+                >
+                  🔍
+                </div>
+
+                {/* Content */}
+                <h3
+                  style={{
+                    color: "#1E293B",
+                    fontSize: "1.25rem",
+                    marginBottom: "0.5rem",
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  No Questions Found
+                </h3>
+                <p
+                  style={{
+                    color: "#64748B",
+                    fontSize: "0.875rem",
+                    marginBottom: "1.5rem",
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  We couldn't find any questions matching "{searchQuery}"
+                </p>
+
+                {/* Action Buttons */}
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  <button
+                    onClick={handleCloseModal}
+                    style={{
+                      padding: "0.5rem 1.5rem",
+                      backgroundColor: "#2563EB",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontFamily: "Poppins, sans-serif",
+                      fontSize: "0.875rem",
+                      transition: "background-color 0.3s ease",
+                    }}
+                    onMouseOver={(e) => e.target.style.backgroundColor = "#1E40AF"}
+                    onMouseOut={(e) => e.target.style.backgroundColor = "#2563EB"}
+                  >
+                    Clear Search
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
