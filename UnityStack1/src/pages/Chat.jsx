@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Sidebar from '../components/sidebar';
+
 import Header from '../components/header';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -38,12 +38,10 @@ function Chat() {
       <Header />
 
       <div style={{ display: 'flex', flexGrow: 1 }}>
-        {/* Sidebar */}
-        <Sidebar />
-
+       
         {/* Chat Content */}
         <div style={{ flex: 1, display: 'flex' }}>
-          {/* Left Sidebar */}
+          {/* Left   */}
           <div style={{ width: '300px', borderRight: '1px solid #e6e9f0', backgroundColor: '#fff' }}>
             {/* Search Bar */}
             <div style={{ padding: '20px' }}>

@@ -1,140 +1,201 @@
-import React from "react";
-import { FaEdit, FaTrashAlt } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { Modal, Button, Form, Spinner, Alert } from "react-bootstrap";
+import { FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 const BlogsAndEvents = () => {
-  // Sample blogs data
-  const blogs = [
-    {
-      id: 1,
-      title: "React Basics",
-      date: "2025-01-10",
-      image: "https://via.placeholder.com/300x200",
-      description: "Learn the basics of React and how to build interactive UIs.",
-    },
-    {
-      id: 2,
-      title: "JavaScript Trends in 2025",
-      date: "2025-01-15",
-      image: "https://via.placeholder.com/300x200",
-      description: "Explore the latest trends in JavaScript for the year 2025.",
-    },
-    {
-      id: 3,
-      title: "How to Use AI in Web Development",
-      date: "2025-01-20",
-      image: "https://via.placeholder.com/300x200",
-      description:
-        "Discover how artificial intelligence is transforming web development.",
-    },
-    {
-      id: 4,
-      title: "Top 10 CSS Frameworks",
-      date: "2025-01-25",
-      image: "https://via.placeholder.com/300x200",
-      description: "A review of the top 10 CSS frameworks for modern web design.",
-    },
-    {
-      id: 5,
-      title: "Why You Should Learn TypeScript",
-      date: "2025-02-01",
-      image: "https://via.placeholder.com/300x200",
-      description: "The benefits of TypeScript for large-scale web applications.",
-    },
-    {
-      id: 6,
-      title: "Building Scalable APIs",
-      date: "2025-02-05",
-      image: "https://via.placeholder.com/300x200",
-      description:
-        "A guide to building scalable and maintainable REST APIs with Node.js.",
-    },
-    {
-      id: 7,
-      title: "Understanding Next.js",
-      date: "2025-02-10",
-      image: "https://via.placeholder.com/300x200",
-      description:
-        "Learn why Next.js is a great framework for building modern web apps.",
-    },
-    {
-      id: 8,
-      title: "UI/UX Design Principles",
-      date: "2025-02-15",
-      image: "https://via.placeholder.com/300x200",
-      description: "The fundamental principles of creating user-friendly designs.",
-    },
-    {
-      id: 9,
-      title: "Cloud Computing for Developers",
-      date: "2025-02-20",
-      image: "https://via.placeholder.com/300x200",
-      description: "An introduction to cloud computing services for developers.",
-    },
-    {
-      id: 10,
-      title: "Mastering Git & GitHub",
-      date: "2025-02-25",
-      image: "https://via.placeholder.com/300x200",
-      description: "How to effectively use Git and GitHub for version control.",
-    },
-    {
-      id: 11,
-      title: "Web Accessibility Tips",
-      date: "2025-03-01",
-      image: "https://via.placeholder.com/300x200",
-      description:
-        "Make your websites accessible to everyone with these simple tips.",
-    },
-    {
-      id: 12,
-      title: "Best Practices for DevOps",
-      date: "2025-03-05",
-      image: "https://via.placeholder.com/300x200",
-      description: "Learn the best practices to streamline your DevOps workflow.",
-    },
-  ];
+  const [blogs, setBlogs] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPost, setCurrentPost] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    image: null,
+    description: "",
+  });
+
+  useEffect(() => {
+    fetchBlogs();
+  }, []);
+
+  // ✅ Fetch posts from API
+  const fetchBlogs = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get("http://localhost:5000/api/organizations/posts");
+      setBlogs(response.data);
+    } catch (error) {
+      console.error("❌ Error fetching posts:", error);
+      setError("Failed to load posts. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  // ✅ Handle input change
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // ✅ Handle image selection
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    setFormData({ ...formData, image: file });
+  };
+
+  // ✅ Handle Quill editor change
+  const handleQuillChange = (value) => {
+    setFormData({ ...formData, description: value });
+  };
+
+  // ✅ Submit new or edited post
+  const handleSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const formDataObj = new FormData();
+      formDataObj.append("title", formData.title);
+      formDataObj.append("description", formData.description);
+      if (formData.image) {
+        formDataObj.append("image", formData.image);
+      }
+
+      if (currentPost) {
+        // ✅ Update existing post
+        await axios.put(`http://localhost:5000/api/organizations/posts/${currentPost._id}`, formDataObj, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        // ✅ Create new post
+        await axios.post("http://localhost:5000/api/organizations/posts", formDataObj, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      fetchBlogs();
+      setShowModal(false);
+      setFormData({ title: "", image: null, description: "" });
+      setCurrentPost(null);
+    } catch (error) {
+      console.error("❌ Error submitting post:", error);
+      setError("Failed to submit post. Please try again.");
+    }
+  };
+
+  // ✅ Open modal for editing
+  const handleEdit = (post) => {
+    setCurrentPost(post);
+    setFormData({ title: post.title, image: post.image, description: post.description });
+    setShowModal(true);
+  };
+
+  // ✅ Delete post
+  const handleDelete = async (postId) => {
+    if (window.confirm("⚠ Are you sure you want to delete this post?")) {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.delete(`http://localhost:5000/api/organizations/posts/${postId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        fetchBlogs();
+      } catch (error) {
+        console.error("❌ Error deleting post:", error);
+        setError("Failed to delete post. Please try again.");
+      }
+    }
+  };
 
   return (
-    <div>
-      {/* Add Post Button */}
+    <div className="container mt-4">
+      {/* ✅ Header Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3>Blogs & Events</h3>
-        <button className="btn btn-primary">+ Add Post</button>
+        <h3 className="fw-bold">📢 Blogs & Events ({blogs.length})</h3>
+        <Button variant="primary" onClick={() => setShowModal(true)}>
+          <FaPlus className="me-2" /> Add Post
+        </Button>
       </div>
 
-      {/* Blog Cards */}
+      {/* ✅ Show Loading Spinner */}
+      {loading && (
+        <div className="text-center my-5">
+          <Spinner animation="border" />
+          <p>Loading posts...</p>
+        </div>
+      )}
+
+      {/* ✅ Show Error Message */}
+      {error && <Alert variant="danger">{error}</Alert>}
+
+      {/* ✅ Blog Cards */}
       <div className="row g-4">
-        {blogs.map((blog) => (
-          <div className="col-md-4" key={blog.id}>
-            <div className="card shadow-sm">
-              {/* Blog Image */}
-              <img
-                src={blog.image}
-                alt={blog.title}
-                className="card-img-top"
-                style={{ height: "200px", objectFit: "cover" }}
-              />
-              {/* Blog Body */}
-              <div className="card-body">
-                <h5 className="card-title">{blog.title}</h5>
-                <p className="card-text text-muted">{blog.description}</p>
-                <p className="text-muted">
-                  <small>Posted on: {blog.date}</small>
-                </p>
-                {/* Actions */}
-                <div className="d-flex justify-content-between">
-                  <button className="btn btn-warning btn-sm">
-                    <FaEdit className="me-1" /> Edit
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrashAlt className="me-1" /> Delete
-                  </button>
+        {blogs.length === 0 && !loading ? (
+          <p className="text-muted text-center">No posts available. Click "Add Post" to create one.</p>
+        ) : (
+          blogs.map((blog) => (
+            <div className="col-md-4" key={blog._id}>
+              <div className="card shadow-sm">
+                {/* ✅ Blog Image */}
+                <img
+                  src={`http://localhost:5000/uploads/${blog.image}`}
+                  alt={blog.title}
+                  className="card-img-top"
+                  style={{ height: "200px", objectFit: "cover" }}
+                />
+                {/* ✅ Blog Body */}
+                <div className="card-body">
+                  <h5 className="card-title">{blog.title}</h5>
+                  <p className="card-text text-muted">{blog.description.substring(0, 100)}...</p>
+                  <p className="text-muted">
+                    <small>🗓 {new Date(blog.createdAt).toLocaleDateString()}</small>
+                  </p>
+                  {/* ✅ Actions */}
+                  <div className="d-flex justify-content-between">
+                    <Button variant="warning" size="sm" onClick={() => handleEdit(blog)}>
+                      <FaEdit className="me-1" /> Edit
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(blog._id)}>
+                      <FaTrashAlt className="me-1" /> Delete
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
+
+      {/* ✅ Modal for Adding/Editing Post */}
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>{currentPost ? "✏ Edit Post" : "📝 Add New Post"}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control type="text" name="title" value={formData.title} onChange={handleInputChange} />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Image</Form.Label>
+              <Form.Control type="file" onChange={handleImageUpload} />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <ReactQuill value={formData.description} onChange={handleQuillChange} />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSubmit}>
+            {currentPost ? "Update" : "Post"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

@@ -1,13 +1,40 @@
-import React, { useState } from "react";
-import { FaEdit, FaTrashAlt, FaUser, FaBook, FaHistory, FaSignOutAlt } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaUser, FaBook, FaHistory, FaSignOutAlt } from "react-icons/fa";
 import BlogsAndEvents from "../pages/Blogs&event";
 import Profile from "../pages/companyAccount";
 import FindDeveloper from "../pages/finddevelpor";
 import ComChat from "../pages/ComChat";
+import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { useNavigate } from "react-router-dom";
 
 const CompanyDashboard = () => {
   const [selectedPage, setSelectedPage] = useState("blogs"); // Default page
+  const [companyName, setCompanyName] = useState(""); // State for Company Name
+  const navigate = useNavigate();
+
+  // ✅ Fetch only the company name
+  useEffect(() => {
+    const fetchCompanyName = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:5000/api/organizations/company-name", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCompanyName(response.data.companyName);
+      } catch (error) {
+        console.error("❌ Error fetching company name:", error);
+      }
+    };
+
+    fetchCompanyName();
+  }, []);
+
+  // ✅ Handle Logout
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
 
   const renderContent = () => {
     switch (selectedPage) {
@@ -17,7 +44,7 @@ const CompanyDashboard = () => {
         return <Profile />;
       case "findDeveloper":
         return <FindDeveloper />;
-      case "ComChat": // Added case for ComChat
+      case "ComChat":
         return <ComChat />;
       default:
         return <BlogsAndEvents />;
@@ -36,45 +63,27 @@ const CompanyDashboard = () => {
           padding: "20px",
         }}
       >
-        <h4 className="text-center mb-4">Company Dashboard</h4>
+        <h4 className="text-center mb-4">
+          {companyName ? companyName : "Company Dashboard"} {/* ✅ Show Company Name */}
+        </h4>
         <ul className="list-unstyled">
-          <li
-            onClick={() => setSelectedPage("blogs")}
-            className="mb-3 d-flex align-items-center"
-            style={{ cursor: "pointer" }}
-          >
+          <li onClick={() => setSelectedPage("blogs")} className="mb-3 d-flex align-items-center" style={{ cursor: "pointer" }}>
             <FaBook className="me-2" />
             Blogs & Events
           </li>
-          <li
-            onClick={() => setSelectedPage("profile")}
-            className="mb-3 d-flex align-items-center"
-            style={{ cursor: "pointer" }}
-          >
+          <li onClick={() => setSelectedPage("profile")} className="mb-3 d-flex align-items-center" style={{ cursor: "pointer" }}>
             <FaUser className="me-2" />
             Profile
           </li>
-          <li
-            onClick={() => setSelectedPage("findDeveloper")}
-            className="mb-3 d-flex align-items-center"
-            style={{ cursor: "pointer" }}
-          >
+          <li onClick={() => setSelectedPage("findDeveloper")} className="mb-3 d-flex align-items-center" style={{ cursor: "pointer" }}>
             <FaHistory className="me-2" />
             Find Developer
           </li>
-          <li
-            onClick={() => setSelectedPage("ComChat")} // Corrected to set "ComChat"
-            className="mb-3 d-flex align-items-center"
-            style={{ cursor: "pointer" }}
-          >
+          <li onClick={() => setSelectedPage("ComChat")} className="mb-3 d-flex align-items-center" style={{ cursor: "pointer" }}>
             <FaHistory className="me-2" />
             Chat
           </li>
-          <li
-            onClick={() => alert("Logged out")}
-            className="mt-auto d-flex align-items-center"
-            style={{ cursor: "pointer" }}
-          >
+          <li onClick={handleLogout} className="mt-auto d-flex align-items-center" style={{ cursor: "pointer" }}>
             <FaSignOutAlt className="me-2" />
             Logout
           </li>
@@ -82,13 +91,7 @@ const CompanyDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div
-        style={{
-          flex: 1,
-          backgroundColor: "#fff",
-          padding: "20px",
-        }}
-      >
+      <div style={{ flex: 1, backgroundColor: "#fff", padding: "20px" }}>
         {renderContent()}
       </div>
     </div>

@@ -1,254 +1,385 @@
-import React, { useState } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { Button, Form, Modal, Tabs, Tab } from "react-bootstrap";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { FaPlus, FaTrashAlt, FaEdit } from "react-icons/fa";
 
 const Profile = () => {
-  const [activeTab, setActiveTab] = useState("info"); // Active tab state
+  const [activeTab, setActiveTab] = useState("info");
   const [companyInfo, setCompanyInfo] = useState({
-    companyName: "ABC Company",
-    branchName: "Main Branch",
-    numBranches: 5,
-    operateCities: "New York, Los Angeles, Chicago",
-    email: "contact@abccompany.com",
+    companyName: "",
+    website: "",
+    aboutUs: "",
+    socialMedia: [],
   });
+  const [isEditing, setIsEditing] = useState(false);
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [newSocial, setNewSocial] = useState({ platform: "LinkedIn", link: "" });
+  const [services, setServices] = useState([]);
+  const [newService, setNewService] = useState("");
+  // ✅ Define Password State Properly
+const [passwords, setPasswords] = useState({
+  oldPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+});
 
-  const [passwords, setPasswords] = useState({
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
 
-  const [showPassword, setShowPassword] = useState({
-    oldPassword: false,
-    newPassword: false,
-    confirmPassword: false,
-  });
+  useEffect(() => {
+    fetchCompanyData();
+  }, []);
+// ✅ Handle Logo Upload
+const handleLogoUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) {
+    alert("❌ No file selected.");
+    return;
+  }
 
-  const [services, setServices] = useState([
-    { id: 1, name: "Web Development", logo: "https://via.placeholder.com/100" },
-    { id: 2, name: "Mobile App Development", logo: "https://via.placeholder.com/100" },
-    { id: 3, name: "AI & Machine Learning", logo: "https://via.placeholder.com/100" },
-    { id: 4, name: "UI/UX Design", logo: "https://via.placeholder.com/100" },
-    { id: 5, name: "Cloud Computing", logo: "https://via.placeholder.com/100" },
-    { id: 6, name: "DevOps Services", logo: "https://via.placeholder.com/100" },
-    { id: 7, name: "E-Commerce Development", logo: "https://via.placeholder.com/100" },
-    { id: 8, name: "API Development", logo: "https://via.placeholder.com/100" },
-  ]);
+  const formData = new FormData();
+  formData.append("logo", file);
 
-  const handleInfoChange = (e) => {
-    const { name, value } = e.target;
-    setCompanyInfo({ ...companyInfo, [name]: value });
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Unauthorized! Please login again.");
+      return;
+    }
+
+    const response = await axios.post("http://localhost:5000/api/organizations/upload-logo", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    alert("✅ Logo uploaded successfully!");
+
+    // ✅ Update the UI immediately without refresh
+    setCompanyInfo((prevInfo) => ({
+      ...prevInfo,
+      logo: `http://localhost:5000/uploads/${response.data.logo}`, // ✅ Ensure correct URL
+    }));
+
+    fetchCompanyData(); // ✅ Fetch updated profile to ensure changes are saved
+  } catch (error) {
+    console.error("❌ Error uploading logo:", error);
+    alert("❌ Failed to upload logo.");
+  }
+};
+
+
+
+
+  // ✅ Fetch Company Profile
+  const fetchCompanyData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Unauthorized! Please login again.");
+        return;
+      }
+  
+      const response = await axios.get("http://localhost:5000/api/organizations/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      console.log("✅ Fetched Data:", response.data); // Debugging
+  
+      setCompanyInfo({
+        companyName: response.data.companyName || "",
+        website: response.data.website || "",
+        aboutUs: response.data.aboutUs || "",
+        socialMedia: response.data.socialMedia || [],
+        logo: response.data.logo || "",
+      });
+  
+      // ✅ Fix: Ensure services update correctly
+      setServices(response.data.selectedServices || []);
+    } catch (error) {
+      console.error("❌ Error fetching company data:", error);
+      if (error.response?.status === 401) {
+        alert("Session expired. Please login again.");
+        window.location.href = "/login";
+      }
+    }
   };
+  
 
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswords({ ...passwords, [name]: value });
+  // ✅ Handle Save Profile
+  const handleSaveProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        "http://localhost:5000/api/organizations/profile",
+        { ...companyInfo },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setIsEditing(false);
+      fetchCompanyData();
+      alert("✅ Profile updated successfully!");
+    } catch (error) {
+      console.error("❌ Error updating profile:", error);
+      alert("❌ Failed to update profile.");
+    }
   };
-
-  const togglePasswordVisibility = (field) => {
-    setShowPassword({ ...showPassword, [field]: !showPassword[field] });
+  const handleDeleteService = async (service) => {
+    if (!window.confirm(`Are you sure you want to delete the service: ${service}?`)) {
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Unauthorized! Please login again.");
+        return;
+      }
+  
+      const response = await axios.delete("http://localhost:5000/api/organizations/services", {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { service },
+      });
+  
+      alert("✅ Service deleted successfully!");
+      fetchCompanyData(); // Refresh to update the UI
+    } catch (error) {
+      console.error("❌ Error deleting service:", error.response?.data || error.message);
+      alert("❌ Failed to delete service.");
+    }
   };
+  
 
-  const handleAddService = () => {
-    const newService = {
-      id: services.length + 1,
-      name: "New Service",
-      logo: "https://via.placeholder.com/100",
-    };
-    setServices([...services, newService]);
+  // ✅ Handle Adding Social Media Link
+  const handleAddSocialLink = async () => {
+    if (!newSocial.link.match(/^https?:\/\/(www\.)?\w+\.\w+/)) {
+      alert("❌ Please enter a valid URL.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        "http://localhost:5000/api/organizations/social-media",
+        newSocial,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setShowSocialModal(false);
+      fetchCompanyData();
+      alert("✅ Social media link added successfully!");
+    } catch (error) {
+      console.error("❌ Error adding social media link:", error);
+      alert("❌ Failed to add social link.");
+    }
+  };
+  // ✅ Handle Password Update
+  const handleUpdatePassword = async () => {
+    if (!passwords.oldPassword || !passwords.newPassword || !passwords.confirmPassword) {
+      alert("❌ Please fill in all password fields.");
+      return;
+    }
+  
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      alert("❌ New passwords do not match.");
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Unauthorized! Please login again.");
+        return;
+      }
+  
+      await axios.put(
+        "http://localhost:5000/api/organizations/update-password",
+        passwords,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+  
+      alert("✅ Password updated successfully!");
+      setPasswords({ oldPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      console.error("❌ Error updating password:", error);
+      alert("❌ Failed to update password.");
+    }
+  };
+  
+
+
+  // ✅ Handle Adding Service
+  const handleAddService = async () => {
+    if (services.includes(newService)) {
+      alert("❌ This service already exists.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        "http://localhost:5000/api/organizations/services",
+        { service: newService },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setShowServiceModal(false);
+      fetchCompanyData();
+      alert("✅ Service added successfully!");
+    } catch (error) {
+      console.error("❌ Error adding service:", error);
+      alert("❌ Failed to add service.");
+    }
   };
 
   return (
-    <div>
+    <div className="container mt-4">
       <h3>Company Profile</h3>
+      <Tabs activeKey={activeTab} onSelect={(key) => setActiveTab(key)} className="mb-4">
+        
+        {/* ✅ Information Tab (Now Includes Logo Upload) */}
+        <Tab eventKey="info" title="Information">
+  <h5>About Us</h5>
+  <ReactQuill value={companyInfo.aboutUs} onChange={(value) => setCompanyInfo({ ...companyInfo, aboutUs: value })} readOnly={!isEditing} />
 
-      {/* Tabs */}
-      <ul className="nav nav-tabs">
-        <li className="nav-item">
-          <a
-            className={`nav-link ${activeTab === "info" ? "active" : ""}`}
-            onClick={() => setActiveTab("info")}
-            style={{ cursor: "pointer" }}
-          >
-            Information
-          </a>
+  <h5 className="mt-4">Company Logo</h5>
+  <div className="d-flex align-items-center mt-4">
+  <img
+  src={companyInfo.logo ? `http://localhost:5000/uploads/${companyInfo.logo}` : "/default-logo.png"}
+  alt="Company Logo"
+  className="rounded-circle"
+  style={{ width: "80px", height: "80px", objectFit: "cover", marginRight: "15px" }}
+/>
+
+    {isEditing && (
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleLogoUpload}
+        className="ml-3"
+      />
+    )}
+  </div>
+
+  <Button className="mt-3" onClick={() => setIsEditing(!isEditing)}>
+    {isEditing ? "Save Changes" : "Edit About Us"}
+  </Button>
+
+  {/* ✅ Only show Save button when editing */}
+  {isEditing && <Button className="mt-3 ml-2" onClick={handleSaveProfile}>Save Profile</Button>}
+
+  <h5 className="mt-4">Social Media Links</h5>
+  {companyInfo.socialMedia.length === 0 ? (
+    <p className="text-muted">No social media links added yet.</p>
+  ) : (
+    <ul className="list-group">
+      {companyInfo.socialMedia.map((link, index) => (
+        <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+          {link.platform}: <a href={link.link} target="_blank" rel="noopener noreferrer">{link.link}</a>
         </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${activeTab === "password" ? "active" : ""}`}
-            onClick={() => setActiveTab("password")}
-            style={{ cursor: "pointer" }}
-          >
-            Passwords
-          </a>
+      ))}
+    </ul>
+  )}
+  <Button className="mt-3" onClick={() => setShowSocialModal(true)}>+ Add Social Link</Button>
+</Tab>
+
+  
+        {/* ✅ Password Tab */}
+        <Tab eventKey="password" title="Password">
+          <h5>🔒 Change Password</h5>
+          <Form className="mt-3">
+            <Form.Group>
+              <Form.Label>Old Password</Form.Label>
+              <Form.Control type="password" onChange={(e) => setPasswords({ ...passwords, oldPassword: e.target.value })} />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>New Password</Form.Label>
+              <Form.Control type="password" onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })} />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Confirm New Password</Form.Label>
+              <Form.Control type="password" onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })} />
+            </Form.Group>
+            <Button className="mt-3" onClick={handleUpdatePassword}>Update Password</Button>
+          </Form>
+        </Tab>
+  
+        {/* ✅ Services Tab */}
+        <Tab eventKey="services" title="Services">
+  <h5>Our Services</h5>
+  {services.length === 0 ? (
+    <p className="text-muted">No services added yet.</p>
+  ) : (
+    <ul className="list-group">
+      {services.map((service, index) => (
+        <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+          {service}
+          <FaTrashAlt onClick={() => handleDeleteService(service)} style={{ cursor: "pointer", color: "red" }} />
         </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${activeTab === "services" ? "active" : ""}`}
-            onClick={() => setActiveTab("services")}
-            style={{ cursor: "pointer" }}
-          >
-            Services
-          </a>
-        </li>
-      </ul>
+      ))}
+    </ul>
+  )}
+  <Button className="mt-3" onClick={() => setShowServiceModal(true)}>+ Add Service</Button>
+</Tab>
 
-      <div className="tab-content mt-4">
-        {/* Information Tab */}
-        {activeTab === "info" && (
-          <div className="tab-pane fade show active">
-            <h5>Company Information</h5>
-            <form>
-              <div className="mb-3">
-                <label>Company Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="companyName"
-                  value={companyInfo.companyName}
-                  onChange={handleInfoChange}
-                />
-              </div>
-              <div className="mb-3">
-                <label>Company Branch</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="branchName"
-                  value={companyInfo.branchName}
-                  onChange={handleInfoChange}
-                />
-              </div>
-              <div className="mb-3">
-                <label>Number of Branches</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  name="numBranches"
-                  value={companyInfo.numBranches}
-                  onChange={handleInfoChange}
-                />
-              </div>
-              <div className="mb-3">
-                <label>Operate Cities</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="operateCities"
-                  value={companyInfo.operateCities}
-                  onChange={handleInfoChange}
-                />
-              </div>
-              <div className="mb-3">
-                <label>Company Email</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  name="email"
-                  value={companyInfo.email}
-                  onChange={handleInfoChange}
-                />
-              </div>
-              <button className="btn btn-success">Save Changes</button>
-            </form>
-          </div>
-        )}
 
-        {/* Password Tab */}
-        {activeTab === "password" && (
-          <div className="tab-pane fade show active">
-            <h5>Change Password</h5>
-            <div className="mb-3">
-              <label>Old Password</label>
-              <div className="input-group">
-                <input
-                  type={showPassword.oldPassword ? "text" : "password"}
-                  className="form-control"
-                  name="oldPassword"
-                  value={passwords.oldPassword}
-                  onChange={handlePasswordChange}
-                />
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => togglePasswordVisibility("oldPassword")}
-                >
-                  {showPassword.oldPassword ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            </div>
-            <div className="mb-3">
-              <label>New Password</label>
-              <div className="input-group">
-                <input
-                  type={showPassword.newPassword ? "text" : "password"}
-                  className="form-control"
-                  name="newPassword"
-                  value={passwords.newPassword}
-                  onChange={handlePasswordChange}
-                />
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => togglePasswordVisibility("newPassword")}
-                >
-                  {showPassword.newPassword ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            </div>
-            <div className="mb-3">
-              <label>Confirm Password</label>
-              <div className="input-group">
-                <input
-                  type={showPassword.confirmPassword ? "text" : "password"}
-                  className="form-control"
-                  name="confirmPassword"
-                  value={passwords.confirmPassword}
-                  onChange={handlePasswordChange}
-                />
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => togglePasswordVisibility("confirmPassword")}
-                >
-                  {showPassword.confirmPassword ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            </div>
-            <button className="btn btn-success">Save Changes</button>
-          </div>
-        )}
-
-        {/* Services Tab */}
-        {activeTab === "services" && (
-          <div className="tab-pane fade show active">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h5>Services You Provide</h5>
-              <button className="btn btn-primary" onClick={handleAddService}>
-                + Add Service
-              </button>
-            </div>
-            <div className="row g-4">
-              {services.map((service) => (
-                <div className="col-md-3" key={service.id}>
-                  <div className="card shadow-sm text-center">
-                    <img
-                      src={service.logo}
-                      alt={service.name}
-                      className="card-img-top p-3"
-                      style={{ height: "120px", objectFit: "contain" }}
-                    />
-                    <div className="card-body">
-                      <h6 className="card-title">{service.name}</h6>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      </Tabs>
+  
+      {/* ✅ Add Social Media Modal */}
+      <Modal show={showSocialModal} onHide={() => setShowSocialModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Add Social Media Link</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>Platform</Form.Label>
+            <Form.Select onChange={(e) => setNewSocial({ ...newSocial, platform: e.target.value })}>
+              <option>LinkedIn</option>
+              <option>Twitter</option>
+              <option>Instagram</option>
+              <option>YouTube</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group className="mt-3">
+            <Form.Label>URL</Form.Label>
+            <Form.Control type="text" placeholder="Enter your social media profile link" onChange={(e) => setNewSocial({ ...newSocial, link: e.target.value })} />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowSocialModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleAddSocialLink}>Add Social Link</Button>
+        </Modal.Footer>
+      </Modal>
+  
+      {/* ✅ Add Service Modal */}
+      <Modal show={showServiceModal} onHide={() => setShowServiceModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Add New Service</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>Select a Service</Form.Label>
+            <Form.Select onChange={(e) => setNewService(e.target.value)}>
+              <option value="">-- Choose a Service --</option>
+              <option value="Web Development">Web Development</option>
+              <option value="Mobile App Development">Mobile App Development</option>
+              <option value="AI & Machine Learning">AI & Machine Learning</option>
+              <option value="UI/UX Design">UI/UX Design</option>
+              <option value="Cloud Computing">Cloud Computing</option>
+              <option value="DevOps Services">DevOps Services</option>
+              <option value="E-Commerce Development">E-Commerce Development</option>
+              <option value="API Development">API Development</option>
+            </Form.Select>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowServiceModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleAddService}>Add Service</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
+  
 };
 
 export default Profile;

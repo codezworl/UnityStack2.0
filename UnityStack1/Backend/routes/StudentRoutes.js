@@ -2,8 +2,13 @@ const express = require("express");
 const {
   signupStudent,
   loginStudent,
-  verifyStudentEmail, // Import the email verification handler
+  verifyStudentEmail,
+  getStudentProfile,
+  updateStudentProfile,
+  deleteStudentAccount,
+  updateProfileImage, upload, // Import the email verification handler
 } = require("../Controllers/studentController");
+const authenticateToken = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -36,5 +41,13 @@ router.post(
   },
   verifyStudentEmail
 );
+// ✅ Route to fetch student profile
+router.get("/profile", authenticateToken, getStudentProfile);
 
+// ✅ Route to update student profile
+router.put("/profile", authenticateToken, updateStudentProfile);
+
+// ✅ Route to delete student account
+router.delete("/profile", authenticateToken, deleteStudentAccount);
+router.put("/profile-image", authenticateToken, upload.single("profileImage"), updateProfileImage);
 module.exports = router;

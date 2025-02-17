@@ -26,6 +26,7 @@ app.use(
     credentials: true, // ✅ Allow credentials (fixes authentication issues)
   })
 );
+
 app.use(cookieParser()); // ✅ Ensure cookie-parser is used
 
 // ✅ Static file serving (uploads & frontend)
@@ -50,6 +51,20 @@ app.use("/api/students", StudentRoutes);
 app.use("/api/organizations", OrganizationRoutes);
 app.use("/api/developers", DeveloperRoutes);
 app.use("/api", UnifiedLoginRoutes);
+
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "blob:", "https://via.placeholder.com"],
+      },
+    },
+  })
+);
+
+
 
 // ✅ Ensure `/api/developers` route exists in `developerRoutes.js`
 const Developer = require("./models/Develpor"); // ✅ Import Developer model

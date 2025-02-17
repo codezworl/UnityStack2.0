@@ -64,6 +64,35 @@ const organizationSchema = new mongoose.Schema(
       type: String, // Stores the OTP or verification code
       required: false, // Only present during verification
     },
+
+    // ✅ New Fields for Profile Management
+
+    aboutUs: {
+      type: String,
+      trim: true,
+      default: "No about us information provided.",
+    },
+
+    logo: {
+      type: String, // Stores the filename or URL of the uploaded logo
+      trim: true,
+    },
+
+    socialMedia: [
+      {
+        platform: { type: String, required: true },
+        link: {
+          type: String,
+          required: true,
+          validate: {
+            validator: function (v) {
+              return v.match(/https?:\/\/(www\.)?\w+\.\w+/);
+            },
+            message: (props) => `${props.value} is not a valid URL!`,
+          },
+        },
+      },
+    ],
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt timestamps
 );

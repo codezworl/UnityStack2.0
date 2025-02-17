@@ -82,9 +82,11 @@ router.post("/login", async (req, res) => {
 
     res.status(200).json({
       message: "Login successful.",
+      token, // ✅ Include the token in response
       role,
       user: { id: user._id, email: user.email || user.companyEmail },
     });
+    
   } catch (error) {
     console.error("Error in login:", error.message);
     res.status(500).json({ message: "Server error. Please try again later." });

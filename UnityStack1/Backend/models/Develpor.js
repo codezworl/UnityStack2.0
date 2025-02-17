@@ -28,12 +28,13 @@ const developerSchema = new mongoose.Schema(
     zipCode: { type: String, trim: true },
     experience: { type: String, trim: true },
     domainTags: [{ type: String, trim: true }],
+
     github: {
       type: String,
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?github\.com\/.*$/.test(v) : true;
+          return v ? /^(https?:\/\/)?(www\.)?github\.com\/[A-Za-z0-9-]+$/.test(v) : true;
         },
         message: (props) => `${props.value} is not a valid GitHub profile URL!`,
       },
@@ -43,38 +44,56 @@ const developerSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/.test(v) : true;
+          return v ? /^(https?:\/\/)?(www\.)?linkedin\.com\/in\/[A-Za-z0-9-]+$/.test(v) : true;
         },
         message: (props) => `${props.value} is not a valid LinkedIn profile URL!`,
       },
     },
+
     password: {
       type: String,
       required: true,
       minlength: [6, "Password must be at least 6 characters long"],
     },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
+
+    isVerified: { type: Boolean, default: false },
     verificationCode: String,
 
-    // ✅ New Profile Setup Fields
-    profileImage: { type: String, trim: true }, // Profile picture URL
-    about: { type: String, trim: true }, // About Me section
-    hourlyRate: { type: String, trim: true }, // Per-hour price
-    availability: { type: String, trim: true }, // Availability status
+    // ✅ Profile Fields
+    profileImage: { type: String, trim: true },
+    about: { type: String, trim: true },
+    hourlyRate: { type: String, trim: true, default: "0" },
+    workingHours: {
+      from: { type: String, trim: true, default: "09:00" },
+      to: { type: String, trim: true, default: "17:00" },
+    },
+    availability: { type: String, trim: true, default: "Offline" },
+
+    // ✅ Expertise Section (Ensuring positive values for projects)
     expertise: [
       {
-        technology: { type: String, trim: true },
-        experienceYears: { type: Number, default: 0 },
+        domain: { type: String, required: true, trim: true },
+        experienceYears: { type: Number, default: 0, min: 0 }, // Prevent negative experience
+        projects: { type: Number, default: 0, min: 0 }, // Prevent negative projects
       },
     ],
+
+    // ✅ Job Experience Section (Ensuring startDate <= endDate)
     employment: [
       {
-        companyName: { type: String, trim: true },
-        technology: { type: String, trim: true },
-        years: { type: Number, default: 0 },
+        companyName: { type: String, required: true, trim: true },
+        position: { type: String, required: true, trim: true },
+        startDate: { type: Date, required: true },
+        endDate: { 
+          type: Date, 
+          validate: {
+            validator: function (v) {
+              return !this.startDate || !v || v >= this.startDate;
+            },
+            message: "End date cannot be before start date!",
+          },
+          default: null,
+        },
       },
     ],
   },

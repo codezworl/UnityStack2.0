@@ -40,8 +40,10 @@ const Header = () => {
         credentials: "include", // ✅ Send cookies
       });
 
+      localStorage.removeItem("token"); // ✅ Clear token from local storage
+      localStorage.removeItem("role"); // ✅ Clear role from local storage
       setUser(null);
-      navigate("/login"); // ✅ Navigate back to login after logout
+      navigate("/login"); // ✅ Redirect to login
     } catch (error) {
       console.error("Error logging out:", error);
     }
@@ -140,9 +142,40 @@ const Header = () => {
                     boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                     padding: "10px",
                     borderRadius: "5px",
+                    minWidth: "150px"
                   }}
                 >
-                  <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#64748b" }}>Logout</button>
+                  {/* ✅ Show Profile Option Based on Role */}
+                  {user?.role === "student" ? (
+                    <Link
+                      to="/studentprofile"
+                      style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}
+                    >
+                      My Profile
+                    </Link>
+                  ) : user?.role === "developer" ? (
+                    <Link
+                      to="/profile"
+                      style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}
+                    >
+                      My Profile
+                    </Link>
+                  ) : null}
+
+                  {/* Logout Button */}
+                  <button 
+                    onClick={handleLogout} 
+                    style={{ 
+                      border: "none", 
+                      background: "none", 
+                      color: "#64748b", 
+                      padding: "8px 10px", 
+                      width: "100%", 
+                      textAlign: "left" 
+                    }}
+                  >
+                    Logout
+                  </button>
                 </div>
               )}
             </div>
