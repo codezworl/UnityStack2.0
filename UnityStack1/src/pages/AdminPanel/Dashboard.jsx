@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import DashboardHome from "./DashboardHome";
-import UsersPage from "/Final Year Project/UnityStack2.0/UnityStack1/src/pages/UsersPage";
+import UsersPage from "../UsersPage";
 import TransactionsPage from "./ShowTranssactions";
 import SettingsPage from "./Adminsettings";
 import { useNavigate } from 'react-router-dom';

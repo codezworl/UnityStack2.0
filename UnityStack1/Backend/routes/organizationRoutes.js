@@ -97,7 +97,9 @@ router.get("/company-name", authenticateToken, async (req, res) => {
 router.post("/posts", authenticateToken, upload.single("image"), createPost);
 router.put("/posts/:id", authenticateToken, upload.single("image"), updatePost);
 router.delete("/posts/:id", authenticateToken, deletePost);
-router.get("/posts", getAllPosts);
+// ✅ Fetch only posts related to the authenticated organization
+router.get("/posts", authenticateToken, getAllPosts);
+
 // ✅ Update Company Profile (with Logo)
 router.put("/profile", authenticateToken, upload.single("logo"), updateOrganizationProfile);
 

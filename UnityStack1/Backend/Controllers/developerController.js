@@ -211,21 +211,26 @@ const uploadProfileImage = upload.single("profileImage");
 // ✅ Remove a Specific Expertise
 const removeExpertise = async (req, res) => {
   try {
-    const developerId = req.user.id;
-    const { expertiseId } = req.params;
+      const developer = await Developer.findById(req.user.id);
 
-    const developer = await Developer.findById(developerId);
-    if (!developer) return res.status(404).json({ message: "Developer not found." });
+      if (!developer) {
+          return res.status(404).json({ message: "Developer not found." });
+      }
 
-    developer.expertise = developer.expertise.filter(exp => exp._id.toString() !== expertiseId);
-    await developer.save();
+      const expertiseId = req.params.expertiseId;
 
-    res.status(200).json({ message: "Expertise removed successfully", expertise: developer.expertise });
+      // ✅ Ensure only the selected expertise is removed
+      developer.expertise = developer.expertise.filter(exp => exp._id.toString() !== expertiseId);
+
+      await developer.save();
+      res.status(200).json({ message: "Expertise removed successfully.", expertise: developer.expertise });
   } catch (error) {
-    console.error("❌ Error removing expertise:", error.message);
-    res.status(500).json({ message: "Server error. Please try again later." });
+      console.error("❌ Error removing expertise:", error);
+      res.status(500).json({ message: "Server error." });
   }
 };
+
+
 // ✅ Update Expertise
 // ✅ Update Expertise Function (Backend)
 const updateExpertise = async (req, res) => {
@@ -261,21 +266,26 @@ const updateExpertise = async (req, res) => {
 // ✅ Remove a Specific Job Experience
 const removeJobExperience = async (req, res) => {
   try {
-    const developerId = req.user.id;
-    const { jobId } = req.params;
+      const developer = await Developer.findById(req.user.id);
 
-    const developer = await Developer.findById(developerId);
-    if (!developer) return res.status(404).json({ message: "Developer not found." });
+      if (!developer) {
+          return res.status(404).json({ message: "Developer not found." });
+      }
 
-    developer.employment = developer.employment.filter(job => job._id.toString() !== jobId);
-    await developer.save();
+      const jobId = req.params.jobId;
 
-    res.status(200).json({ message: "Job experience removed successfully", employment: developer.employment });
+      // ✅ Ensure only the selected job is removed
+      developer.employment = developer.employment.filter(job => job._id.toString() !== jobId);
+
+      await developer.save();
+      res.status(200).json({ message: "Job experience removed successfully.", employment: developer.employment });
   } catch (error) {
-    console.error("❌ Error removing job experience:", error.message);
-    res.status(500).json({ message: "Server error. Please try again later." });
+      console.error("❌ Error removing job experience:", error);
+      res.status(500).json({ message: "Server error." });
   }
 };
+
+
 // ✅ Update Job Experience
 const updateJobExperience = async (req, res) => {
   try {

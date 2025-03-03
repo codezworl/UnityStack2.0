@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Modal, Button } from "react-bootstrap";
 import SignupImage from "../assets/student.png"; // Replace with the correct image path
+import { useNavigate } from "react-router-dom";  // ✅ Import for navigation
+
 
 const StudentSignUp = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +27,8 @@ const StudentSignUp = () => {
   const [otp, setOtp] = useState("");
   const [isOtpVerified, setIsOtpVerified] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate(); // ✅ Hook for navigation
+
 
   // Handle input change
   const handleChange = (e) => {
@@ -35,26 +39,33 @@ const StudentSignUp = () => {
   // Validate form
   const validateForm = () => {
     const newErrors = {};
+  
+    // ✅ Check required fields
     Object.keys(formData).forEach((key) => {
       if (!formData[key]) {
         newErrors[key] = "This field is required";
       }
     });
-
+  
+    // ✅ Ensure password is at least 8 characters
+    if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+  
+    // ✅ Ensure passwords match
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
-
-    if (
-      formData.universityEmail &&
-      !/\S+@\S+\.\S+/.test(formData.universityEmail)
-    ) {
+  
+    // ✅ Validate email format
+    if (formData.universityEmail && !/\S+@\S+\.\S+/.test(formData.universityEmail)) {
       newErrors.universityEmail = "Invalid email format";
     }
-
+  
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+  
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -332,61 +343,57 @@ const StudentSignUp = () => {
             />
           </div>
 
-          {/* Password */}
-          <div className="mb-3 position-relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              className={`form-control ${errors.password ? "is-invalid" : ""}`}
-              placeholder="Password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              onFocus={focusStyle}
-              onBlur={blurStyle}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              className="btn btn-link position-absolute"
-              style={{
-                top: "50%",
-                right: "10px",
-                transform: "translateY(-50%)",
-              }}
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? "🙈" : "👁"}
-            </button>
-          </div>
+          
+          {/* Password Field */}
+<div className="mb-3 position-relative">
+  <input
+    type={showPassword ? "text" : "password"}
+    className={`form-control ${errors.password ? "is-invalid" : ""}`}
+    placeholder="Password (Min 8 characters)"
+    name="password"
+    value={formData.password}
+    onChange={handleChange}
+    style={{
+      border: errors.password ? "2px solid red" : "1px solid black", // ✅ Red border if invalid
+    }}
+  />
+  <button
+    type="button"
+    className="btn btn-link position-absolute"
+    style={{ top: "50%", right: "10px", transform: "translateY(-50%)" }}
+    onClick={() => setShowPassword(!showPassword)}
+  >
+    {showPassword ? "🙈" : "👁"}
+  </button>
+  {errors.password && <div className="text-danger">{errors.password}</div>} {/* ✅ Show error text */}
+</div>
 
-          {/* Confirm Password */}
-          <div className="mb-3 position-relative">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              className={`form-control ${
-                errors.confirmPassword ? "is-invalid" : ""
-              }`}
-              placeholder="Confirm Password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              onFocus={focusStyle}
-              onBlur={blurStyle}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              className="btn btn-link position-absolute"
-              style={{
-                top: "50%",
-                right: "10px",
-                transform: "translateY(-50%)",
-              }}
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            >
-              {showConfirmPassword ? "🙈" : "👁"}
-            </button>
-          </div>
+
+         
+         {/* Confirm Password Field */}
+<div className="mb-3 position-relative">
+  <input
+    type={showConfirmPassword ? "text" : "password"}
+    className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
+    placeholder="Confirm Password"
+    name="confirmPassword"
+    value={formData.confirmPassword}
+    onChange={handleChange}
+    style={{
+      border: errors.confirmPassword ? "2px solid red" : "1px solid black", // ✅ Red border if mismatch
+    }}
+  />
+  <button
+    type="button"
+    className="btn btn-link position-absolute"
+    style={{ top: "50%", right: "10px", transform: "translateY(-50%)" }}
+    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+  >
+    {showConfirmPassword ? "🙈" : "👁"}
+  </button>
+  {errors.confirmPassword && <div className="text-danger">{errors.confirmPassword}</div>} {/* ✅ Show error text */}
+</div>
+
 
           <button
             className="btn btn-primary w-100 mb-3"
@@ -443,17 +450,23 @@ const StudentSignUp = () => {
       </Modal>
 
       {/* Success Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Success</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>Account created successfully!</Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+<Modal show={showModal} onHide={() => setShowModal(false)}>
+  <Modal.Header closeButton>
+    <Modal.Title>🎉 Account Created Successfully!</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    Your account has been successfully created. Click below to go to the login page.
+  </Modal.Body>
+  <Modal.Footer>
+    <Button 
+      variant="primary" 
+      onClick={() => navigate("/login")} // ✅ Navigate user to login page
+    >
+      🔄 Back to Login
+    </Button>
+  </Modal.Footer>
+</Modal>
+
     </div>
   );
 };

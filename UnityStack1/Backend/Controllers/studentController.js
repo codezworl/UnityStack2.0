@@ -238,6 +238,7 @@ const updateProfileImage = async (req, res) => {
 };
 
 
+
 module.exports = {
   signupStudent,
   verifyStudentEmail, // Add the email verification handler

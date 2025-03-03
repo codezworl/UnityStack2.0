@@ -25,6 +25,7 @@ const OrganizationRegister = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const navigate = useNavigate();
 
   const cities = ["Lahore", "Karachi", "Islamabad", "Peshawar", "Quetta"];
   const services = [
@@ -124,28 +125,30 @@ const OrganizationRegister = () => {
   const handleVerifyOtp = async () => {
     setIsVerifyingOtp(true);
     try {
-      const response = await fetch("http://localhost:5000/api/organizations/verify-email", {
+      const response = await fetch("http://localhost:5000/api/organizations/verify-email", { // ✅ Fixed URL
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email: formData.companyEmail, otp }),
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
-        alert("OTP verified successfully!");
-        navigate("/login"); // Navigate to the login page
+        alert("✅ OTP verified successfully!");
+        setShowOtpModal(false);
+        setShowModal(true); // ✅ Show success message
       } else {
-        alert(data.message || "Invalid OTP. Please try again.");
+        alert(data.message || "❌ Invalid OTP. Please try again.");
       }
     } catch (error) {
-      alert("An error occurred while verifying the OTP. Please try again.");
+      alert("❌ An error occurred while verifying the OTP. Please try again.");
     } finally {
       setIsVerifyingOtp(false);
     }
   };
+  
 
   const renderProgressBar = () => (
     <div className="d-flex justify-content-between align-items-center mb-4">
@@ -463,6 +466,21 @@ const OrganizationRegister = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      {/* ✅ Success Modal for Account Created */}
+<Modal show={showModal} onHide={() => setShowModal(false)} centered>
+  <Modal.Header closeButton>
+    <Modal.Title>Account Created Successfully!</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    Your organization account has been successfully created.
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="primary" onClick={() => navigate("/login")}> {/* ✅ Navigate to login */}
+      Back to Login
+    </Button>
+  </Modal.Footer>
+</Modal>
+
     </div>
   );
 };

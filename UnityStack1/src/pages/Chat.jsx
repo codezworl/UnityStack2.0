@@ -13,12 +13,12 @@ function Chat() {
   ]);
 
   const users = [
-    { id: 1, name: 'Vincent Porter', time: '38m', online: true, avatar: 'https://via.placeholder.com/40?text=VP' },
-    { id: 2, name: 'Aiden Chavez', time: '45m', online: true, avatar: 'https://via.placeholder.com/40?text=AC' },
-    { id: 3, name: 'Mike Thomas', time: '1h', online: false, avatar: 'https://via.placeholder.com/40?text=MT' },
-    { id: 4, name: 'Christian Kelly', time: '2h', online: true, avatar: 'https://via.placeholder.com/40?text=CK' },
-    { id: 5, name: 'Monica Ward', time: '2h', online: false, avatar: 'https://via.placeholder.com/40?text=MW' },
-    { id: 6, name: 'Dean Henry', time: '3h', online: false, avatar: 'https://via.placeholder.com/40?text=DH' },
+    { id: 1, name: 'M.Faseeh', time: '38m', online: true, avatar: 'https://via.placeholder.com/40?text=VP' },
+    { id: 2, name: 'Waqas Zafar', time: '45m', online: true, avatar: 'https://via.placeholder.com/40?text=AC' },
+    { id: 3, name: 'Abdullah Ata', time: '1h', online: false, avatar: 'https://via.placeholder.com/40?text=MT' },
+    { id: 4, name: 'Ahmed Hussain', time: '2h', online: true, avatar: 'https://via.placeholder.com/40?text=CK' },
+    { id: 5, name: 'Fuzail raza', time: '2h', online: false, avatar: 'https://via.placeholder.com/40?text=MW' },
+    { id: 6, name: 'Sajjad ali', time: '3h', online: false, avatar: 'https://via.placeholder.com/40?text=DH' },
   ];
 
   const handleUserClick = (user) => {

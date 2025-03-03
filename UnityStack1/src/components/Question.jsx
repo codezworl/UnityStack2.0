@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Header from "./header";
 import Footer from "./footer";
 import { Link } from "react-router-dom";
@@ -6,17 +6,15 @@ import AskQuestion from "../pages/askquestion";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function AllQuestionsPage() {
+function Question() {
+  const [showNoResultsModal, setShowNoResultsModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState("Newest");
   const [isHovered, setIsHovered] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const questionsPerPage = 2;
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredQuestions, setFilteredQuestions] = useState([]);
-  const [showNoResultsModal, setShowNoResultsModal] = useState(false);
-  const [showGuideModal, setShowGuideModal] = useState(false);
   const handleTabClick = (tab) => setSelectedTab(tab);
   const handleMoreToggle = () => setIsMoreOpen((prev) => !prev);
   const handleFilterToggle = () => setIsFilterOpen((prev) => !prev);
@@ -32,9 +30,9 @@ export default function AllQuestionsPage() {
   ];
   const navigate = useNavigate();
   const handleTagClick = (tag) => {
-    console.log(`You clicked on tag: ${tag}`);
+    console.log('You clicked on tag: ${ tag }');
     // Redirect or filter questions based on the clicked tag
-    // For example: window.location.href = `/questions?tag=${tag}`;
+    // For example: window.location.href = /questions?tag=${tag};
   };
   // Mock Data
   const questions = [
@@ -93,7 +91,7 @@ export default function AllQuestionsPage() {
     },
     {
       title: "How to Answer Questions",
-      icon: "✍️",
+      icon: "✍",
       steps: [
         "Read the question carefully",
         "Provide clear explanations",
@@ -154,35 +152,20 @@ export default function AllQuestionsPage() {
     cursor: "pointer",
   };
 
-  // Handle search input change
-  const handleSearchChange = (e) => {
-    const query = e.target.value.toLowerCase();
-    setSearchQuery(query);
-  };
+  const paginationData = useMemo(() => {
+    const indexOfLastQuestion = currentPage * questionsPerPage;
+    const indexOfFirstQuestion = indexOfLastQuestion - questionsPerPage;
+    const currentQuestions = questions.slice(
+      indexOfFirstQuestion,
+      indexOfLastQuestion
+    );
+    const totalPages = Math.ceil(questions.length / questionsPerPage);
 
-  // Filter questions based on search query
-  useEffect(() => {
-    const filtered = questions.filter((question) => {
-      const searchString = `${question.title} ${
-        question.description
-      } ${question.tags.join(" ")} ${question.askedBy}`.toLowerCase();
-      return searchString.includes(searchQuery);
-    });
-    setFilteredQuestions(filtered);
-    setCurrentPage(1); // Reset to first page when search changes
-    
-    // Show modal if no results and there's a search query
-    setShowNoResultsModal(filtered.length === 0 && searchQuery.length > 0);
-  }, [searchQuery, questions]);
-
-  // Update pagination calculations to use filteredQuestions
-  const indexOfLastQuestion = currentPage * questionsPerPage;
-  const indexOfFirstQuestion = indexOfLastQuestion - questionsPerPage;
-  const currentQuestions = filteredQuestions.slice(
-    indexOfFirstQuestion,
-    indexOfLastQuestion
-  );
-  const totalPages = Math.ceil(filteredQuestions.length / questionsPerPage);
+    return {
+      currentQuestions,
+      totalPages,
+    };
+  }, [currentPage, questionsPerPage, questions]);
 
   // Change page
   const handlePageChange = (pageNumber) => {
@@ -191,24 +174,13 @@ export default function AllQuestionsPage() {
 
   // Generate page numbers
   const pageNumbers = [];
-  for (let i = 1; i <= totalPages; i++) {
+  for (let i = 1; i <= paginationData.totalPages; i++) {
     pageNumbers.push(i);
   }
 
   // Handle modal close
   const handleCloseModal = () => {
     setShowNoResultsModal(false);
-    setSearchQuery(""); // Optional: clear search when closing modal
-  };
-
-  // Calculate total questions count
-  const getTotalQuestionsCount = () => {
-    return questions.length;
-  };
-
-  // Format number with commas
-  const formatNumber = (num) => {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   return (
@@ -266,7 +238,7 @@ export default function AllQuestionsPage() {
                 </button>
               </div>
 
-              {/* Search Bar Section */}
+              {/* Search Bar */}
               <div
                 style={{
                   display: "flex",
@@ -283,8 +255,6 @@ export default function AllQuestionsPage() {
                   <input
                     type="text"
                     placeholder="Search questions..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
                     style={{
                       width: "100%",
                       padding: "0.75rem 1rem 0.75rem 2.5rem",
@@ -318,19 +288,6 @@ export default function AllQuestionsPage() {
                     🔍
                   </span>
                 </div>
-
-                {/* Optional: Search Stats */}
-                {searchQuery && (
-                  <div
-                    style={{
-                      color: "#64748B",
-                      fontSize: "0.875rem",
-                      fontFamily: "Poppins, sans-serif",
-                    }}
-                  >
-                    Found {filteredQuestions.length} results
-                  </div>
-                )}
               </div>
 
               <div style={{ padding: "1rem", backgroundColor: "#F8FAFC" }}>
@@ -434,9 +391,9 @@ export default function AllQuestionsPage() {
                     }}
                   >
                     {/* Question Count */}
-                    <div 
-                      style={{ 
-                        fontSize: "0.875rem", 
+                    <div
+                      style={{
+                        fontSize: "0.875rem",
                         color: "#64748B",
                         fontFamily: "Poppins, sans-serif",
                         display: "flex",
@@ -445,14 +402,9 @@ export default function AllQuestionsPage() {
                       }}
                     >
                       <span style={{ fontWeight: "600", color: "#1E293B" }}>
-                        {formatNumber(getTotalQuestionsCount())}
+                        {questions.length}
                       </span>
                       <span>questions</span>
-                      {searchQuery && (
-                        <span>
-                          (showing {formatNumber(filteredQuestions.length)} results)
-                        </span>
-                      )}
                     </div>
 
                     {/* Filter Button */}
@@ -650,7 +602,7 @@ export default function AllQuestionsPage() {
               </div>
               {/* Question Cards */}
               <div>
-                {currentQuestions.map((question) => (
+                {paginationData.currentQuestions.map((question) => (
                   <motion.div
                     key={question.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -667,7 +619,7 @@ export default function AllQuestionsPage() {
                       }}
                     >
                       <Link
-                        to={`/questionthread/${question.id}`} // Navigate dynamically to the questionthread route
+                        to={`/questionthread/${question.id}`}
                         style={{
                           textDecoration: "none",
                           color: "#2563EB",
@@ -769,7 +721,7 @@ export default function AllQuestionsPage() {
                   Previous
                 </button>
 
-                {pageNumbers.map((number) => (
+                {Array.from({ length: paginationData.totalPages }, (_, i) => i + 1).map((number) => (
                   <button
                     key={number}
                     onClick={() => handlePageChange(number)}
@@ -792,16 +744,16 @@ export default function AllQuestionsPage() {
 
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === paginationData.totalPages}
                   style={{
                     padding: "8px 16px",
                     borderRadius: "4px",
                     border: "1px solid #E2E8F0",
                     backgroundColor:
-                      currentPage === totalPages ? "#F1F5F9" : "#FFFFFF",
+                      currentPage === paginationData.totalPages ? "#F1F5F9" : "#FFFFFF",
                     cursor:
-                      currentPage === totalPages ? "not-allowed" : "pointer",
-                    color: currentPage === totalPages ? "#94A3B8" : "#1E293B",
+                      currentPage === paginationData.totalPages ? "not-allowed" : "pointer",
+                    color: currentPage === paginationData.totalPages ? "#94A3B8" : "#1E293B",
                     transition: "all 0.3s ease",
                     fontFamily: "Poppins, sans-serif",
                   }}
@@ -820,7 +772,7 @@ export default function AllQuestionsPage() {
                   fontFamily: "Poppins, sans-serif",
                 }}
               >
-                Page {currentPage} of {totalPages}
+                Page {currentPage} of {paginationData.totalPages}
               </div>
             </div>
 
@@ -927,8 +879,8 @@ export default function AllQuestionsPage() {
                 >
                   Need Help?
                 </h3>
-                <p style={{ 
-                  color: "#64748B", 
+                <p style={{
+                  color: "#64748B",
                   fontSize: "0.875rem",
                   fontFamily: "Poppins, sans-serif",
                   marginBottom: "1rem"
@@ -1097,130 +1049,127 @@ export default function AllQuestionsPage() {
         <Footer />
       </motion.div>
 
-      {/* Replace the old No Results message with this Modal */}
       <AnimatePresence>
         {showNoResultsModal && (
-          <>
-            {/* Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 1000,
+            }}
+            onClick={handleCloseModal}
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", damping: 20 }}
               style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                zIndex: 1000,
+                backgroundColor: "white",
+                padding: "2rem",
+                borderRadius: "12px",
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                maxWidth: "400px",
+                width: "90%",
+                textAlign: "center",
+                position: "relative",
               }}
-              onClick={handleCloseModal}
+              onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal */}
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
-                transition={{ type: "spring", damping: 20 }}
+              {/* Close Button */}
+              <button
+                onClick={handleCloseModal}
                 style={{
-                  backgroundColor: "white",
-                  padding: "2rem",
-                  borderRadius: "12px",
-                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                  maxWidth: "400px",
-                  width: "90%",
-                  textAlign: "center",
-                  position: "relative",
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  background: "none",
+                  border: "none",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                  color: "#64748B",
+                  padding: "5px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "color 0.3s ease",
                 }}
-                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking modal content
+                onMouseOver={(e) => e.target.style.color = "#1E293B"}
+                onMouseOut={(e) => e.target.style.color = "#64748B"}
               >
-                {/* Close Button */}
+                ×
+              </button>
+
+              {/* Icon */}
+              <div
+                style={{
+                  fontSize: "3rem",
+                  marginBottom: "1rem",
+                  color: "#2563EB",
+                }}
+              >
+                🔍
+              </div>
+
+              {/* Content */}
+              <h3
+                style={{
+                  color: "#1E293B",
+                  fontSize: "1.25rem",
+                  marginBottom: "0.5rem",
+                  fontFamily: "Poppins, sans-serif",
+                }}
+              >
+                No Questions Found
+              </h3>
+              <p
+                style={{
+                  color: "#64748B",
+                  fontSize: "0.875rem",
+                  marginBottom: "1.5rem",
+                  fontFamily: "Poppins, sans-serif",
+                }}
+              >
+                We couldn't find any questions matching "{searchQuery}"
+              </p>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
                 <button
                   onClick={handleCloseModal}
                   style={{
-                    position: "absolute",
-                    top: "10px",
-                    right: "10px",
-                    background: "none",
+                    padding: "0.5rem 1.5rem",
+                    backgroundColor: "#2563EB",
+                    color: "white",
                     border: "none",
-                    fontSize: "1.5rem",
+                    borderRadius: "6px",
                     cursor: "pointer",
-                    color: "#64748B",
-                    padding: "5px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "color 0.3s ease",
-                  }}
-                  onMouseOver={(e) => e.target.style.color = "#1E293B"}
-                  onMouseOut={(e) => e.target.style.color = "#64748B"}
-                >
-                  ×
-                </button>
-
-                {/* Icon */}
-                <div
-                  style={{
-                    fontSize: "3rem",
-                    marginBottom: "1rem",
-                    color: "#2563EB",
-                  }}
-                >
-                  🔍
-                </div>
-
-                {/* Content */}
-                <h3
-                  style={{
-                    color: "#1E293B",
-                    fontSize: "1.25rem",
-                    marginBottom: "0.5rem",
                     fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  No Questions Found
-                </h3>
-                <p
-                  style={{
-                    color: "#64748B",
                     fontSize: "0.875rem",
-                    marginBottom: "1.5rem",
-                    fontFamily: "Poppins, sans-serif",
+                    transition: "background-color 0.3s ease",
                   }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = "#1E40AF"}
+                  onMouseOut={(e) => e.target.style.backgroundColor = "#2563EB"}
                 >
-                  We couldn't find any questions matching "{searchQuery}"
-                </p>
-
-                {/* Action Buttons */}
-                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                  <button
-                    onClick={handleCloseModal}
-                    style={{
-                      padding: "0.5rem 1.5rem",
-                      backgroundColor: "#2563EB",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      fontFamily: "Poppins, sans-serif",
-                      fontSize: "0.875rem",
-                      transition: "background-color 0.3s ease",
-                    }}
-                    onMouseOver={(e) => e.target.style.backgroundColor = "#1E40AF"}
-                    onMouseOut={(e) => e.target.style.backgroundColor = "#2563EB"}
-                  >
-                    Clear Search
-                  </button>
-                </div>
-              </motion.div>
+                  Clear Search
+                </button>
+              </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 }
+
+export default Question;

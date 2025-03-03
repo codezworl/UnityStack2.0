@@ -44,7 +44,7 @@ const studentSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/.test(v) : true; // LinkedIn URL validation
+          return v ? /^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/.test(v) : true;
         },
         message: (props) => `${props.value} is not a valid LinkedIn profile URL!`,
       },
@@ -54,7 +54,7 @@ const studentSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?github\.com\/.*$/.test(v) : true; // GitHub URL validation
+          return v ? /^(https?:\/\/)?(www\.)?github\.com\/.*$/.test(v) : true;
         },
         message: (props) => `${props.value} is not a valid GitHub profile URL!`,
       },
@@ -66,14 +66,19 @@ const studentSchema = new mongoose.Schema(
     },
     isVerified: {
       type: Boolean,
-      default: false, // Default to false until verified
+      default: false,
     },
     verificationCode: {
-      type: String, // Stores the OTP or verification code
-      required: false, // Only present when an account is created or verification is pending
+      type: String,
+      required: false, 
+    },
+    // ✅ New field for profile image
+    profileImage: {
+      type: String, // Store image path
+      default: "", // Default is empty
     },
   },
-  { timestamps: true } // Automatically adds createdAt and updatedAt timestamps
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Student", studentSchema);

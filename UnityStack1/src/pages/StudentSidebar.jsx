@@ -1,6 +1,6 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHouse, faChartSimple, faComments, faProjectDiagram, faVideo, faSignOutAlt, faListCheck } from '@fortawesome/free-solid-svg-icons';
+import { faHouse, faChartSimple, faComments, faProjectDiagram, faVideo, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
 import { useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import profileBg from '../assets/silver1.jpeg';
@@ -53,7 +53,7 @@ const Sidebar = ({ onSelectPage }) => {
           />
           <div className="mt-5">
             <p className="fw-bold mb-0" style={{ fontSize: '1.2rem' }}>
-              Robert Fox
+              Ahmed Ali
             </p>
             <p className="text-muted small" style={{ fontSize: '1rem' }}>
               {userRole}
@@ -129,19 +129,6 @@ const Sidebar = ({ onSelectPage }) => {
                 Session History
               </a>
             </li>
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('requests')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faListCheck} className="me-3" />
-              <a
-                href="/requests"
-                style={{ textDecoration: 'none', color: 'black' }}
-              >
-                Requests
-              </a>
-            </li>
           </ul>
         </nav>
 
@@ -170,7 +157,6 @@ const Sidebar = ({ onSelectPage }) => {
             { icon: faComments, label: 'Chat', path: 'chat' },
             { icon: faProjectDiagram, label: 'Projects', path: 'projects' },
             { icon: faVideo, label: 'Sessions', path: 'sessions' },
-            { icon: faListCheck, label: 'Requests', path: 'requests' },
           ].map(({ icon, label, path }) => (
             <li
               key={path}

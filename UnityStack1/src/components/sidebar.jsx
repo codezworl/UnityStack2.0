@@ -53,7 +53,7 @@ const Sidebar = ({ onSelectPage }) => {
           />
           <div className="mt-5">
             <p className="fw-bold mb-0" style={{ fontSize: '1.2rem' }}>
-              Robert Fox
+              Ahmed Ali
             </p>
             <p className="text-muted small" style={{ fontSize: '1rem' }}>
               {userRole}
@@ -84,7 +84,7 @@ const Sidebar = ({ onSelectPage }) => {
             >
               <FontAwesomeIcon icon={faChartSimple} className="me-3" />
               <a
-          href="/develpordashboard"
+          href="/developerdashboard"
           style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
         >
           Dashboard

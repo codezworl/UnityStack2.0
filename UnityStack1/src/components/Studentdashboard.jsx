@@ -1,162 +1,50 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Header from "./header";
-import StudentSidebar from "../pages/StudentSidebar";
-import { useNavigate } from "react-router-dom";
+import StudentSidebar from "../pages/StudentSidebar"; // Assuming this import is correct
+import { useNavigate } from 'react-router-dom';
 
 const StudentDashboard = () => {
-  const [selectedPage, setSelectedPage] = useState("dashboard");
-  const [activeRequestTab, setActiveRequestTab] = useState("open");
+  const [selectedPage, setSelectedPage] = useState("dashboard"); // Default page
   const navigate = useNavigate();
 
   const handleSidebarSelection = (page) => {
-    setSelectedPage(page);
+    setSelectedPage(page); // Update selected page based on sidebar selection
   };
 
-  // Handler functions for card clicks
   const handleLiveHelpClick = () => {
-    navigate("/livesessionform"); 
+    navigate('/livesessionform');
   };
 
   const handleProjectHelpClick = () => {
-    navigate("/project-help"); 
+    console.log("Getting project help...");
+    // Add additional logic here if needed
   };
 
   const handleCodeReviewClick = () => {
-    navigate("/code-review"); 
+    console.log("Requesting code review...");
+    // Add additional logic here if needed
   };
-
   const renderContent = () => {
-    if (selectedPage === "requests") {
-      return (
-        <div className="requests-content">
-          {/* Requests Tab Navigation */}
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <ul className="nav nav-tabs">
-                <li className="nav-item">
-                  <button 
-                    className={`nav-link ${activeRequestTab === "open" ? "active" : ""}`}
-                    onClick={() => setActiveRequestTab("open")}
-                  >
-                    Open
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button 
-                    className={`nav-link ${activeRequestTab === "closed" ? "active" : ""}`}
-                    onClick={() => setActiveRequestTab("closed")}
-                  >
-                    Closed
-                  </button>
-                </li>
-              </ul>
-
-              <div className="tab-content mt-3">
-                {activeRequestTab === "open" ? (
-                  <div className="open-requests">
-                    {/* Sample Open Request Card */}
-                    <div className="card mb-3">
-                      <div className="card-body">
-                        <div className="d-flex justify-content-between align-items-center">
-                          <h6 className="mb-1">Live Session Request</h6>
-                          <span className="badge bg-primary">Open</span>
-                        </div>
-                        <p className="text-muted mb-2">React Native Development Help</p>
-                        <small className="text-muted">Submitted: 2 days ago</small>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="closed-requests">
-                    {/* Sample Closed Request Card */}
-                    <div className="card mb-3">
-                      <div className="card-body">
-                        <div className="d-flex justify-content-between align-items-center">
-                          <h6 className="mb-1">Code Review Request</h6>
-                          <span className="badge bg-secondary">Closed</span>
-                        </div>
-                        <p className="text-muted mb-2">Vue.js Component Review</p>
-                        <small className="text-muted">Completed: 5 days ago</small>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="dashboard-content">
-        {/* Top Section */}
         <div className="row g-4">
           <div className="col-lg-4">
-            <div 
-              className="card text-center shadow-sm p-3" 
-              onClick={handleLiveHelpClick}
-              style={{
-                cursor: "pointer",
-                transition: "transform 0.2s, box-shadow 0.2s",
-                height: "100%"
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = "translateY(-5px)";
-                e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-              }}
-            >
+            <div className="card text-center shadow-sm p-3" onClick={handleLiveHelpClick}>
               <i className="bi bi-chat-dots fs-1 text-primary"></i>
               <h5 className="mt-2">Get live help</h5>
-              <p className="text-muted">1 to 1 live session</p>
+              <p className="text-muted">1:1 mentorship session</p>
             </div>
           </div>
           <div className="col-lg-4">
-            <div 
-              className="card text-center shadow-sm p-3"
-              onClick={handleProjectHelpClick}
-              style={{
-                cursor: "pointer",
-                transition: "transform 0.2s, box-shadow 0.2s",
-                height: "100%"
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = "translateY(-5px)";
-                e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-              }}
-            >
-              <i className="bi bi-tools fs-1 text-success"></i>
+            <div className="card text-center shadow-sm p-3" onClick={handleProjectHelpClick}>
+              <i className="bi bi-code-slash fs-1 text-success"></i>
               <h5 className="mt-2">Get project help</h5>
               <p className="text-muted">Find best developer for help</p>
             </div>
           </div>
           <div className="col-lg-4">
-            <div 
-              className="card text-center shadow-sm p-3"
-              onClick={handleCodeReviewClick}
-              style={{
-                cursor: "pointer",
-                transition: "transform 0.2s, box-shadow 0.2s",
-                height: "100%"
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = "translateY(-5px)";
-                e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-              }}
-            >
+            <div className="card text-center shadow-sm p-3" onClick={handleCodeReviewClick}>
               <i className="bi bi-check-circle fs-1 text-warning"></i>
               <h5 className="mt-2">Get code reviewed</h5>
               <p className="text-muted">Take expert opinion</p>
@@ -290,57 +178,35 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    <>
       <Header />
-      
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Updated Sidebar */}
+
+      <div className="d-flex">
+        {/* Sidebar */}
         <div
           style={{
-            width: "250px",
+            width: "20%",
             backgroundColor: "#f8f9fa",
+            height: "100vh",
             borderRight: "1px solid #ddd",
-            height: "calc(100vh - 60px)",
-            position: "sticky",
-            top: "60px",
-            overflowY: "auto",
-            msOverflowStyle: "none", // Hide scrollbar for IE and Edge
-            scrollbarWidth: "none", // Hide scrollbar for Firefox
-            "&::-webkit-scrollbar": { // Hide scrollbar for Chrome, Safari, and Opera
-              display: "none"
-            }
           }}
         >
-          <style>
-            {`
-              .sidebar-container::-webkit-scrollbar {
-                display: none;
-              }
-              .sidebar-container {
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-              }
-            `}
-          </style>
-          <div className="sidebar-container">
-            <StudentSidebar onSelectPage={handleSidebarSelection} />
-          </div>
+          <StudentSidebar onSelectPage={handleSidebarSelection} />
         </div>
 
         {/* Main Content */}
         <div
+          className="flex-grow-1"
           style={{
-            flex: 1,
             padding: "20px",
             overflowY: "auto",
             backgroundColor: "#f4f6f9",
-            height: "calc(100vh - 60px)",
           }}
         >
           {renderContent()}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

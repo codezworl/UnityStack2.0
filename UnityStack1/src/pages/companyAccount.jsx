@@ -240,17 +240,23 @@ const handleLogoUpload = async (e) => {
         {/* ✅ Information Tab (Now Includes Logo Upload) */}
         <Tab eventKey="info" title="Information">
   <h5>About Us</h5>
-  <ReactQuill value={companyInfo.aboutUs} onChange={(value) => setCompanyInfo({ ...companyInfo, aboutUs: value })} readOnly={!isEditing} />
+  {isEditing ? (
+    <ReactQuill 
+      value={companyInfo.aboutUs} 
+      onChange={(value) => setCompanyInfo({ ...companyInfo, aboutUs: value })} 
+    />
+  ) : (
+    <p>{companyInfo.aboutUs || "No company information available."}</p>
+  )}
 
   <h5 className="mt-4">Company Logo</h5>
   <div className="d-flex align-items-center mt-4">
-  <img
-  src={companyInfo.logo ? `http://localhost:5000/uploads/${companyInfo.logo}` : "/default-logo.png"}
-  alt="Company Logo"
-  className="rounded-circle"
-  style={{ width: "80px", height: "80px", objectFit: "cover", marginRight: "15px" }}
-/>
-
+    <img
+      src={companyInfo.logo ? `http://localhost:5000/uploads/${companyInfo.logo}` : "/default-logo.png"}
+      alt="Company Logo"
+      className="rounded-circle"
+      style={{ width: "80px", height: "80px", objectFit: "cover", marginRight: "15px" }}
+    />
     {isEditing && (
       <input
         type="file"
@@ -261,12 +267,16 @@ const handleLogoUpload = async (e) => {
     )}
   </div>
 
-  <Button className="mt-3" onClick={() => setIsEditing(!isEditing)}>
-    {isEditing ? "Save Changes" : "Edit About Us"}
-  </Button>
-
-  {/* ✅ Only show Save button when editing */}
-  {isEditing && <Button className="mt-3 ml-2" onClick={handleSaveProfile}>Save Profile</Button>}
+  {/* ✅ Only show "Edit Profile" when not editing */}
+  {!isEditing ? (
+    <Button className="mt-3" onClick={() => setIsEditing(true)}>
+      Edit Profile
+    </Button>
+  ) : (
+    <Button className="mt-3" onClick={handleSaveProfile}>
+      Save Profile
+    </Button>
+  )}
 
   <h5 className="mt-4">Social Media Links</h5>
   {companyInfo.socialMedia.length === 0 ? (
@@ -282,6 +292,7 @@ const handleLogoUpload = async (e) => {
   )}
   <Button className="mt-3" onClick={() => setShowSocialModal(true)}>+ Add Social Link</Button>
 </Tab>
+
 
   
         {/* ✅ Password Tab */}

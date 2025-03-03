@@ -58,11 +58,14 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+        connectSrc: ["'self'", "https://api.emailjs.com"], // Add this line
         imgSrc: ["'self'", "data:", "blob:", "https://via.placeholder.com"],
+        // Include other directives as needed
       },
     },
   })
 );
+
 
 
 

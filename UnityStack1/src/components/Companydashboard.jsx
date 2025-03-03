@@ -32,9 +32,13 @@ const CompanyDashboard = () => {
 
   // ✅ Handle Logout
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+    localStorage.removeItem("token"); // ✅ Remove token
+    navigate("/login"); // ✅ Navigate to login page
+    setTimeout(() => {
+      window.location.href = "/login"; // ✅ Ensure full reload for session reset
+    }, 100); // Small delay to let navigate() execute first
   };
+  
 
   const renderContent = () => {
     switch (selectedPage) {

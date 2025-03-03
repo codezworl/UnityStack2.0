@@ -25,15 +25,42 @@ const BlogsAndEvents = () => {
   // ✅ Fetch posts from API
   const fetchBlogs = async () => {
     setLoading(true);
+    setError(null); // ✅ Reset error state before fetching
+  
     try {
-      const response = await axios.get("http://localhost:5000/api/organizations/posts");
+      const token = localStorage.getItem("token"); // ✅ Get token from localStorage
+  
+      if (!token) {
+        throw new Error("No authentication token found. Please log in.");
+      }
+  
+      const response = await axios.get("http://localhost:5000/api/organizations/posts", {
+        headers: { Authorization: `Bearer ${token}` }, // ✅ Send token in request
+      });
+  
       setBlogs(response.data);
+      console.log("✅ Blogs fetched successfully:", response.data);
     } catch (error) {
       console.error("❌ Error fetching posts:", error);
-      setError("Failed to load posts. Please try again.");
+  
+      if (error.response) {
+        // Server responded with a specific error
+        if (error.response.status === 403) {
+          setError("Access denied! Only organizations can fetch posts.");
+        } else if (error.response.status === 401) {
+          setError("Unauthorized! Please log in again.");
+        } else {
+          setError(error.response.data.message || "Failed to load posts.");
+        }
+      } else {
+        // Network or other issue
+        setError("Failed to connect to the server. Please try again later.");
+      }
     }
+  
     setLoading(false);
   };
+  
 
   // ✅ Handle input change
   const handleInputChange = (e) => {
@@ -54,35 +81,77 @@ const BlogsAndEvents = () => {
   // ✅ Submit new or edited post
   const handleSubmit = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const formDataObj = new FormData();
-      formDataObj.append("title", formData.title);
-      formDataObj.append("description", formData.description);
-      if (formData.image) {
-        formDataObj.append("image", formData.image);
-      }
+        const token = localStorage.getItem("token");
+        if (!token) {
+            console.error("❌ No token found. Please log in again.");
+            setError("Unauthorized: Please log in first.");
+            return;
+        }
 
-      if (currentPost) {
-        // ✅ Update existing post
-        await axios.put(`http://localhost:5000/api/organizations/posts/${currentPost._id}`, formDataObj, {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-        });
-      } else {
-        // ✅ Create new post
-        await axios.post("http://localhost:5000/api/organizations/posts", formDataObj, {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-        });
-      }
+        const formDataObj = new FormData();
+        formDataObj.append("title", formData.title.trim());
+        formDataObj.append("description", formData.description.trim());
 
-      fetchBlogs();
-      setShowModal(false);
-      setFormData({ title: "", image: null, description: "" });
-      setCurrentPost(null);
+        if (formData.image) {
+            formDataObj.append("image", formData.image);
+        }
+
+        let response;
+
+        if (currentPost) {
+            // ✅ Update an existing post
+            response = await axios.put(
+                `http://localhost:5000/api/organizations/posts/${currentPost._id}`,
+                formDataObj,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+        } else {
+            // ✅ Create a new post
+            response = await axios.post(
+                "http://localhost:5000/api/organizations/posts",
+                formDataObj,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+        }
+
+        console.log("✅ Post submitted successfully:", response.data);
+
+        // Refresh posts
+        fetchBlogs();
+
+        // Close the modal and reset form
+        setShowModal(false);
+        setFormData({ title: "", image: null, description: "" });
+        setCurrentPost(null);
+        setError(null);
     } catch (error) {
-      console.error("❌ Error submitting post:", error);
-      setError("Failed to submit post. Please try again.");
+        console.error("❌ Error submitting post:", error);
+
+        // Handle different error types
+        if (error.response) {
+            if (error.response.status === 403) {
+                setError("You are not authorized to create or update this post.");
+            } else if (error.response.status === 400) {
+                setError("Invalid post data. Please fill in all required fields.");
+            } else {
+                setError("Failed to submit post. Please try again.");
+            }
+        } else {
+            setError("Network error. Check your internet connection and try again.");
+        }
     }
-  };
+};
+
 
   // ✅ Open modal for editing
   const handleEdit = (post) => {

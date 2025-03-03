@@ -172,35 +172,51 @@ const getOrganizationProfile = async (req, res) => {
 
 const createPost = async (req, res) => {
   try {
-    const { title, description } = req.body;
-    const image = req.file ? req.file.filename : null;
-    const organizationId = req.user.id; // Authenticated org ID
+      const { title, description } = req.body;
+      const image = req.file ? req.file.path : null;
 
-    // Ensure organization exists
-    const organization = await Organization.findById(organizationId);
-    if (!organization) return res.status(404).json({ message: "Organization not found." });
+      // ✅ Validate required fields
+      if (!title || !description) {
+          return res.status(400).json({ message: "Title and description are required." });
+      }
 
-    // Create and save post
-    const newPost = new Post({ title, description, image, organization: organizationId });
-    await newPost.save();
+      const newPost = new Post({
+          title,
+          description,
+          image,
+          organization: req.user._id, // Ensure post is linked to the correct organization
+      });
 
-    res.status(201).json({ message: "Post created successfully!", post: newPost });
+      await newPost.save();
+      res.status(201).json({ message: "Post created successfully", post: newPost });
   } catch (error) {
-    console.error("❌ Error creating post:", error.message);
-    res.status(500).json({ message: "Server error" });
+      console.error("❌ Error creating post:", error.message);
+      res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
 
 // ✅ Fetch All Posts
 const getAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find().populate("organization", "companyName");
+    // ✅ Ensure only the authenticated organization can fetch their own posts
+    if (req.userRole !== "organization") {
+      return res.status(403).json({ message: "Forbidden: Only organizations can access posts." });
+    }
+
+    // ✅ Fetch posts only for the authenticated organization
+    const posts = await Post.find({ organization: req.user._id }).populate("organization", "companyName");
+
     res.status(200).json(posts);
   } catch (error) {
     console.error("❌ Error fetching posts:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
 
 // ✅ Update Post
 const updatePost = async (req, res) => {

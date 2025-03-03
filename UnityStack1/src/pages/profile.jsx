@@ -41,7 +41,7 @@ const handleUpdateExpertise = async () => {
     }
 
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/expertise/${editExpertise._id}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/expertise/Pkr{editExpertise._id}`, {
             method: "PUT",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -84,7 +84,7 @@ const handleUpdateJobExperience = async () => {
     }
 
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/job/${editJob._id}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/job/Pkr{editJob._id}`, {
             method: "PUT",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -129,7 +129,7 @@ const handleUpdateJobExperience = async () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/developers/${id}`, { method: "GET", credentials: "include" });
+        const response = await fetch(`http://localhost:5000/api/developers/Pkr{id}`, { method: "GET", credentials: "include" });
         if (!response.ok) throw new Error("Error fetching profile");
         const data = await response.json();
         setDeveloper(data);
@@ -233,34 +233,33 @@ const handleUpdateJobExperience = async () => {
     }
   };
   // ✅ Remove an Expertise
-const handleDeleteExpertise = async (expertiseId) => {
+  const handleDeleteExpertise = async (expertiseId) => {
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/expertise/${expertiseId}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/expertise/Pkr{expertiseId}`, {
             method: "DELETE",
             credentials: "include",
         });
 
         if (!response.ok) throw new Error("Failed to delete expertise.");
 
-        const updatedExpertise = await response.json();
-        setExpertise(updatedExpertise.expertise);
+        setExpertise(prevExpertise => prevExpertise.filter(exp => exp._id !== expertiseId));
     } catch (error) {
         console.error("❌ Error removing expertise:", error);
     }
 };
 
+
 // ✅ Remove a Job Experience
 const handleDeleteJobExperience = async (jobId) => {
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/job/${jobId}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/job/Pkr{jobId}`, {
             method: "DELETE",
             credentials: "include",
         });
 
         if (!response.ok) throw new Error("Failed to delete job experience.");
 
-        const updatedJobs = await response.json();
-        setJobExperience(updatedJobs.employment);
+        setJobExperience(prevJobs => prevJobs.filter(job => job._id !== jobId));
     } catch (error) {
         console.error("❌ Error removing job experience:", error);
     }
@@ -296,7 +295,6 @@ const handleDeleteJobExperience = async (jobId) => {
         }}
     />
 )}
-
 
     <h2>{developer?.firstName || "No Name"}</h2>
     <p>Developer</p>
@@ -378,7 +376,7 @@ const handleDeleteJobExperience = async (jobId) => {
         <>
             <input
                 type="number"
-                placeholder="Hourly Rate ($/hr)"
+                placeholder="Hourly Rate (Pkr/hr)"
                 value={formData.hourlyRate}
                 onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
                 style={{ width: "100%", padding: "8px", marginBottom: "10px", borderRadius: "5px", border: "1px solid #ccc" }}
@@ -404,9 +402,9 @@ const handleDeleteJobExperience = async (jobId) => {
         </>
     ) : (
         <p>
-            {developer?.hourlyRate ? `$${developer.hourlyRate}/hr` : "Not Set"} |{" "}
+            {developer?.hourlyRate ? `PkrPkr{developer.hourlyRate}/hr` : "Not Set"} |{" "}
             {developer?.workingHours?.from && developer?.workingHours?.to
-                ? `${developer.workingHours.from} - ${developer.workingHours.to}`
+                ? `Pkr{developer.workingHours.from} - Pkr{developer.workingHours.to}`
                 : "No Working Hours Set"}
         </p>
     )}
