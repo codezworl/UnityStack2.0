@@ -3,7 +3,7 @@ import { Card, Button } from 'react-bootstrap';
 import { Line, Doughnut } from 'react-chartjs-2';
 import 'chart.js/auto';
 import ComHeader from '../components/header';
-import ComSidebar from '../components/Sidebar';
+import ComSidebar from '../components/sidebar';
 
 const DeveloperDashboard = () => {
   const [selectedPage, setSelectedPage] = useState('dashboard'); // Default page

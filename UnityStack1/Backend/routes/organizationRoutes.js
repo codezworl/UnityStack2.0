@@ -17,6 +17,7 @@ const {
   addSocialMediaLink,
   addService,
   removeService,
+  getAllOrganizations,
 } = require("../Controllers/organizationController");
 
 const authenticateToken = require("../middleware/auth");
@@ -99,6 +100,7 @@ router.put("/posts/:id", authenticateToken, upload.single("image"), updatePost);
 router.delete("/posts/:id", authenticateToken, deletePost);
 // ✅ Fetch only posts related to the authenticated organization
 router.get("/posts", authenticateToken, getAllPosts);
+router.get("/all", getAllOrganizations); // ✅ Public: Fetch all verified companies
 
 // ✅ Update Company Profile (with Logo)
 router.put("/profile", authenticateToken, upload.single("logo"), updateOrganizationProfile);

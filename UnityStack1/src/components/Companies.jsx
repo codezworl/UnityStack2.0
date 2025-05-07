@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Link } from "react-router-dom"; // Import Link from react-router-dom
 import { FaMapMarkerAlt, FaBuilding } from "react-icons/fa";
@@ -9,6 +10,7 @@ import Footer from "../components/footer";
 const Companies = () => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [isFiltered, setIsFiltered] = useState(false);
+  
 
   const styles = {
     container: {
@@ -128,33 +130,31 @@ const Companies = () => {
     },
   };
 
-  const companies = [
-    {
-      name: "Systems Limited",
-      location: "Lahore, Karachi, Islamabad",
-      industry: "IT Services, Software Development",
-      description:
-        "Pioneering IT services and consulting in Pakistan, Systems Limited specializes in creating solutions for global clients with advanced technology.",
-      tags: ["java", "react", "cloud"],
-    },
-    {
-      name: "NETSOL Technologies",
-      location: "Lahore",
-      industry: "Financial Technology, IT Services",
-      description:
-        "NETSOL is a leading provider of IT solutions for global asset finance and leasing, with expertise in financial technology solutions.",
-      tags: ["java", "angular", ".net"],
-    },
-    {
-      name: "10Pearls",
-      location: "Karachi, Lahore, Islamabad",
-      industry: "Custom Software Development, Digital Transformation",
-      description:
-        "10Pearls collaborates with enterprises to innovate and create scalable digital solutions, enhancing customer experiences worldwide.",
-      tags: ["flutter", "AI", "blockchain"],
-    },
-  ];
+  const [companies, setCompanies] = useState([]);
+const [filteredCompanies, setFilteredCompanies] = useState([]);
 
+
+
+useEffect(() => {
+  const fetchCompanies = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/organizations/all");
+      const data = await res.json();
+
+      console.log("🚀 Fetched companies:", data); // ✅ add this log
+
+      const safeData = Array.isArray(data) ? data : [];
+      setCompanies(safeData);
+      setFilteredCompanies(safeData);
+    } catch (err) {
+      console.error("❌ Error fetching companies:", err);
+    }
+  };
+
+  fetchCompanies();
+}, []);
+
+  
   const tagsList = [
     "java",
     "react",
@@ -190,11 +190,9 @@ const Companies = () => {
     setIsFiltered(false);
   };
 
-  const filteredCompanies = selectedTags.length
-    ? companies.filter((company) =>
-        company.tags.some((tag) => selectedTags.includes(tag))
-      )
-    : companies;
+  
+
+
 
   return (
     <>
@@ -254,20 +252,22 @@ const Companies = () => {
                 <div style={styles.companyHeader}>
                   <div style={styles.companyLogo}></div>
                   <div>
-                    <h5 style={styles.companyTitle}>{company.name}</h5>
+                    <h5 style={styles.companyTitle}>{company.companyName}</h5>
                     <p style={styles.companySubTitle}>
-                      <FaMapMarkerAlt /> {company.location} &nbsp;|&nbsp;
-                      <FaBuilding /> {company.industry}
+                    <FaMapMarkerAlt /> {company.operatingCities?.join(", ") || "N/A"} &nbsp;|&nbsp;
+<FaBuilding /> {company.address}
+
                     </p>
                   </div>
                 </div>
-                <p style={styles.companyDescription}>{company.description}</p>
+                <p style={styles.companyDescription}>{company.aboutUs}</p>
                 <div style={styles.tagsContainer}>
-                  {company.tags.map((tag, i) => (
-                    <span key={i} style={styles.tag}>
-                      {tag}
-                    </span>
-                  ))}
+                {company.selectedServices?.map((service, i) => (
+  <span key={i} style={styles.tag}>
+    {service}
+  </span>
+))}
+
                 </div>
               </div>
               <Link to="/companiesprofile" style={styles.viewProfileButton}>

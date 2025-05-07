@@ -1,164 +1,193 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css"; // Import the Quill CSS
-import { useNavigate } from "react-router-dom";
+import "react-quill/dist/quill.snow.css";
 
 export default function QuestionDetailsPage() {
-  const location = useLocation();
-  const { id } = useParams(); // Extract the question ID from the URL
-  const [question, setQuestion] = useState(null); // To store the question data
-  const [answers, setAnswers] = useState([]); // To store the answers data
-  const [filter, setFilter] = useState("Newest");
-  const [bounty, setBounty] = useState(false);
+  const { id } = useParams();
+  const [isSubmitting, setIsSubmitting] = useState(false); // Define the state here
+  const [question, setQuestion] = useState(null);
+  const [answers, setAnswers] = useState([]); // Initialize answers as an empty array
   const [answerText, setAnswerText] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    sessionStorage.getItem("user") ? true : false
-  );
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem("token") ? true : false);
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [emoji, setEmoji] = useState(null);
+  const [userId, setUserId] = useState("");
+   // Assuming currentUserId is saved in localStorage
+   const [filterOption, setFilterOption] = useState(null);
+   const [filteredAnswers, setFilteredAnswers] = useState([]); 
+   const [showCancelFilter, setShowCancelFilter] = useState(false);
+ // To store the selected filter option
+
 
   const navigate = useNavigate();
   useEffect(() => {
-    const user = sessionStorage.getItem("user"); // Check if user exists
-    setIsLoggedIn(!!user); // Convert to boolean
-    if (location.state?.question) {
-      setQuestion(location.state.question);
-      setAnswers(location.state.question.answers || []);
+    if (filterOption) {
+      setShowCancelFilter(true);
     } else {
-      // If not passed, fetch question data using the ID
-      fetchQuestionById(id); // Replace with your API call or mock data
+      setShowCancelFilter(false);
     }
-  }, []); // Runs only once on mount
-  const handleAnswerSubmit = async () => {
-    if (!answerText.trim()) {
-      alert("Please enter an answer before submitting.");
+  }, [filterOption]);
+  
+
+  useEffect(() => {
+    const fetchQuestionById = async () => {
+      try {
+        const response = await fetch(`/api/questions/${id}`);
+        const data = await response.json();
+        console.log("Fetched Question with Answers:", data);
+        
+        // Ensure that answers is always an array
+        setAnswers(Array.isArray(data.answers) ? data.answers : []);  // Set to empty array if not an array
+        setQuestion(data);  // Set the question data
+      } catch (err) {
+        console.error("Error fetching question:", err);
+        setAnswers([]);  // Ensure answers is always an empty array on error
+      }
+    };
+    
+    fetchQuestionById();
+  }, [id]);
+  
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        // Fetch the current user data from localStorage or your API
+        const res = await fetch("http://localhost:5000/api/user", { credentials: "include" });
+        if (!res.ok) throw new Error("User fetch failed");
+  
+        const data = await res.json();
+        setUserName(data.name);  // Set userName
+        setUserRole(data.role);  // Set userRole
+        setUserId(data.id);  // Set currentUserId from fetched data (assuming 'id' is the user ID)
+        console.log("✅ Logged in as:", data.name, data.role, data.id);
+      } catch (err) {
+        console.warn("❌ User not logged in:", err.message);
+      }
+    };
+  
+    fetchUser();
+  }, []);
+  
+
+
+  const handleAnswerSubmit = async (e) => {
+    e.preventDefault();
+  
+    // Ensure all required fields are included
+    if (!answerText.trim() || !userName || !userRole || !userId) {
+      alert("Please fill in all fields before submitting.");
       return;
     }
-
-    const username = sessionStorage.getItem("user") || "Anonymous";
-
+  
+    // Prepare the data to send to the backend
     const newAnswer = {
-      id: answers.length + 1,
-      text: answerText,
-      likes: 0,
-      dislikes: 0,
-      user: username, // Store real username
-      time: "Just now",
+      text: answerText,  // The answer text
+      userRole: userRole, // User role (student, developer, organization)
+      userName: userName, // User's name
+      userId: userId,  // The logged-in user ID
     };
-
-    setAnswers([...answers, newAnswer]); // Update local state
-    setAnswerText(""); // Clear editor after submission
-
-    // If using an API, send data to backend
-    // await fetch("https://your-api-url.com/answers", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify(newAnswer),
-    // });
-
-    alert("Answer submitted successfully!");
-  };
-
-  // Mock function to simulate fetching question data by ID
-  const fetchQuestionById = (id) => {
-    const mockQuestions = [
-      {
-        id: 1,
-        title: "How to implement real-time chat in Next.js?",
-        description:
-          "I'm trying to implement a real-time chat feature using Next.js and WebSockets...",
-        tags: ["next.js", "react", "websockets", "socket.io"],
-        answers: [
-          {
-            id: 1,
-            text: "Use WebSocket for bi-directional communication.",
-            likes: 12,
-            dislikes: 1,
-            user: "John Doe",
-            time: "1 hour ago",
-            isBest: true,
-          },
-          {
-            id: 2,
-            text: "Consider using Server-Sent Events if you don't need bi-directional communication.",
-            likes: 7,
-            dislikes: 0,
-            user: "Jane Smith",
-            time: "30 minutes ago",
-          },
-        ],
-        user: "Sarah Ahmed",
-        time: "2 hours ago",
-        bounty: false,
-      },
-    ];
-    const foundQuestion = mockQuestions.find((q) => q.id === parseInt(id));
-    if (foundQuestion) {
-      setQuestion(foundQuestion);
-      setAnswers(foundQuestion.answers || []);
+  
+    try {
+      // Send the answer to the backend
+      const response = await fetch(`http://localhost:5000/api/questions/${id}/answers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,  // Ensure the token is set correctly
+        },
+        body: JSON.stringify(newAnswer),
+      });
+  
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Error posting answer");
+      }
+  
+      alert("Answer submitted successfully!");
+      setAnswerText("");  // Clear the answer text after submission
+      // Optionally, navigate to a different page or update the UI
+      // navigate(`/questions/${id}`);  // If you want to show the updated question page
+    } catch (err) {
+      console.error("Error posting answer:", err);
+      alert(err.message || "An error occurred while posting your answer");
     }
   };
-
-  const handleLike = (answerId) => {
-    setAnswers((prev) =>
-      prev.map((ans) =>
-        ans.id === answerId ? { ...ans, likes: ans.likes + 1 } : ans
-      )
-    );
+  
+  
+  const handleEditAnswer = async (answerId) => {
+    const newText = prompt("Edit your answer:", answerText);
+    if (newText && newText !== answerText) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/questions/${id}/answers/${answerId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            text: newText,
+          }),
+        });
+  
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Error editing answer");
+        }
+  
+        // Update the answer text in the state
+        setAnswers((prevAnswers) =>
+          prevAnswers.map((answer) =>
+            answer._id === answerId ? { ...answer, text: newText } : answer
+          )
+        );
+        alert("Answer edited successfully!");
+      } catch (err) {
+        console.error("Error editing answer:", err);
+        alert(err.message || "An error occurred while editing your answer");
+      }
+    }
   };
-
-  const handleDislike = (answerId) => {
-    setAnswers((prev) =>
-      prev.map((ans) =>
-        ans.id === answerId ? { ...ans, dislikes: ans.dislikes + 1 } : ans
-      )
-    );
+  
+  
+  const handleDeleteAnswer = async (answerId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete your answer?");
+    if (confirmDelete) {
+      try {
+        // Log the answerId before sending the request to ensure it's correct
+        console.log("Deleting answer with ID:", answerId);
+  
+        const response = await fetch(`http://localhost:5000/api/questions/${id}/answers/${answerId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+  
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Error deleting answer");
+        }
+  
+        // Remove the answer from the state
+        setAnswers((prevAnswers) =>
+          prevAnswers.filter((answer) => answer._id !== answerId)
+        );
+        alert("Answer deleted successfully!");
+      } catch (err) {
+        console.error("Error deleting answer:", err);
+        alert(err.message || "An error occurred while deleting your answer");
+      }
+    }
   };
+  
+  
+  
+  
 
-  const relatedQuestions = [
-    {
-      id: 1,
-      title: "How to handle WebSocket reconnection in React?",
-      link: "/questionthread/1",
-    },
-    {
-      id: 2,
-      title: "Socket.io vs WebSocket - which one to choose?",
-      link: "/questionthread/2",
-    },
-    {
-      id: 3,
-      title: "Best practices for real-time chat applications",
-      link: "/questionthread/3",
-    },
-    {
-      id: 4,
-      title: "Implementing typing indicators in chat",
-      link: "/questionthread/4",
-    },
-  ];
 
-  const hotQuestions = [
-    {
-      id: 5,
-      title: "Why is Docker recommended for microservices?",
-      link: "/questionthread/5",
-    },
-    {
-      id: 6,
-      title: "Understanding async/await in JavaScript",
-      link: "/questionthread/6",
-    },
-    {
-      id: 7,
-      title: "Best practices for React hooks",
-      link: "/questionthread/7",
-    },
-    {
-      id: 8,
-      title: "How to optimize MongoDB queries?",
-      link: "/questionthread/8",
-    },
-  ];
+ 
 
   const sidebarStyle = {
     backgroundColor: "white",
@@ -168,12 +197,101 @@ export default function QuestionDetailsPage() {
     marginBottom: "1rem",
   };
 
+  
+
+  
+  const handleLike = async (answerId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/questions/${id}/answers/${answerId}/like`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setAnswers((prevAnswers) =>
+          prevAnswers.map((answer) =>
+            answer._id === answerId ? result.answer : answer
+          )
+        );
+        setEmoji("🎉"); // Show party popper emoji
+        setTimeout(() => setEmoji(null), 3000); // Hide emoji after 3 seconds
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error("Error liking answer:", error);
+    }
+  };
+
+  const handleDislike = async (answerId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/questions/${id}/answers/${answerId}/dislike`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setAnswers((prevAnswers) =>
+          prevAnswers.map((answer) =>
+            answer._id === answerId ? result.answer : answer
+          )
+        );
+        setEmoji("😢"); // Show sad emoji
+        setTimeout(() => setEmoji(null), 3000); // Hide emoji after 3 seconds
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error("Error disliking answer:", error);
+    }
+  };
+  useEffect(() => {
+    const filterAnswers = () => {
+      let filteredAnswers = [...answers];
+      switch (filterOption) {
+        case "latest":
+          filteredAnswers = filteredAnswers.sort((a, b) => new Date(b.time) - new Date(a.time));
+          break;
+        case "oldest":
+          filteredAnswers = filteredAnswers.sort((a, b) => new Date(a.time) - new Date(b.time));
+          break;
+        case "own":
+          filteredAnswers = filteredAnswers.filter(answer => answer.userId === userId);
+          break;
+        case "mostLiked":
+          filteredAnswers = filteredAnswers.sort((a, b) => b.likes - a.likes);
+          break;
+        case "mostDisliked":
+          filteredAnswers = filteredAnswers.sort((a, b) => b.dislikes - a.dislikes);
+          break;
+        case "noLikesDislikes":
+          filteredAnswers = filteredAnswers.filter(answer => answer.likes === 0 && answer.dislikes === 0);
+          break;
+        default:
+          break;
+      }
+      setFilteredAnswers(filteredAnswers);
+    };
+
+    if (answers.length > 0) {
+      filterAnswers();
+    }
+  }, [filterOption, answers, userId]);  // Dependencies include filterOption, answers, and userId
+  
   if (!question) {
-    return <div>Loading...</div>;
+    return <div>Loading...</div>; // Show loading if question is still being fetched
   }
 
   return (
+    
     <div
+    
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 3fr", // Sidebar on the left, main content on the right
@@ -182,31 +300,90 @@ export default function QuestionDetailsPage() {
         backgroundColor: "#F8FAFC",
         minHeight: "100vh",
       }}
-    >
-      {/* Sidebar */}
-      <div style={{ gridColumn: "1 / 2" }}>
-        <div style={sidebarStyle}>
-          <h3>Related Questions</h3>
-          <ul>
-            {relatedQuestions.map((q) => (
-              <li key={q.id}>
-                <Link to={q.link}>{q.title}</Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div style={sidebarStyle}>
-          <h3>Hot Questions</h3>
-          <ul>
-            {hotQuestions.map((q) => (
-              <li key={q.id}>
-                <Link to={q.link}>{q.title}</Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
 
+    >
+      
+      
+      {/* Sidebar */}
+      <div style={{ gridColumn: "1 / 2", position: "sticky", top: "0", zIndex: "10" }}>
+
+      <div style={sidebarStyle}> 
+      <h3 style={{ textDecoration: "underline", textDecorationColor: "#2563EB", textDecorationThickness: "2px" }}>
+      Filter Answers</h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+    <label className="filter-label">
+  <input
+    type="radio"
+    name="filter"
+    checked={filterOption === "latest"}
+    onChange={() => setFilterOption("latest")}
+  />
+  <span>Latest Answers</span>
+</label>
+      <label className="filter-label">
+        <input
+          type="radio"
+          name="filter"
+          checked={filterOption === "oldest"}
+          onChange={() => setFilterOption("oldest")}
+        /> Oldest Answers
+      </label>
+      <label className="filter-label">
+        <input
+          type="radio"
+          name="filter"
+          checked={filterOption === "own"}
+          onChange={() => setFilterOption("own")}
+        /> User's Own Answers
+      </label>
+      <label className="filter-label">
+        <input
+          type="radio"
+          name="filter"
+          checked={filterOption === "mostLiked"}
+          onChange={() => setFilterOption("mostLiked")}
+        /> Most Liked Answers
+      </label>
+      <label className="filter-label">
+        <input
+          type="radio"
+          name="filter"
+          checked={filterOption === "mostDisliked"}
+          onChange={() => setFilterOption("mostDisliked")}
+        /> Most Disliked Answers
+      </label>
+      <label className="filter-label">
+        <input
+          type="radio"
+          name="filter"
+          checked={filterOption === "noLikesDislikes"}
+          onChange={() => setFilterOption("noLikesDislikes")}
+        /> No Likes/Dislikes
+      </label>
+      {showCancelFilter && (
+  <button
+    onClick={() => {
+      setFilterOption(null); // Reset filter
+      setShowCancelFilter(false); // Hide the cancel filter button
+    }}
+    style={{
+      backgroundColor: "#FF4B4B",
+      color: "white",
+      padding: "8px 12px",
+      borderRadius: "4px",
+      cursor: "pointer",
+      marginBottom: "1rem",
+    }}
+  >
+    Cancel Filter
+  </button>
+)}
+
+
+    </div>
+  </div>
+</div>
+  
       {/* Main Content */}
       <div style={{ gridColumn: "2 / 3" }}>
         {/* Question Details */}
@@ -222,44 +399,6 @@ export default function QuestionDetailsPage() {
             marginBottom: "2rem",
           }}
         >
-          {/* Vote Section */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minWidth: "50px",
-            }}
-          >
-            <button
-              style={{
-                background: "transparent",
-                border: "none",
-                fontSize: "1.5rem",
-                cursor: "pointer",
-                color: "#2563EB",
-              }}
-            >
-              ▲
-            </button>
-            <p style={{ margin: "0", fontWeight: "bold", fontSize: "1.25rem" }}>
-              15
-            </p>
-            <button
-              style={{
-                background: "transparent",
-                border: "none",
-                fontSize: "1.5rem",
-                cursor: "pointer",
-                color: "#2563EB",
-              }}
-            >
-              ▼
-            </button>
-          </div>
-
-          {/* Question Details */}
           <div style={{ flex: "1" }}>
             {/* Title */}
             <h1
@@ -270,10 +409,10 @@ export default function QuestionDetailsPage() {
                 color: "#1E293B",
               }}
             >
-              How to implement real-time chat in Next.js?
+              {question.title}
             </h1>
-
-            {/* Metadata */}
+  
+            {/* Question Metadata (Asked time, views, etc.) */}
             <p
               style={{
                 color: "#64748B",
@@ -281,53 +420,43 @@ export default function QuestionDetailsPage() {
                 marginBottom: "1rem",
               }}
             >
-              Asked 2 hours ago • Viewed 324 times
+              Asked{" "}
+              {new Date(question.createdAt).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              })}{" "}
+              • Viewed {question.views} times
             </p>
-
-            {/* Description */}
+  
+            {/* Question Description */}
             <p
               style={{
                 fontSize: "1rem",
                 marginBottom: "1rem",
                 lineHeight: "1.6",
               }}
+              
+              dangerouslySetInnerHTML={{ __html: question.details }}
+            />
+           
+            {/* Tried Information */}
+            <p
+              style={{
+                fontSize: "1rem",
+                marginBottom: "1rem",
+                fontStyle: "italic",
+                color: "#1E293B",
+              }}
             >
-              I'm trying to implement a real-time chat feature using Next.js and
-              WebSockets. I've tried using Socket.io but I'm running into some
-              issues with the connection.
+              Tried:{" "}
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: question.tried,
+                }}
+              />
             </p>
-
-            {/* Code Snippet */}
-            <div
-              style={{
-                backgroundColor: "#F3F4F6",
-                padding: "1rem",
-                borderRadius: "8px",
-                fontFamily: "monospace",
-                fontSize: "0.875rem",
-                color: "#1E293B",
-                marginBottom: "1rem",
-                overflowX: "auto",
-              }}
-            >
-              {`import io from 'socket.io-client';
-
-const socket = io('http://localhost:3000');`}
-            </div>
-
-            {/* Bulleted List */}
-            <ul
-              style={{
-                marginBottom: "1rem",
-                color: "#1E293B",
-                lineHeight: "1.6",
-              }}
-            >
-              <li>Connection doesn't persist after page refresh</li>
-              <li>Messages are being duplicated</li>
-              <li>Performance issues with multiple connections</li>
-            </ul>
-
+  
             {/* Tags */}
             <div
               style={{
@@ -337,7 +466,7 @@ const socket = io('http://localhost:3000');`}
                 marginBottom: "1rem",
               }}
             >
-              {["next.js", "react", "websockets", "socket.io"].map((tag) => (
+              {question.tags.map((tag) => (
                 <span
                   key={tag}
                   style={{
@@ -353,483 +482,144 @@ const socket = io('http://localhost:3000');`}
                 </span>
               ))}
             </div>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                backgroundColor: "#F9FAFB",
-                padding: "1rem",
-                borderRadius: "8px",
-                border: "1px solid #E5E7EB",
-                marginTop: "1rem",
-              }}
-            >
-              {/* Left Section: Share, Save, Report */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: "1.5rem",
-                  alignItems: "center",
-                }}
-              >
-                <button
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "transparent",
-                    border: "none",
-                    color: "#64748B",
-                    fontSize: "0.875rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span style={{ marginRight: "0.5rem" }}>🔗</span> Share
-                </button>
-                <button
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "transparent",
-                    border: "none",
-                    color: "#64748B",
-                    fontSize: "0.875rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span style={{ marginRight: "0.5rem" }}>🔖</span> Save
-                </button>
-                <button
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "transparent",
-                    border: "none",
-                    color: "#64748B",
-                    fontSize: "0.875rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span style={{ marginRight: "0.5rem" }}>🚩</span> Report
-                </button>
-              </div>
-
-              {/* Right Section: Asked by User */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "#64748B",
-                    margin: "0",
-                  }}
-                >
-                  Asked by
-                </p>
-                <a
-                  href="#"
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "#2563EB",
-                    textDecoration: "none",
-                  }}
-                >
-                  Sarah Ahmed
-                </a>
-                <img
-                  src="https://via.placeholder.com/32"
-                  alt="Sarah Ahmed"
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                  }}
-                />
-              </div>
-            </div>
           </div>
         </div>
+  
+        {/* Answers Section */}
+        <div>
+  <h2
+    style={{
+      marginBottom: "1.5rem",
+      color: "#1E293B",
+      fontSize: "1.25rem",
+    }}
+  >
+    {filteredAnswers && Array.isArray(filteredAnswers) && filteredAnswers.length > 0
+      ? `${filteredAnswers.length} Answer(s)`
+      : "No answers yet"}
+  </h2>
 
-        {/* Filter Options */}
+  {/* Render answers after applying filter */}
+  {filteredAnswers && Array.isArray(filteredAnswers) && filteredAnswers.length > 0 ? (
+    filteredAnswers.map((answer) => (
+      <div
+        key={answer._id}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "#F9FAFB",
+          padding: "1.5rem",
+          borderRadius: "8px",
+          border: "1px solid #E5E7EB",
+          marginBottom: "1.5rem",
+          boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+        }}
+      >
+        {/* User Info */}
         <div
           style={{
-            marginTop: "2rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            fontSize: "1rem",
+            marginBottom: "1rem",
+            fontWeight: "bold",
+            color: "#1E293B",
           }}
         >
-          <div style={{ display: "flex", gap: "1rem" }}>
-            {["Newest", "Best Answer", "All"].map((filterOption) => (
-              <button
-                key={filterOption}
-                onClick={() => setFilter(filterOption)}
-                style={{
-                  padding: "0.5rem 1rem",
-                  borderRadius: "4px",
-                  border: "1px solid #E2E8F0",
-                  backgroundColor:
-                    filter === filterOption ? "#2563EB" : "transparent",
-                  color: filter === filterOption ? "#FFFFFF" : "#1E293B",
-                  cursor: "pointer",
-                }}
-              >
-                {filterOption}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setBounty((prev) => !prev)}
+          {answer.userName} ({answer.userRole}) -{" "}
+          {new Date(answer.time).toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })}
+        </div>
+
+        {/* Answer Description */}
+        <div
+          style={{
+            fontSize: "1rem",
+            marginBottom: "1rem",
+            lineHeight: "1.6",
+            color: "#64748B",
+          }}
+          dangerouslySetInnerHTML={{ __html: answer.text }}
+        />
+
+        {/* Like/Dislike Buttons */}
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            alignItems: "center",
+            marginTop: "1rem",
+          }}
+        >
+          <div
             style={{
-              padding: "0.5rem 1rem",
-              backgroundColor: bounty ? "#059669" : "transparent",
-              color: bounty ? "#FFFFFF" : "#059669",
-              border: "1px solid #059669",
-              borderRadius: "4px",
+              fontSize: "1rem",
+              color: "#2563EB",
               cursor: "pointer",
             }}
+            onClick={() => handleLike(answer._id)}
           >
-            {bounty ? "Remove Bounty" : "Add Bounty"}
-          </button>
+            Like {answer.likes}
+          </div>
+          <div
+            style={{
+              fontSize: "1rem",
+              color: "#FF4B4B",
+              cursor: "pointer",
+            }}
+            onClick={() => handleDislike(answer._id)}
+          >
+            Dislike {answer.dislikes}
+          </div>
         </div>
 
-        {/* Answers Section */}
-        <div style={{ marginTop: "2rem" }}>
-          <h2
-            style={{
-              marginBottom: "1.5rem",
-              color: "#1E293B",
-              fontSize: "1.25rem",
-            }}
-          >
-            2 Answers
-          </h2>
-
-          {/* Answer 1 */}
+        {/* Edit and Delete buttons */}
+        {answer.user === userId && (  // Only show Edit and Delete for the answer posted by the logged-in user
           <div
             style={{
               display: "flex",
               gap: "1rem",
-              backgroundColor: "#F9FAFB",
-              padding: "1.5rem",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-              marginBottom: "1.5rem",
+              marginTop: "1rem",
             }}
           >
-            {/* Vote Section */}
-            <div
+            <button
+              onClick={() => handleEditAnswer(answer._id)}
               style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: "50px",
+                padding: "0.5rem 1rem",
+                backgroundColor: "#4CAF50",
+                color: "#fff",
+                borderRadius: "4px",
+                cursor: "pointer",
               }}
             >
-              <button
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                  color: "#2563EB",
-                }}
-              >
-                ▲
-              </button>
-              <p
-                style={{
-                  margin: "0",
-                  fontWeight: "bold",
-                  fontSize: "1.25rem",
-                }}
-              >
-                8
-              </p>
-              <button
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                  color: "#2563EB",
-                }}
-              >
-                ▼
-              </button>
-            </div>
-
-            {/* Answer Content */}
-            <div style={{ flex: "1" }}>
-              <p style={{ marginBottom: "1rem", lineHeight: "1.6" }}>
-                For your WebSocket implementation issues, here's a better
-                approach:
-              </p>
-              <ol style={{ marginBottom: "1rem", lineHeight: "1.6" }}>
-                <li>Use a custom hook for managing the socket connection:</li>
-              </ol>
-
-              {/* Code Block */}
-              <div
-                style={{
-                  backgroundColor: "#F3F4F6",
-                  padding: "1rem",
-                  borderRadius: "8px",
-                  fontFamily: "monospace",
-                  fontSize: "0.875rem",
-                  color: "#1E293B",
-                  marginBottom: "1rem",
-                  overflowX: "auto",
-                }}
-              >
-                {`function useSocket() {
-  const [socket, setSocket] = useState(null);
-
-  useEffect(() => {
-    const socketInstance = io('http://localhost:3000', {
-      reconnection: true,
-      reconnectionAttempts: 5,
-    });
-    setSocket(socketInstance);
-    return () => socketInstance.close();
-  }, []);
-
-  return socket;
-}`}
-              </div>
-
-              <ul style={{ marginBottom: "1rem", lineHeight: "1.6" }}>
-                <li>Implement proper cleanup to prevent memory leaks.</li>
-                <li>Use a connection pool for better performance.</li>
-              </ul>
-
-              {/* Footer Section */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginTop: "1rem",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    alignItems: "center",
-                  }}
-                >
-                  <button
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "#64748B",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Share
-                  </button>
-                  <button
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "#64748B",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Report
-                  </button>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: "0.875rem",
-                      color: "#64748B",
-                      margin: "0",
-                    }}
-                  >
-                    Answered 1 hour ago
-                  </p>
-                  <a
-                    href="#"
-                    style={{
-                      fontSize: "0.875rem",
-                      color: "#2563EB",
-                      textDecoration: "none",
-                    }}
-                  >
-                    John Doe
-                  </a>
-                  <img
-                    src="https://via.placeholder.com/32"
-                    alt="John Doe"
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Answer 2 */}
-          <div
-            style={{
-              display: "flex",
-              gap: "1rem",
-              backgroundColor: "#F9FAFB",
-              padding: "1.5rem",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            {/* Vote Section */}
-            <div
+              Edit
+            </button>
+            <button
+              onClick={() => handleDeleteAnswer(answer._id)}
               style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: "50px",
+                padding: "0.5rem 1rem",
+                backgroundColor: "#FF4B4B",
+                color: "#fff",
+                borderRadius: "4px",
+                cursor: "pointer",
               }}
             >
-              <button
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                  color: "#2563EB",
-                }}
-              >
-                ▲
-              </button>
-              <p
-                style={{
-                  margin: "0",
-                  fontWeight: "bold",
-                  fontSize: "1.25rem",
-                }}
-              >
-                3
-              </p>
-              <button
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                  color: "#2563EB",
-                }}
-              >
-                ▼
-              </button>
-            </div>
-
-            {/* Answer Content */}
-            <div style={{ flex: "1" }}>
-              <p style={{ marginBottom: "1rem", lineHeight: "1.6" }}>
-                Have you considered using Server-Sent Events instead? They might
-                be more suitable for your use case if you don't need
-                bi-directional communication.
-              </p>
-
-              {/* Footer Section */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginTop: "1rem",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    alignItems: "center",
-                  }}
-                >
-                  <button
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "#64748B",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Share
-                  </button>
-                  <button
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "#64748B",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Report
-                  </button>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: "0.875rem",
-                      color: "#64748B",
-                      margin: "0",
-                    }}
-                  >
-                    Answered 30 mins ago
-                  </p>
-                  <a
-                    href="#"
-                    style={{
-                      fontSize: "0.875rem",
-                      color: "#2563EB",
-                      textDecoration: "none",
-                    }}
-                  >
-                    Jane Smith
-                  </a>
-                  <img
-                    src="https://via.placeholder.com/32"
-                    alt="Jane Smith"
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+              Delete
+            </button>
           </div>
-        </div>
+        )}
+      </div>
+    ))
+  ) : (
+    <div>No answers yet</div> // Display a fallback message if no answers are available
+  )}
+</div>
 
+
+
+
+        {/* Submit Answer Section */}  
         <div
           style={{
             backgroundColor: "white",
@@ -849,10 +639,9 @@ const socket = io('http://localhost:3000');`}
           >
             Submit Your Answer
           </h2>
-
+  
           {isLoggedIn ? (
             <>
-              {/* Answer Input */}
               <ReactQuill
                 value={answerText}
                 onChange={setAnswerText}
@@ -860,8 +649,7 @@ const socket = io('http://localhost:3000');`}
                 placeholder="Write your answer here..."
                 style={{ height: "200px", marginBottom: "1rem" }}
               />
-
-              {/* Submit Button */}
+  
               <button
                 onClick={handleAnswerSubmit}
                 style={{
@@ -874,8 +662,9 @@ const socket = io('http://localhost:3000');`}
                   fontSize: "16px",
                   marginTop: "10px",
                 }}
+                disabled={isSubmitting}
               >
-                Submit Answer
+                {isSubmitting ? "Submitting..." : "Submit Answer"}
               </button>
             </>
           ) : (

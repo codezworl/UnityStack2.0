@@ -8,6 +8,9 @@ import LoginPic from "../assets/loginpic.png";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { IoMdClose } from "react-icons/io";
 import { motion } from "framer-motion";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 
 const Login = () => {
@@ -22,35 +25,41 @@ const Login = () => {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
+      const res = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
-
-        if (data.role === "student") {
-          navigate("/studentdashboard");
-        } else if (data.role === "developer") {
-          navigate("/developerdashboard");
-        } else if (data.role === "organization") {
-          navigate("/companydashboard");
-        } else {
-          setError("Invalid role. Please contact support.");
-        }
-      } else {
-        setError(data.message || "Invalid login credentials");
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        throw new Error(data.message || "Login failed");
       }
+  
+      // ✅ Extract token and role from response
+      const { token, role } = data;
+  
+      // ✅ Store token and role
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
+  
+      // ✅ Navigate based on role
+      if (role === "student") {
+        navigate("/studentdashboard");
+      } else if (role === "developer") {
+        navigate("/developerdashboard");
+      } else if (role === "organization") {
+        navigate("/companydashboard");
+      }
+  
+      toast.success("Login successful");
     } catch (err) {
       console.error("Login error:", err);
-      setError("Something went wrong. Please try again later.");
+      toast.error(err.message);
     }
   };
 

@@ -25,10 +25,18 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:5000", // Backend server address
         changeOrigin: true,
+        secure: false,
       },
     },
     headers: {
-      "Content-Security-Policy": "img-src 'self' data: https://avatars.abstractapi.com;;"
+      "Content-Security-Policy": `
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com;
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https:;
+        connect-src 'self' https://api.stripe.com http://localhost:*;
+        frame-src 'self' https://js.stripe.com;
+      `.replace(/\s+/g, ' ').trim()
     }
   },
 });

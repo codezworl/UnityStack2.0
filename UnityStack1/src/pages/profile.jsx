@@ -41,7 +41,7 @@ const handleUpdateExpertise = async () => {
     }
 
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/expertise/Pkr{editExpertise._id}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/expertise/${editExpertise._id}`, {
             method: "PUT",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -84,7 +84,7 @@ const handleUpdateJobExperience = async () => {
     }
 
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/job/Pkr{editJob._id}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/job/${editJob._id}`, {
             method: "PUT",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -129,7 +129,7 @@ const handleUpdateJobExperience = async () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/developers/Pkr{id}`, { method: "GET", credentials: "include" });
+        const response = await fetch(`http://localhost:5000/api/developers/${id}`, { method: "GET", credentials: "include" });
         if (!response.ok) throw new Error("Error fetching profile");
         const data = await response.json();
         setDeveloper(data);
@@ -235,7 +235,7 @@ const handleUpdateJobExperience = async () => {
   // ✅ Remove an Expertise
   const handleDeleteExpertise = async (expertiseId) => {
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/expertise/Pkr{expertiseId}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/expertise/${expertiseId}`, {
             method: "DELETE",
             credentials: "include",
         });
@@ -252,7 +252,7 @@ const handleUpdateJobExperience = async () => {
 // ✅ Remove a Job Experience
 const handleDeleteJobExperience = async (jobId) => {
     try {
-        const response = await fetch(`http://localhost:5000/api/developers/job/Pkr{jobId}`, {
+        const response = await fetch(`http://localhost:5000/api/developers/job/${jobId}`, {
             method: "DELETE",
             credentials: "include",
         });
@@ -264,7 +264,19 @@ const handleDeleteJobExperience = async (jobId) => {
         console.error("❌ Error removing job experience:", error);
     }
 };
-
+const convertTo12Hour = (time24) => {
+    const [hour, minute] = time24.split(":");
+    const h = parseInt(hour);
+    const ampm = h >= 12 ? "pm" : "am";
+    const adjustedHour = h % 12 || 12;
+    return `${adjustedHour}:${minute} ${ampm}`;
+  };
+  const formatDate = (isoDate) => {
+    if (!isoDate) return "N/A";
+    const options = { year: "numeric", month: "short", day: "numeric" };
+    return new Date(isoDate).toLocaleDateString("en-US", options);
+  };
+  
 
 
   return (
@@ -402,10 +414,11 @@ const handleDeleteJobExperience = async (jobId) => {
         </>
     ) : (
         <p>
-            {developer?.hourlyRate ? `PkrPkr{developer.hourlyRate}/hr` : "Not Set"} |{" "}
-            {developer?.workingHours?.from && developer?.workingHours?.to
-                ? `Pkr{developer.workingHours.from} - Pkr{developer.workingHours.to}`
-                : "No Working Hours Set"}
+           {developer?.hourlyRate ? `${developer.hourlyRate} per hr` : "Not Set"} |{" "}
+{developer?.workingHours?.from && developer?.workingHours?.to
+  ? `${convertTo12Hour(developer.workingHours.from)} to ${convertTo12Hour(developer.workingHours.to)}`
+  : "No Working Hours Set"}
+
         </p>
     )}
              <div style={{ marginBottom: "30px", paddingBottom: "20px", borderBottom: "1px solid #ddd" }}>
@@ -570,8 +583,11 @@ const handleDeleteJobExperience = async (jobId) => {
 
 {jobExperience.map((job, index) => (
     <div key={index} className="border p-2 mb-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p><strong>{job.companyName}</strong> - {job.position}</p>
-        <p>{job.startDate} to {job.endDate}</p>
+        <p><strong>{job.companyName}</strong> as {job.position}</p>
+<p>
+  from {formatDate(job.startDate)} to {formatDate(job.endDate)}
+</p>
+
         {editMode && (
             <div style={{ display: "flex", gap: "5px" }}>
                 <button

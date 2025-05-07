@@ -1,11 +1,20 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const Developer = require("../models/Develpor");
+const Question = require('../models/question');
+const Student = require("../models/Student");
 const Organization = require("../models/Organization");
+const Answer = require("../models/answer");
 const { SendVerificationCode } = require("../middleware/Email");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs"); // Ensure this path is correct
 const Post = require("../models/post"); // ✅ Import Post model
+const Bid = require('../models/Bid');
+const Project = require("../models/Project");
+const ProjectHistory = require("../models/ProjectHistory");
+
+const Notification = require("../models/notification");
 
 
 // Signup handler with verification
@@ -305,6 +314,18 @@ const updateOrganizationPassword = async (req, res) => {
     res.status(500).json({ message: "Server error. Try again later." });
   }
 };
+// ✅ NEW: Get all verified organizations for public listing
+const getAllOrganizations = async (req, res) => {
+  try {
+    const organizations = await Organization.find().select(
+      "companyName operatingCities address selectedServices aboutUs logo"
+    );
+    res.status(200).json(organizations);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 // ✅ Add Social Media Link
 const addSocialMediaLink = async (req, res) => {
@@ -417,6 +438,11 @@ const removeService = async (req, res) => {
   }
 };
 
+
+
+
+
+
 module.exports = {
   signupOrganization,
   verifyOrganizationEmail, // Add the email verification handler
@@ -432,4 +458,7 @@ module.exports = {
   addSocialMediaLink,
   addService,
   removeService,
+  getAllOrganizations,
+  
+ 
 };

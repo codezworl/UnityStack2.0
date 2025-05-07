@@ -1,10 +1,19 @@
 const Developer = require("../models/Develpor");
+const Question = require('../models/question');
+const Student = require("../models/Student");
+const Organization = require("../models/Organization");
+const Answer = require("../models/answer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
 const { SendVerificationCode } = require("../middleware/Email");
+const Project = require("../models/Project");
+const ProjectHistory = require("../models/ProjectHistory");
+
+const Notification = require("../models/notification");
+const Bid = require('../models/Bid');
 
 // ✅ Multer Configuration for Profile Image Upload
 const storage = multer.diskStorage({
@@ -335,6 +344,8 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+
+
 // ✅ Export New Functions
 module.exports = {
   registerDeveloper,
@@ -348,5 +359,6 @@ module.exports = {
   removeJobExperience,
   deleteAccount,
   updateExpertise, // ✅ Import update expertise function
-  updateJobExperience, // ✅ Import update job experience function // ✅ New function added
+  updateJobExperience,
+   
 };

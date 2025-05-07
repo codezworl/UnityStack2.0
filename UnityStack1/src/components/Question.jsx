@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Header from "./header";
 import Footer from "./footer";
 import { Link } from "react-router-dom";
-import AskQuestion from "../pages/askquestion";
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -13,69 +14,199 @@ function Question() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState("Newest");
   const [isHovered, setIsHovered] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+
+  const [showMyQuestions, setShowMyQuestions] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    _id: "",
+    title: "",
+    details: "",
+    tags: []
+  });
+
   const [currentPage, setCurrentPage] = useState(1);
   const questionsPerPage = 2;
-  const handleTabClick = (tab) => setSelectedTab(tab);
+  const handleTabClick = (tab) => {
+    setSelectedTab(tab); // Set the selected tab for filtering questions
+    setCurrentPage(1); // reset to the first page when filter is changed
+  };
   const handleMoreToggle = () => setIsMoreOpen((prev) => !prev);
   const handleFilterToggle = () => setIsFilterOpen((prev) => !prev);
-  const tags = [
-    { name: "react", count: 2543 },
-    { name: "javascript", count: 1876 },
-    { name: "node.js", count: 1234 },
-    { name: "python", count: 987 },
-    { name: "mongodb", count: 765 },
-    { name: "next.js", count: 654 },
-    { name: "typescript", count: 543 },
-    { name: "express", count: 432 },
-  ];
+  const [tags, setTags] = useState([]);  // State to store fetched tags
+  const [selectedTag, setSelectedTag] = useState(null);
+  const [filterOptions, setFilterOptions] = useState({
+    mostAnswered: false,
+    unanswered: false,
+    daysOld: "",  // User will input the number of days
+    sortedBy: "Newest",  // Default sort option
+    taggedWith: "",  // Tag the user can input
+  });
+  const [filterApplied, setFilterApplied] = useState(false);  // New state to track if filter is applied
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
-  const handleTagClick = (tag) => {
-    console.log('You clicked on tag: ${ tag }');
-    // Redirect or filter questions based on the clicked tag
-    // For example: window.location.href = /questions?tag=${tag};
+
+  // Fetch question and answers
+
+
+  const handleFilterChange = (e) => {
+    const { name, type, value, checked } = e.target;
+    if (type === "checkbox") {
+      setFilterOptions((prevState) => ({
+        ...prevState,
+        [name]: checked,
+      }));
+    } else if (type === "radio") {
+      setFilterOptions((prevState) => ({
+        ...prevState,
+        [name]: value,  // Update sortedBy value
+      }));
+    } else if (type === "text" || type === "number") {
+      setFilterOptions((prevState) => ({
+        ...prevState,
+        [name]: value,
+      }));
+    }
   };
-  // Mock Data
-  const questions = [
-    {
-      id: 1,
-      title: "How to implement real-time chat in Next.js?",
-      description:
-        "I'm trying to implement a real-time chat feature using Next.js and WebSockets...",
-      tags: ["next.js", "react", "websockets"],
-      votes: 15,
-      answers: 3,
-      views: 234,
-      askedBy: "Sarah Ahmed",
-      time: "2 hours ago",
-      status: "Solved",
-    },
-    {
-      id: 2,
-      title: "TypeError: Cannot read property 'map' of undefined in React",
-      description:
-        "I'm getting this error when trying to map over an array in React...",
-      tags: ["react", "javascript", "typescript"],
-      votes: 8,
-      answers: 5,
-      views: 156,
-      askedBy: "Muhammad Ali",
-      time: "4 hours ago",
-      status: "Solved",
-    },
-    {
-      id: 3,
-      title: "How to optimize database queries in Node.js?",
-      description:
-        "Looking for best practices to optimize MongoDB queries in a Node.js application...",
-      tags: ["node.js", "mongodb", "performance"],
-      votes: 23,
-      answers: 7,
-      views: 567,
-      askedBy: "Zainab Khan",
-      time: "1 day ago",
-      status: "Solved",
-    },
-  ];
+
+  const handleFilterApply = async () => {
+    try {
+      let query = "";
+      // Apply checkboxes for Most Answered and Unanswered
+      if (filterOptions.mostAnswered) {
+        query += "&sortBy=mostAnswered";
+      }
+      if (filterOptions.unanswered) {
+        query += "&sortBy=unanswered";
+      }
+      if (filterOptions.daysOld) {
+        query += `&daysOld=${filterOptions.daysOld}`;
+      }
+      if (filterOptions.sortedBy) {
+        query += `&sortBy=${filterOptions.sortedBy}`;
+      }
+      if (filterOptions.taggedWith) {
+        query += `&tag=${filterOptions.taggedWith}`;
+      }
+  
+      // Construct the final URL with the selected filters
+      const finalUrl = `http://localhost:5000/api/questions?${query}`;
+  
+      const res = await fetch(finalUrl, {
+        credentials: "include",
+      });
+  
+      if (!res.ok) throw new Error("Failed to fetch questions");
+  
+      const data = await res.json();
+      setQuestions(data.questions);  // Update the questions with filtered data
+  
+      // Close the filter options and mark filter as applied
+      setIsFilterOpen(false);
+      setFilterApplied(true);  // Mark filter as applied
+    } catch (err) {
+      console.error("❌ Error applying filters:", err.message);
+    }
+  };
+  
+
+
+  useEffect(() => {
+    const fetchQuestionsAndTags = async () => {
+      try {
+        const query = selectedTag ? `?tag=${selectedTag}` : ''; // If a tag is selected, include it
+        let sortParam = '';
+    
+        // If a tab is selected, append the sorting query
+        if (selectedTab === 'Newest') {
+          sortParam = 'sortBy=newest';
+        } else if (selectedTab === 'Oldest') {
+          sortParam = 'sortBy=oldest';
+        } else if (selectedTab === 'Most Answered') {
+          sortParam = 'sortBy=mostAnswered';
+        } else if (selectedTab === 'Unanswered') {
+          sortParam = 'sortBy=unanswered';
+        }
+    
+        // Construct the final URL without search parameters
+        const finalUrl = `http://localhost:5000/api/questions${query ? query + '&' : '?'}${sortParam}`;
+    
+        const res = await fetch(finalUrl, {
+          credentials: "include",
+        });
+    
+        if (!res.ok) throw new Error("Failed to fetch questions");
+    
+        const data = await res.json();
+        setQuestions(data.questions);  // Set the questions
+        setTags(data.tags);            // Set the tags with counts
+      } catch (err) {
+        console.error("❌ Error loading questions and tags:", err.message);
+      }
+    };
+    
+    
+
+    if (!isSearching) {
+      fetchQuestionsAndTags();  // Fetch without search filter
+    }
+  }, [selectedTag, selectedTab, isSearching]);  // Fetch again when selectedTab changes
+  // Fetch again when selectedTab changes
+
+
+
+
+  // Empty dependency ensures it runs once on component mount
+  // The empty dependency array ensures this effect runs only once when the component is mounted.
+
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/user", {
+          credentials: "include"
+        });
+        if (!res.ok) throw new Error("User fetch failed");
+
+        const data = await res.json();
+        setCurrentUserId(data.id);
+        setUserName(data.name);
+        setUserRole(data.role);
+        console.log("✅ Logged in as:", data.name, data.role);
+      } catch (err) {
+        console.warn("❌ User not logged in:", err.message);
+      }
+    };
+    fetchUser();
+  }, []);
+
+
+
+  const toggleMyQuestions = () => {
+    setShowMyQuestions(prev => !prev);
+    setCurrentPage(1); // reset paginator
+  };
+  const handleTagClick = async (tag) => {
+    setSelectedTag(tag); // Set the selected tag for filtering questions
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/questions/tag?tag=${tag}`); // Fetch filtered questions based on tag
+      if (!res.ok) {
+        throw new Error("Failed to fetch filtered questions");
+      }
+
+      const data = await res.json();  // Parse the response
+      setQuestions(data);  // Update questions with filtered data
+    } catch (err) {
+      console.error("Error fetching filtered questions:", err.message);
+    }
+  };
+
+
 
   const guideContent = [
     {
@@ -136,12 +267,7 @@ function Question() {
     maxHeight: "fit-content",
   };
 
-  const paginationStyle = {
-    display: "flex",
-    justifyContent: "center",
-    gap: "0.5rem",
-    marginTop: "2rem",
-  };
+
 
   const buttonStyle = {
     padding: "0.5rem 1rem",
@@ -153,19 +279,21 @@ function Question() {
   };
 
   const paginationData = useMemo(() => {
+    let filteredQuestions = [...questions];
+
+    // 👇 If "My Questions" is toggled
+    if (showMyQuestions && currentUserId) {
+      filteredQuestions = filteredQuestions.filter(q => q.user === currentUserId);
+    }
+
     const indexOfLastQuestion = currentPage * questionsPerPage;
     const indexOfFirstQuestion = indexOfLastQuestion - questionsPerPage;
-    const currentQuestions = questions.slice(
-      indexOfFirstQuestion,
-      indexOfLastQuestion
-    );
-    const totalPages = Math.ceil(questions.length / questionsPerPage);
+    const currentQuestions = filteredQuestions.slice(indexOfFirstQuestion, indexOfLastQuestion);
+    const totalPages = Math.ceil(filteredQuestions.length / questionsPerPage);
 
-    return {
-      currentQuestions,
-      totalPages,
-    };
-  }, [currentPage, questionsPerPage, questions]);
+    return { currentQuestions, totalPages };
+  }, [currentPage, questionsPerPage, questions, currentUserId, showMyQuestions]);
+
 
   // Change page
   const handlePageChange = (pageNumber) => {
@@ -182,7 +310,173 @@ function Question() {
   const handleCloseModal = () => {
     setShowNoResultsModal(false);
   };
+  const handleDelete = async (questionId) => {
+    console.log("Deleting question with ID:", questionId); // Log question ID to check
+    const confirmDelete = window.confirm("Are you sure you want to delete this question?");
+    if (!confirmDelete) return;
 
+    try {
+      const res = await fetch(`http://localhost:5000/api/questions/${questionId}`, {
+        method: "DELETE",
+        credentials: "include", // Sends cookie for authentication
+      });
+
+      if (res.ok) {
+        setQuestions((prev) => prev.filter((q) => q._id !== questionId));
+      } else {
+        const error = await res.json();
+        console.error("Error:", error);  // Log the error response
+        alert("Failed to delete question");
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
+
+
+  const handleEdit = (question) => {
+    setEditData({
+      _id: question._id,
+      title: question.title,
+      details: question.details,
+      tags: question.tags.join(", ")
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/questions/${editData._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          title: editData.title,
+          details: editData.details,
+          tags: editData.tags.split(",").map(tag => tag.trim())
+        })
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setQuestions((prev) =>
+          prev.map((q) => (q._id === updated._id ? updated : q))
+        );
+        setEditModalOpen(false);
+      } else {
+        alert("Update failed");
+      }
+    } catch (err) {
+      console.error("❌ Edit error:", err);
+    }
+  };
+
+  const handleRemoveFilter = () => {
+    // Reset filter options
+    setFilterOptions({
+      mostAnswered: false,
+      unanswered: false,
+      daysOld: "",
+      sortedBy: "Newest",  // Default sorting
+      taggedWith: "",
+    });
+    
+    // Reset other states related to the filter
+    setSelectedTag(null);  // Reset tag filter
+    setFilterApplied(false);  // Reset filter applied state
+  
+    // Close the filter options
+    setIsFilterOpen(false);
+  
+    // Fetch all questions again (without filters)
+    fetchQuestionsAndTags();  // Function that fetches all questions
+  };
+  
+  
+
+  const handleQuestionClick = async (questionId) => {
+    if (!currentUserId) {
+      return; // If the user is not logged in, don't update the view count
+    }
+
+    const question = questions.find(q => q._id === questionId);
+
+    if (question.user === currentUserId) {
+      return; // If the user is the owner of the question, don't increment views
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/questions/${questionId}/view`, {
+        method: 'PUT',
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        // Handle the success response (e.g., update the UI if necessary)
+        const updatedQuestion = await res.json();
+        setQuestions(prevQuestions => prevQuestions.map(q => q._id === questionId ? updatedQuestion : q));
+      } else {
+        console.error('Failed to increment view count');
+      }
+    } catch (err) {
+      console.error('Error updating view count:', err.message);
+    }
+  };
+  
+
+// Handle Search Input Change
+const handleSearchChange = (e) => {
+  setSearchQuery(e.target.value);
+  if (e.target.value.trim() !== "") {
+    setIsSearching(true); // When there's text in the search, set search to active
+  } else {
+    setIsSearching(false); // When the search bar is cleared, set search to inactive
+  }
+};
+const handleSearchKeyPress = (e) => {
+  if (e.key === "Enter") {
+    fetchSearchResults();
+  }
+};
+
+const fetchSearchResults = async () => {
+  try {
+    const query = searchQuery ? `?search=${searchQuery}` : "";
+    const res = await fetch(`http://localhost:5000/api/questions${query}`, { credentials: "include" });
+    const data = await res.json();
+    setQuestions(data.questions);
+  } catch (err) {
+    console.error("Error fetching search results:", err.message);
+  }
+};
+
+// Trigger search when the user presses Enter
+
+
+const clearSearch = () => {
+  setSearchQuery("");  // Clear search input
+  setIsSearching(false); // Reset the searching state
+  setSelectedTag(null);  // Clear any tag selection
+  setFilterOptions({
+    mostAnswered: false,
+    unanswered: false,
+    daysOld: "",
+    sortedBy: "Newest",
+    taggedWith: "",
+  }); // Reset filter options to defaults
+  setFilterApplied(false); // Reset filter applied state
+  
+  // Fetch questions again without any search or filter
+  fetchQuestionsAndTags(); // Fetch all questions without search/filter
+};
+const highlightText = (text, query) => {
+  if (!query) return text;
+
+  const regex = new RegExp(`(${query})`, "gi"); // Case-insensitive search
+  return text.replace(regex, `<span style="background-color: yellow;">$1</span>`);
+};
   return (
     <div style={{ backgroundColor: "#F8FAFC", minHeight: "100vh" }}>
       <motion.div
@@ -237,6 +531,25 @@ function Question() {
                   Ask Question
                 </button>
               </div>
+              {currentUserId && (
+                <button
+                  onClick={toggleMyQuestions}
+                  style={{
+                    marginRight: "10px",
+                    backgroundColor: showMyQuestions ? "#F59E0B" : "#2563EB",
+                    color: "#FFFFFF",
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "8px",
+                    fontSize: "0.875rem",
+                    fontWeight: "600",
+                    border: "none",
+                    cursor: "pointer",
+                    marginBottom: "10px",
+                  }}
+                >
+                  {showMyQuestions ? "All Questions" : "My Questions"}
+                </button>
+              )}
 
               {/* Search Bar */}
               <div
@@ -252,19 +565,22 @@ function Question() {
                 }}
               >
                 <div style={{ position: "relative", flex: 1 }}>
-                  <input
-                    type="text"
-                    placeholder="Search questions..."
-                    style={{
-                      width: "100%",
-                      padding: "0.75rem 1rem 0.75rem 2.5rem",
-                      borderRadius: "8px",
-                      border: "1px solid #E2E8F0",
-                      fontSize: "0.875rem",
-                      fontFamily: "Poppins, sans-serif",
-                      transition: "all 0.3s ease",
-                      outline: "none",
-                    }}
+                <input
+      type="text"
+      placeholder="Search questions..."
+      value={searchQuery}
+      onChange={handleSearchChange}
+      onKeyPress={handleSearchKeyPress}
+      style={{
+        width: "100%",
+        padding: "0.75rem 1rem 0.75rem 2.5rem",
+        borderRadius: "8px",
+        border: "1px solid #E2E8F0",
+        fontSize: "0.875rem",
+        fontFamily: "Poppins, sans-serif",
+        transition: "all 0.3s ease",
+        outline: "none",
+      }}
                     onFocus={(e) => {
                       e.target.style.borderColor = "#2563EB";
                       e.target.style.boxShadow =
@@ -288,6 +604,19 @@ function Question() {
                     🔍
                   </span>
                 </div>
+                <button
+    onClick={clearSearch}
+    style={{
+      padding: "0.5rem 1rem",
+      backgroundColor: "#F59E0B",
+      color: "white",
+      border: "none",
+      borderRadius: "4px",
+      cursor: "pointer",
+    }}
+  >
+    Clear Search
+  </button>
               </div>
 
               <div style={{ padding: "1rem", backgroundColor: "#F8FAFC" }}>
@@ -301,87 +630,47 @@ function Question() {
                     paddingBottom: "0.5rem",
                   }}
                 >
-                  {/* Tabs */}
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    {["Newest", "Active", "Unanswered", "Most voted"].map(
-                      (tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => handleTabClick(tab)}
-                          style={{
-                            padding: "0.5rem 1rem",
-                            borderRadius: "4px",
-                            border: "none",
-                            backgroundColor:
-                              selectedTab === tab ? "#2563EB" : "transparent",
-                            color: selectedTab === tab ? "#FFFFFF" : "#1E293B",
-                            fontWeight: "500",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {tab}
-                        </button>
-                      )
-                    )}
+                 
+      {/* Tabs */}
+<div style={{ display: "flex", gap: "1rem" }}>
+  {["Newest", "Oldest", "Most Answered", "Unanswered"].map((tab) => (
+    <button
+      key={tab}
+      onClick={() => handleTabClick(tab)}
+      disabled={isSearching} // Disable the tabs when searching
+      style={{
+        padding: "0.5rem 1rem",
+        borderRadius: "4px",
+        border: "none",
+        backgroundColor: selectedTab === tab ? "#2563EB" : "transparent", // Active tab color
+        color: selectedTab === tab ? "#FFFFFF" : "#1E293B", // No change in color when disabled
+        fontWeight: "500",
+        cursor: isSearching ? "not-allowed" : "pointer", // Change cursor when disabled
+      }}
+    >
+      {tab}
+    </button>
+  ))}
+</div>
 
-                    {/* More Dropdown */}
-                    <div style={{ position: "relative" }}>
-                      <button
-                        onClick={handleMoreToggle}
-                        style={{
-                          padding: "0.5rem 1rem",
-                          borderRadius: "4px",
-                          border: "1px solid #E2E8F0",
-                          backgroundColor: "transparent",
-                          color: "#1E293B",
-                          fontWeight: "500",
-                          cursor: "pointer",
-                        }}
-                      >
-                        More
-                      </button>
-                      {isMoreOpen && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: "2.5rem",
-                            left: 0,
-                            backgroundColor: "#FFFFFF",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                            borderRadius: "4px",
-                            zIndex: 10,
-                            width: "200px",
-                          }}
-                        >
-                          {[
-                            "Frequent",
-                            "Score",
-                            "Trending",
-                            "Week",
-                            "Month",
-                            "Custom Filters",
-                          ].map((option) => (
-                            <div
-                              key={option}
-                              style={{
-                                padding: "0.5rem 1rem",
-                                fontSize: "0.875rem",
-                                color: "#1E293B",
-                                cursor: "pointer",
-                              }}
-                              onClick={() => {
-                                setSelectedTab(option);
-                                setIsMoreOpen(false);
-                              }}
-                            >
-                              {option}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
 
+                  
+                  {filterApplied && (
+  <button
+    onClick={handleRemoveFilter}
+    style={{
+      backgroundColor: "#F59E0B",
+      color: "white",
+      border: "none",
+      borderRadius: "4px",
+      cursor: "pointer",
+      padding: "0.5rem 1rem",
+      fontWeight: "600",
+    }}
+  >
+    Remove Filter
+  </button>
+)}
                   {/* Right Side: Question Count and Filter Button */}
                   <div
                     style={{
@@ -409,231 +698,182 @@ function Question() {
 
                     {/* Filter Button */}
                     <button
-                      onClick={handleFilterToggle}
-                      onMouseEnter={() => setIsHovered(true)}
-                      onMouseLeave={() => setIsHovered(false)}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        borderRadius: "4px",
-                        border: "1px solid #E2E8F0",
-                        backgroundColor: isHovered ? "#2563EB" : "transparent",
-                        color: isHovered ? "#FFFFFF" : "#2563EB",
-                        fontWeight: "500",
-                        cursor: "pointer",
-                        transition: "background-color 0.3s, color 0.3s",
-                      }}
-                    >
-                      Filter
-                    </button>
+  onClick={handleFilterToggle}
+  disabled={isSearching} // Disable when searching
+  style={{
+    padding: "0.5rem 1rem",
+    borderRadius: "4px",
+    border: "1px solid #E2E8F0",
+    backgroundColor: isSearching ? "gray" : isHovered ? "#2563EB" : "transparent",
+    color: isSearching ? "#A1A1A1" : isHovered ? "#FFFFFF" : "#2563EB", // Change text color when disabled
+    fontWeight: "500",
+    cursor: isSearching ? "not-allowed" : "pointer", // Disable pointer when searching
+    transition: "background-color 0.3s, color 0.3s",
+  }}
+>
+  Filter
+</button>
                   </div>
                 </div>
 
                 {/* Filter Section */}
-                {isFilterOpen && (
-                  <div
-                    style={{
-                      marginTop: "1rem",
-                      padding: "1rem",
-                      backgroundColor: "#FFFFFF",
-                      borderRadius: "8px",
-                      border: "1px solid #E2E8F0",
-                    }}
-                  >
-                    <h3
-                      style={{
-                        fontSize: "1.125rem",
-                        fontWeight: "600",
-                        marginBottom: "1rem",
-                      }}
-                    >
-                      Filter Options
-                    </h3>
-                    <div style={{ display: "flex", gap: "2rem" }}>
-                      {/* Filter By */}
-                      <div>
-                        <h4
-                          style={{
-                            fontSize: "1rem",
-                            fontWeight: "500",
-                            marginBottom: "0.5rem",
-                          }}
-                        >
-                          Filter by
-                        </h4>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5rem",
-                          }}
-                        >
-                          <label>
-                            <input type="checkbox" /> No answers
-                          </label>
-                          <label>
-                            <input type="checkbox" /> No accepted answer
-                          </label>
-                          <label>
-                            <input type="checkbox" /> Has bounty
-                          </label>
-                          <label>
-                            <input
-                              type="number"
-                              placeholder="Days old"
-                              style={{
-                                padding: "0.5rem",
-                                border: "1px solid #E2E8F0",
-                                borderRadius: "4px",
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </div>
+                {/* Filter Options Section */}
+{isFilterOpen && (
+  <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
+    <h3 style={{ fontSize: "1.125rem", fontWeight: "600", marginBottom: "1rem" }}>Filter Options</h3>
+    <div style={{ display: "flex", gap: "2rem" }}>
+      {/* Filter By */}
+      <div>
+        <h4 style={{ fontSize: "1rem", fontWeight: "500", marginBottom: "0.5rem" }}>Filter by</h4>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <label>
+            <input
+              type="checkbox"
+              name="mostAnswered"
+              checked={filterOptions.mostAnswered}
+              onChange={handleFilterChange}
+            /> Most Answered
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              name="unanswered"
+              checked={filterOptions.unanswered}
+              onChange={handleFilterChange}
+            /> Unanswered
+          </label>
 
-                      {/* Sorted By */}
-                      <div>
-                        <h4
-                          style={{
-                            fontSize: "1rem",
-                            fontWeight: "500",
-                            marginBottom: "0.5rem",
-                          }}
-                        >
-                          Sorted by
-                        </h4>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5rem",
-                          }}
-                        >
-                          {[
-                            "Newest",
-                            "Recent activity",
-                            "Highest score",
-                            "Most frequent",
-                            "Bounty ending soon",
-                            "Trending",
-                            "Most activity",
-                          ].map((option) => (
-                            <label key={option}>
-                              <input type="radio" name="sortedBy" /> {option}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+          <label>
+            <input
+              type="number"
+              name="daysOld"
+              value={filterOptions.daysOld}
+              onChange={handleFilterChange}
+              placeholder="Days old"
+              style={{
+                padding: "0.5rem",
+                border: "1px solid #E2E8F0",
+                borderRadius: "4px",
+              }}
+            />
+          </label>
+        </div>
+      </div>
 
-                      {/* Tagged With */}
-                      <div>
-                        <h4
-                          style={{
-                            fontSize: "1rem",
-                            fontWeight: "500",
-                            marginBottom: "0.5rem",
-                          }}
-                        >
-                          Tagged with
-                        </h4>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5rem",
-                          }}
-                        >
-                          <label>
-                            <input type="radio" name="taggedWith" /> My watched
-                            tags
-                          </label>
-                          <label>
-                            <input type="radio" name="taggedWith" /> The
-                            following tags:
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. javascript or python"
-                            style={{
-                              padding: "0.5rem",
-                              border: "1px solid #E2E8F0",
-                              borderRadius: "4px",
-                              width: "100%",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
+      {/* Sorted By */}
+      <div>
+        <h4 style={{ fontSize: "1rem", fontWeight: "500", marginBottom: "0.5rem" }}>Sorted by</h4>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {["Newest", "Oldest", "Highest views", "Lowest Views"].map((option) => (
+            <label key={option}>
+              <input
+                type="radio"
+                name="sortedBy"
+                value={option}
+                checked={filterOptions.sortedBy === option}
+                onChange={handleFilterChange}
+              /> {option}
+            </label>
+          ))}
+        </div>
+      </div>
 
-                    {/* Filter Actions */}
-                    <div
-                      style={{
-                        marginTop: "1rem",
-                        display: "flex",
-                        gap: "1rem",
-                      }}
-                    >
-                      <button
-                        style={{
-                          padding: "0.5rem 1rem",
-                          backgroundColor: "#2563EB",
-                          color: "#FFFFFF",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Apply Filter
-                      </button>
-                      <button
-                        style={{
-                          padding: "0.5rem 1rem",
-                          backgroundColor: "transparent",
-                          color: "#2563EB",
-                          border: "1px solid #E2E8F0",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
+      {/* Tagged With */}
+      <div>
+        <h4 style={{ fontSize: "1rem", fontWeight: "500", marginBottom: "0.5rem" }}>Tagged with</h4>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <label>
+            <input
+              type="radio"
+              name="taggedWith"
+              value="followingTags"
+              checked={filterOptions.taggedWith === "followingTags"}
+              onChange={handleFilterChange}
+            /> The following tags:
+          </label>
+          <input
+            type="text"
+            name="taggedWith"
+            value={filterOptions.taggedWith}
+            onChange={handleFilterChange}
+            placeholder="e.g. javascript or python"
+            style={{
+              padding: "0.5rem",
+              border: "1px solid #E2E8F0",
+              borderRadius: "4px",
+              width: "100%",
+            }}
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* Filter Actions */}
+    <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
+      <button
+        style={{
+          padding: "0.5rem 1rem",
+          backgroundColor: "#2563EB",
+          color: "#FFFFFF",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+        onClick={handleFilterApply}
+      >
+        Apply Filter
+      </button>
+      <button
+        style={{
+          padding: "0.5rem 1rem",
+          backgroundColor: "transparent",
+          color: "#2563EB",
+          border: "1px solid #E2E8F0",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+        onClick={() => setIsFilterOpen(false)}  // Close the filter
+      >
+        Cancel Filter
+      </button>
+    </div>
+  </div>
+)}
+
+
               </div>
               {/* Question Cards */}
               <div>
                 {paginationData.currentQuestions.map((question) => (
-                  <motion.div
-                    key={question.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    style={questionCardStyle}
-                  >
+                  <motion.div key={question._id} style={questionCardStyle} onClick={() => handleQuestionClick(question._id)}>
                     {/* Question Title with Dynamic Link */}
-                    <h3
-                      style={{
-                        fontSize: "1.25rem",
-                        fontWeight: "600",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
+                    <h3 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "0.5rem" }}>
                       <Link
-                        to={`/questionthread/${question.id}`}
+                        to={`/questionthread/${question._id}`}
                         style={{
                           textDecoration: "none",
                           color: "#2563EB",
                           transition: "color 0.3s",
                         }}
-                        onMouseOver={(e) => (e.target.style.color = "#1D4ED8")} // Hover effect
+                        onMouseOver={(e) => (e.target.style.color = "#1D4ED8")}
                         onMouseOut={(e) => (e.target.style.color = "#2563EB")}
                       >
                         {question.title}
                       </Link>
                     </h3>
+
+                    {/* Question Description */}
+                    <div
+                       style={{ color: "#64748B", marginBottom: "0.5rem" }}
+                       dangerouslySetInnerHTML={{
+                         __html: highlightText(question.details, searchQuery),
+                       }}
+                    />
                     <p style={{ color: "#64748B", marginBottom: "0.5rem" }}>
                       {question.description}
                     </p>
+
+                    {/* Tags */}
                     <div
                       style={{
                         display: "flex",
@@ -657,6 +897,15 @@ function Question() {
                         </span>
                       ))}
                     </div>
+
+                    {/* Display User Info (Name and Role) */}
+                    <div style={{ fontSize: "0.875rem", color: "#64748B", marginBottom: "1rem" }}>
+                      <span style={{ fontWeight: "600", color: "#1E293B" }}>
+                        {question.userName} ({question.userRole})
+                      </span>
+                    </div>
+
+                    {/* Question Metadata */}
                     <div
                       style={{
                         display: "flex",
@@ -665,33 +914,61 @@ function Question() {
                       }}
                     >
                       <div style={{ display: "flex", gap: "1rem" }}>
+
                         <span style={{ color: "#1E293B" }}>
-                          <strong>{question.votes}</strong> votes
-                        </span>
-                        <span style={{ color: "#1E293B" }}>
-                          <strong>{question.answers}</strong> answers
+                          <strong>{Array.isArray(question.answers) ? question.answers.length : 0}</strong> answers
                         </span>
                         <span style={{ color: "#1E293B" }}>
                           <strong>{question.views}</strong> views
                         </span>
                       </div>
                       <div style={{ color: "#64748B", fontSize: "0.875rem" }}>
-                        Asked by {question.askedBy} • {question.time} •{" "}
-                        <span
-                          style={{
-                            color:
-                              question.status === "Solved"
-                                ? "#059669"
-                                : "#DC2626",
-                          }}
-                        >
-                          {question.status}
-                        </span>
+                        {question.user === currentUserId && (
+                          <div
+                            style={{
+                              marginTop: "0.5rem",
+                              display: "flex",
+                              gap: "10px",
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            <button
+                              onClick={() => handleEdit(question)}
+                              style={{
+                                padding: "6px 12px",
+                                backgroundColor: "#facc15",
+                                border: "none",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(question._id)}
+                              style={{
+                                padding: "6px 12px",
+                                backgroundColor: "#ef4444",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.div>
                 ))}
               </div>
+
+
+
               {/* Pagination Controls */}
               <div
                 style={{
@@ -789,37 +1066,55 @@ function Question() {
                 >
                   Popular Tags
                 </h3>
+                {selectedTag && (
+                  <button
+                    onClick={handleRemoveFilter}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      backgroundColor: "#EF4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      marginBottom: "1rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Remove Filter
+                  </button>
+                )}
+
                 <div>
                   {tags.map((tag) => (
                     <div
-                      key={tag.name}
-                      onClick={() => handleTagClick(tag.name)}
+                      key={tag._id}
+                      onClick={() => setSelectedTag(tag._id)}
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        backgroundColor: "#F1F5F9",
+                        backgroundColor: selectedTag === tag._id ? "#2563EB" : "#F1F5F9", // Blue background for active tag
                         padding: "0.5rem 1rem",
-                        borderRadius: "0.375rem",
-                        fontSize: "0.875rem",
-                        color: "#2563EB",
+                        borderRadius: "4px",
                         marginBottom: "0.5rem",
-                        cursor: "pointer",
-                        transition: "background-color 0.3s",
+                        cursor: "pointer",  // Make it clickable
+                        transition: "background-color 0.3s, color 0.3s",
+                        color: selectedTag === tag._id ? "white" : "#2563EB",  // Text color white for active tag
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedTag !== tag._id) {
+                          e.target.style.backgroundColor = "#2563EB"; // Hover effect only if not selected
+                          e.target.style.color = "white";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedTag !== tag._id) {
+                          e.target.style.backgroundColor = "#F1F5F9"; // Reset background color on hover leave if not selected
+                          e.target.style.color = "#2563EB"; // Reset text color
+                        }
                       }}
                     >
-                      <span>{tag.name}</span>
-                      <span
-                        style={{
-                          backgroundColor: "#E5E7EB",
-                          padding: "0.25rem 0.5rem",
-                          borderRadius: "0.375rem",
-                          color: "#64748B",
-                          fontWeight: "500",
-                        }}
-                      >
-                        {tag.count}
-                      </span>
+                      <span>{tag._id}</span> {/* Tag name */}
+                      <span>{tag.count} Questions</span> {/* Tag count */}
                     </div>
                   ))}
                 </div>
@@ -1050,124 +1345,52 @@ function Question() {
       </motion.div>
 
       <AnimatePresence>
-        {showNoResultsModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              zIndex: 1000,
-            }}
-            onClick={handleCloseModal}
-          >
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              transition={{ type: "spring", damping: 20 }}
-              style={{
-                backgroundColor: "white",
-                padding: "2rem",
-                borderRadius: "12px",
-                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                maxWidth: "400px",
-                width: "90%",
-                textAlign: "center",
-                position: "relative",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Close Button */}
-              <button
-                onClick={handleCloseModal}
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  right: "10px",
-                  background: "none",
-                  border: "none",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                  color: "#64748B",
-                  padding: "5px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "color 0.3s ease",
-                }}
-                onMouseOver={(e) => e.target.style.color = "#1E293B"}
-                onMouseOut={(e) => e.target.style.color = "#64748B"}
-              >
-                ×
-              </button>
 
-              {/* Icon */}
-              <div
-                style={{
-                  fontSize: "3rem",
-                  marginBottom: "1rem",
-                  color: "#2563EB",
-                }}
-              >
-                🔍
-              </div>
-
-              {/* Content */}
-              <h3
-                style={{
-                  color: "#1E293B",
-                  fontSize: "1.25rem",
-                  marginBottom: "0.5rem",
-                  fontFamily: "Poppins, sans-serif",
-                }}
-              >
-                No Questions Found
-              </h3>
-              <p
-                style={{
-                  color: "#64748B",
-                  fontSize: "0.875rem",
-                  marginBottom: "1.5rem",
-                  fontFamily: "Poppins, sans-serif",
-                }}
-              >
-                We couldn't find any questions matching "{searchQuery}"
-              </p>
-
-              {/* Action Buttons */}
-              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                <button
-                  onClick={handleCloseModal}
-                  style={{
-                    padding: "0.5rem 1.5rem",
-                    backgroundColor: "#2563EB",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontFamily: "Poppins, sans-serif",
-                    fontSize: "0.875rem",
-                    transition: "background-color 0.3s ease",
-                  }}
-                  onMouseOver={(e) => e.target.style.backgroundColor = "#1E40AF"}
-                  onMouseOut={(e) => e.target.style.backgroundColor = "#2563EB"}
-                >
-                  Clear Search
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
       </AnimatePresence>
+      {editModalOpen && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex", justifyContent: "center", alignItems: "center",
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: "white", padding: "2rem", borderRadius: "10px",
+            width: "90%", maxWidth: "800px", position: "relative"
+          }}>
+            <button onClick={() => setEditModalOpen(false)} style={{
+              position: "absolute", top: "10px", right: "15px",
+              border: "none", fontSize: "1.5rem", background: "transparent", cursor: "pointer"
+            }}>×</button>
+
+            <h2>Edit Your Question</h2>
+            <label>Title:</label>
+            <ReactQuill value={editData.title} onChange={(val) => setEditData({ ...editData, title: val })} />
+
+            <label style={{ marginTop: "1rem" }}>Details:</label>
+            <ReactQuill value={editData.details} onChange={(val) => setEditData({ ...editData, details: val })} />
+
+            <label style={{ marginTop: "1rem" }}>Tags (comma separated):</label>
+            <input
+              type="text"
+              value={editData.tags}
+              onChange={(e) => setEditData({ ...editData, tags: e.target.value })}
+              style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem", borderRadius: "6px", border: "1px solid #ccc" }}
+            />
+
+            <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button onClick={() => setEditModalOpen(false)} style={{
+                padding: "0.5rem 1rem", border: "1px solid #ccc", borderRadius: "6px"
+              }}>Cancel</button>
+              <button onClick={handleSaveEdit} style={{
+                padding: "0.5rem 1rem", backgroundColor: "#2563EB", color: "white", border: "none", borderRadius: "6px"
+              }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

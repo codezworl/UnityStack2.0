@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Header from "./header";
-import StudentSidebar from "../pages/StudentSidebar"; // Assuming this import is correct
+import StudentSidebar from "../components/sidebar"; // ✅ Ensure correct path
+
 import { useNavigate } from 'react-router-dom';
 
 const StudentDashboard = () => {

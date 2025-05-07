@@ -1,240 +1,296 @@
-import React, { useState } from 'react';
-
-import Header from '../components/header';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import io from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import Header from '../components/header';
 
 function Chat() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messageInput, setMessageInput] = useState('');
-  const [messages, setMessages] = useState([
-    { id: 1, sender: 'Aiden Chavez', time: '10:10 AM', text: 'Hi Aiden, how are you? How is the project coming along?' },
-    { id: 2, sender: 'Me', time: '10:12 AM', text: 'Are we meeting today?' },
-    { id: 3, sender: 'Me', time: '10:15 AM', text: 'Project has been already finished and I have results to show you.' },
-  ]);
+  const [messages, setMessages] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [currentRoom, setCurrentRoom] = useState(null);
+  const messagesEndRef = useRef(null);
 
-  const users = [
-    { id: 1, name: 'M.Faseeh', time: '38m', online: true, avatar: 'https://via.placeholder.com/40?text=VP' },
-    { id: 2, name: 'Waqas Zafar', time: '45m', online: true, avatar: 'https://via.placeholder.com/40?text=AC' },
-    { id: 3, name: 'Abdullah Ata', time: '1h', online: false, avatar: 'https://via.placeholder.com/40?text=MT' },
-    { id: 4, name: 'Ahmed Hussain', time: '2h', online: true, avatar: 'https://via.placeholder.com/40?text=CK' },
-    { id: 5, name: 'Fuzail raza', time: '2h', online: false, avatar: 'https://via.placeholder.com/40?text=MW' },
-    { id: 6, name: 'Sajjad ali', time: '3h', online: false, avatar: 'https://via.placeholder.com/40?text=DH' },
-  ];
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Initialize socket connection
+  useEffect(() => {
+    const newSocket = io('http://localhost:5000', {
+      withCredentials: true,
+      transports: ['websocket']
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected:', newSocket.id);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  // Fetch logged-in user and all users
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/user", {
+          withCredentials: true,
+        });
+        setCurrentUser(res.data);
+        
+        // Join room based on user role
+        if (socket && res.data) {
+          const displayName = res.data.role === 'organization' 
+            ? res.data.companyName 
+            : res.data.firstName || res.data.name;
+            
+          socket.emit('joinRoom', res.data._id, res.data.role, displayName);
+          // Fetch users after we have the current user
+          fetchAllUsers(res.data._id);
+        }
+      } catch (err) {
+        console.warn("❌ User not logged in:", err.message);
+      }
+    };
+
+    const fetchAllUsers = async (currentUserId) => {
+      try {
+        const response = await axios.get(`http://localhost:5000/api/users?currentUserId=${currentUserId}`, {
+          withCredentials: true
+        });
+        
+        if (Array.isArray(response.data)) {
+          setUsers(response.data);
+        } else {
+          console.error("Expected array of users but got:", response.data);
+          setUsers([]);
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        setUsers([]);
+      }
+    };
+
+    fetchUser();
+  }, [socket]);
+
+  // Handle socket events
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handle incoming messages
+    socket.on('receiveMessage', (messageData) => {
+      console.log('Received message:', messageData);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        sender: messageData.fromUserId === currentUser?._id ? 'Me' : messageData.fromUserName,
+        text: messageData.message,
+        time: messageData.timestamp
+      }]);
+    });
+
+    // Handle chat history
+    socket.on('chatHistory', (messages) => {
+      console.log('Received chat history:', messages);
+      setMessages(messages.map(msg => ({
+        id: msg._id,
+        sender: msg.fromUserId === currentUser?._id ? 'Me' : msg.fromUserName,
+        text: msg.message,
+        time: msg.timestamp
+      })));
+    });
+
+    // Handle errors
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
+
+    // Handle user joined
+    socket.on('userJoined', ({ userId, role, userName }) => {
+      console.log('User joined:', { userId, role, userName });
+      setUsers(prev => {
+        const updatedUsers = prev.map(user => 
+          user._id === userId 
+            ? { ...user, isOnline: true }
+            : user
+        );
+        return updatedUsers;
+      });
+    });
+
+    // Handle user left
+    socket.on('userLeft', ({ userId }) => {
+      console.log('User left:', userId);
+      setUsers(prev => {
+        const updatedUsers = prev.map(user => 
+          user._id === userId 
+            ? { ...user, isOnline: false }
+            : user
+        );
+        return updatedUsers;
+      });
+    });
+
+    return () => {
+      socket.off('receiveMessage');
+      socket.off('chatHistory');
+      socket.off('error');
+      socket.off('userJoined');
+      socket.off('userLeft');
+    };
+  }, [socket, currentUser]);
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
-  };
-
-  const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      setMessages([...messages, { id: messages.length + 1, sender: 'Me', time: 'Now', text: messageInput }]);
-      setMessageInput('');
+    // Clear messages when switching users
+    setMessages([]);
+    
+    // Join private chat room
+    if (socket && currentUser) {
+      console.log('Joining private chat with:', user._id);
+      socket.emit('joinPrivateChat', user._id);
+      setCurrentRoom([currentUser._id, user._id].sort().join('_'));
     }
   };
 
+  const handleSendMessage = () => {
+    if (!messageInput.trim() || !selectedUser || !socket || !currentUser) return;
+
+    const displayName = currentUser.role === 'organization' 
+      ? currentUser.companyName 
+      : currentUser.firstName || currentUser.name;
+
+    console.log('Sending message:', {
+      message: messageInput,
+      toUserId: selectedUser._id,
+      fromUserId: currentUser._id,
+      fromUserName: displayName
+    });
+
+    // Emit message to server
+    socket.emit('sendMessage', 
+      messageInput, 
+      selectedUser._id, 
+      currentUser._id,
+      displayName
+    );
+    
+    setMessageInput('');
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* Header */}
+    <div className="d-flex flex-column" style={{ height: '100vh' }}>
       <Header />
 
-      <div style={{ display: 'flex', flexGrow: 1 }}>
-       
-        {/* Chat Content */}
-        <div style={{ flex: 1, display: 'flex' }}>
-          {/* Left   */}
-          <div style={{ width: '300px', borderRight: '1px solid #e6e9f0', backgroundColor: '#fff' }}>
-            {/* Search Bar */}
-            <div style={{ padding: '20px' }}>
-              <div className="input-group">
-                <span className="input-group-text bg-light border-end-0">
-                  <i className="bi bi-search"></i>
-                </span>
-                <input 
-                  type="text" 
-                  className="form-control border-start-0 bg-light" 
-                  placeholder="Search..." 
-                  style={{ boxShadow: 'none' }}
-                />
-              </div>
-            </div>
-
-            {/* Users List */}
-            <div style={{ overflowY: 'auto', height: 'calc(100vh - 80px)' }}>
-              {users.map(user => (
-                <div 
-                  key={user.id} 
-                  onClick={() => handleUserClick(user)}
-                  style={{ 
-                    padding: '15px 20px',
-                    borderBottom: '1px solid #f0f2f7',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                  }}
-                  className="hover-bg-light"
-                >
-                  <div style={{ position: 'relative' }}>
-                    <img 
-                      src={user.avatar} 
-                      alt={user.name}
-                      style={{ 
-                        width: '40px', 
-                        height: '40px', 
-                        borderRadius: '50%',
-                        objectFit: 'cover'
-                      }} 
-                    />
-                    {user.online && (
-                      <span style={{
-                        position: 'absolute',
-                        bottom: '2px',
-                        right: '2px',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: '#42b72a',
-                        border: '2px solid #fff'
-                      }}></span>
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '500', color: '#2b2b2b' }}>{user.name}</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>{user.time} ago</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Chat Area */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {selectedUser ? (
-              <>
-                {/* Chat Header */}
-                <div style={{ 
-                  padding: '20px', 
-                  borderBottom: '1px solid #e6e9f0',
-                  backgroundColor: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}>
-                  <img 
-                    src={selectedUser.avatar} 
-                    alt={selectedUser.name}
-                    style={{ 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '50%',
-                      objectFit: 'cover'
-                    }} 
-                  />
-                  <div>
-                    <div style={{ fontWeight: '500' }}>{selectedUser.name}</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>Last seen {selectedUser.time} ago</div>
-                  </div>
-                  <div className="ms-auto">
-                    <button className="btn btn-light btn-sm me-2">
-                      <i className="bi bi-telephone"></i>
-                    </button>
-                    <button className="btn btn-light btn-sm me-2">
-                      <i className="bi bi-camera-video"></i>
-                    </button>
-                    <button className="btn btn-light btn-sm">
-                      <i className="bi bi-three-dots-vertical"></i>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Messages Area */}
-                <div style={{ 
-                  flex: 1, 
-                  padding: '20px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '20px',
-                  backgroundColor: '#ffffff'
-                }}>
-                  {messages.map(message => (
-                    <div 
-                      key={message.id}
-                      style={{
-                        alignSelf: message.sender === 'Me' ? 'flex-end' : 'flex-start',
-                        maxWidth: '70%'
-                      }}
-                    >
-                      <div style={{
-                        backgroundColor: message.sender === 'Me' ? '#007bff' : '#e3f2fd',
-                        color: message.sender === 'Me' ? '#fff' : '#000',
-                        padding: '12px 16px',
-                        borderRadius: '12px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                      }}>
-                        {message.text}
-                      </div>
-                      <div style={{ 
-                        fontSize: '12px', 
-                        color: '#999',
-                        marginTop: '5px',
-                        textAlign: message.sender === 'Me' ? 'right' : 'left'
-                      }}>
-                        {message.time}
-                      </div>
+      <div className="d-flex flex-grow-1">
+        <div className="col-3 border-end bg-light">
+          <div className="p-3">
+            <h5>Users</h5>
+            <div className="list-group" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              {Array.isArray(users) && users.length > 0 ? (
+                users.map(user => (
+                  <button
+                    key={user._id}
+                    onClick={() => handleUserClick(user)}
+                    className={`list-group-item list-group-item-action d-flex align-items-center ${selectedUser?._id === user._id ? 'active' : ''}`}
+                  >
+                    <div className="position-relative">
+                      <img 
+                        src={user.profileImage || 'https://via.placeholder.com/40'} 
+                        alt={user.displayName} 
+                        style={{ width: '40px', height: '40px', borderRadius: '50%', marginRight: '10px' }} 
+                      />
+                      {user.isOnline && (
+                        <span 
+                          className="position-absolute bottom-0 end-0 bg-success rounded-circle"
+                          style={{ width: '10px', height: '10px', border: '2px solid white' }}
+                        />
+                      )}
                     </div>
-                  ))}
+                    <div>
+                      <div>{user.displayName}</div>
+                      <small className="text-muted">{user.role}</small>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="text-center p-3 text-muted">
+                  No users available
                 </div>
-
-                {/* Message Input */}
-                <div style={{ 
-                  padding: '20px',
-                  backgroundColor: '#fff',
-                  borderTop: '1px solid #e6e9f0'
-                }}>
-                  <div className="input-group">
-                    <button className="btn btn-light">
-                      <i className="bi bi-paperclip"></i>
-                    </button>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      placeholder="Enter text here..."
-                      style={{ boxShadow: 'none' }}
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    />
-                    <button 
-                      className="btn"
-                      style={{
-                        border: '1px solid #007bff',
-                        color: '#007bff',
-                        backgroundColor: '#fff',
-                      }}
-                      onClick={handleSendMessage}
-                      onMouseDown={(e) => e.currentTarget.style.backgroundColor = '#007bff'}
-                      onMouseUp={(e) => e.currentTarget.style.backgroundColor = '#fff'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
-                    >
-                      Send
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                color: '#999' 
-              }}>
-                Select a user to start chatting
-              </div>
-            )}
+              )}
+            </div>
           </div>
+        </div>
+
+        <div className="col-9 d-flex flex-column">
+          {selectedUser ? (
+            <>
+              <div className="p-3 border-bottom bg-white d-flex align-items-center">
+                <div className="position-relative">
+                  <img 
+                    src={selectedUser.profileImage || 'https://via.placeholder.com/40'} 
+                    alt={selectedUser.displayName}
+                    style={{ width: '40px', height: '40px', borderRadius: '50%', marginRight: '10px' }}
+                  />
+                  {selectedUser.isOnline && (
+                    <span 
+                      className="position-absolute bottom-0 end-0 bg-success rounded-circle"
+                      style={{ width: '10px', height: '10px', border: '2px solid white' }}
+                    />
+                  )}
+                </div>
+                <div>
+                  <div>{selectedUser.displayName}</div>
+                  <small className="text-muted">{selectedUser.role}</small>
+                </div>
+              </div>
+
+              <div className="flex-grow-1 p-3" style={{ overflowY: 'auto' }}>
+                {messages.map(message => (
+                  <div key={message.id} className={`d-flex ${message.sender === 'Me' ? 'justify-content-end' : 'justify-content-start'}`}>
+                    <div className={`p-2 rounded-3 ${message.sender === 'Me' ? 'bg-primary text-white' : 'bg-light text-dark'}`} style={{ maxWidth: '70%' }}>
+                      {message.text}
+                    </div>
+                    <small className={`${message.sender === 'Me' ? 'text-end' : 'text-start'} text-muted ms-2`}>{message.time}</small>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="p-3 border-top bg-white d-flex">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Type your message..."
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                />
+                <button className="btn btn-primary ms-2" onClick={handleSendMessage}>
+                  Send
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="d-flex justify-content-center align-items-center flex-grow-1 text-muted">
+              Select a user to start chatting
+            </div>
+          )}
         </div>
       </div>
     </div>

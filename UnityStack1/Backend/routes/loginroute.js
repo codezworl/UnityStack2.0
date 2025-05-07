@@ -76,22 +76,28 @@ router.post("/login", async (req, res) => {
     // ✅ Store token in HTTP-Only Cookie (Fixing Frontend Issues)
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // Change to `true` in production with HTTPS
-      sameSite: "Lax",
+      sameSite: "Lax", // safer and works for dev
+      secure: false,   // still false because localhost is not HTTPS
     });
-
-    res.status(200).json({
+    
+    
+    return res.status(200).json({
       message: "Login successful.",
-      token, // ✅ Include the token in response
       role,
-      user: { id: user._id, email: user.email || user.companyEmail },
+      token,
+      user: { id: user._id, email: user.email || user.companyEmail }
     });
+    
+   
+    
+    
     
   } catch (error) {
     console.error("Error in login:", error.message);
     res.status(500).json({ message: "Server error. Please try again later." });
   }
 });
+
 
 
 /** 

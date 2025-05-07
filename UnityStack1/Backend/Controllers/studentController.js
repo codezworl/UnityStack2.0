@@ -4,7 +4,11 @@ const path = require("path");  // ✅ Import path module
 const multer = require("multer");
 const fs = require("fs");
 
+const Developer = require("../models/Develpor");
+const Question = require('../models/question');
 const Student = require("../models/Student");
+const Organization = require("../models/Organization");
+const Answer = require("../models/answer");
 const { SendVerificationCode } = require("../middleware/Email"); // Ensure this is the correct path
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -168,21 +172,24 @@ const loginStudent = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+// student controller
+// In studentController.js
 const getStudentProfile = async (req, res) => {
   try {
-    const studentId = req.user.id; // Extract student ID from authenticated request
-
-    const student = await Student.findById(studentId).select("-password"); // Exclude password
+    const studentId = req.params.id;  // Get student ID from URL parameters
+    const student = await Student.findById(studentId).select("-password");
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
-
     res.status(200).json(student);
   } catch (error) {
     console.error("Error fetching student profile:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
 const updateStudentProfile = async (req, res) => {
   try {
     console.log("🔍 Received data for update:", req.body); // ✅ Debugging log
@@ -239,6 +246,8 @@ const updateProfileImage = async (req, res) => {
 
 
 
+
+
 module.exports = {
   signupStudent,
   verifyStudentEmail, // Add the email verification handler
@@ -247,5 +256,6 @@ module.exports = {
   updateStudentProfile,
   deleteStudentAccount,
   updateProfileImage,
-  upload, // Export `multer` for route usage
+  upload,
+   // Export `multer` for route usage
 };

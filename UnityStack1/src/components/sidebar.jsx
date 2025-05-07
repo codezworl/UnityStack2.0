@@ -1,20 +1,105 @@
-import React from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHouse, faChartSimple, faComments, faProjectDiagram, faVideo, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'; // Add icons for new options
-import { useLocation } from 'react-router-dom';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import profileBg from '../assets/silver1.jpeg';
-import profileImage from '../assets/logo.jpg';
+import React, { useState, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faHouse,
+  faChartSimple,
+  faComments,
+  faProjectDiagram,
+  faVideo,
+  faSignOutAlt,
+} from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import "bootstrap/dist/css/bootstrap.min.css";
+import profileBg from "../assets/silver1.jpeg"; // Background Image
+import defaultProfile from "../assets/logo.jpg"; // Default Profile Image
 
-const Sidebar = ({ onSelectPage }) => {
-  const location = useLocation();
+const Sidebar = () => {
+  const [user, setUser] = useState(null);
+  const [userType, setUserType] = useState(""); // "developer" or "student"
+  const navigate = useNavigate();
 
-  // Determine the user role based on the URL
-  const userRole = location.pathname.includes('developerdashboard') ? 'Developer' : 'Develpor';
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const sessionRes = await axios.get("http://localhost:5000/api/user", {
+          withCredentials: true, // Ensures the cookie is sent for authenticated requests
+        });
+  
+        const sessionUser = sessionRes.data;
+        setUserType(sessionUser.role);  // Store user role (developer or student)
+  
+        // Fetch full profile data based on user role
+        if (sessionUser.role === "developer") {
+          // If user is a developer, fetch their profile data
+          const fullDevRes = await axios.get(
+            `http://localhost:5000/api/developers/${sessionUser.id}`,
+            { withCredentials: true }
+          );
+          setUser(fullDevRes.data);  // Set developer profile data (name, image, etc.)
+        } else if (sessionUser.role === "Student") {
+          // If user is a student, fetch their profile data
+          const fullStudentRes = await axios.get(
+            `http://localhost:5000/api/students/${sessionUser.id}`, // Fetch student profile using sessionUser.id
+            { withCredentials: true }
+          );
+          setUser(fullStudentRes.data);  // Set student profile data (name, image, etc.)
+        } else {
+          // Handle other roles if needed (optional)
+          setUser(sessionUser);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching user:", error);
+      }
+    };
+  
+    fetchUserProfile();
+  }, []);
+  
+  
+  
+  
+  
 
-  const handleNavigation = (path) => {
-    onSelectPage(path);
+  // ✅ Handle Logout
+  const handleLogout = async () => {
+    try {
+      await axios.post("http://localhost:5000/api/logout", {}, { withCredentials: true });
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      setUser(null);
+      navigate("/login");
+    } catch (error) {
+      console.error("❌ Logout failed:", error);
+    }
   };
+  
+
+  // ✅ Determine User Role
+  const roleLabel = userType === "developer" ? "Developer" : "Student";
+
+  // ✅ Profile Image Handling (Use DB Image if Available)
+  const profileImage = user?.profileImage
+  ? `http://localhost:5000${user.profileImage}` // Already starts with /uploads/
+  : defaultProfile;
+ // Fallback to default
+
+  // ✅ Navigation Options for Developer and Student
+  const navigationLinks = userType === "developer"
+    ? [
+        { icon: faHouse, label: "Home", path: "/" },
+        { icon: faChartSimple, label: "Dashboard", path: "/developerdashboard" },
+        { icon: faComments, label: "Chat", path: "/chat" },
+        { icon: faProjectDiagram, label: "Work", path: "/project" },
+        { icon: faVideo, label: "Sessions", path: "/sessions" },
+      ]
+    : [
+        { icon: faHouse, label: "Dashboard", path: "/studentdashboard" },
+        { icon: faChartSimple, label: "Account", path: "/account" },
+        { icon: faComments, label: "Chat", path: "/chat" },
+        { icon: faProjectDiagram, label: "Schedule Session", path: "/sessionSchedule" },
+        { icon: faVideo, label: "Session History", path: "/SessionHistory" },
+      ];
 
   return (
     <>
@@ -22,9 +107,9 @@ const Sidebar = ({ onSelectPage }) => {
       <aside
         className="d-none d-lg-block bg-light shadow-sm"
         style={{
-          width: '300px',
-          height: 'calc(100vh - 120px)',
-          margin: '24px',
+          width: "270px",
+          height: "calc(100vh - 120px)",
+          margin: "24px",
         }}
       >
         {/* Profile Section */}
@@ -34,29 +119,41 @@ const Sidebar = ({ onSelectPage }) => {
             alt="Profile Background"
             className="img-fluid"
             style={{
-              width: '100%',
-              height: '120px',
-              objectFit: 'cover',
+              width: "100%",
+              height: "120px",
+              objectFit: "cover",
             }}
           />
-          <img
-            src={profileImage}
-            alt="Profile"
-            className="rounded-circle border border-3 border-white position-absolute"
-            style={{
-              width: '70px',
-              height: '70px',
-              top: '70px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-            }}
-          />
+        <img
+  src={
+    user?.profileImage
+      ? `http://localhost:5000${user.profileImage}` // ✅ Use full image path from DB
+      : defaultProfile
+  }
+  alt="Profile"
+  className="rounded-circle border border-3 border-white position-absolute"
+  style={{
+    width: "70px",
+    height: "70px",
+    top: "70px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    objectFit: "cover",
+  }}
+/>
+
+
+
+
+
+
           <div className="mt-5">
-            <p className="fw-bold mb-0" style={{ fontSize: '1.2rem' }}>
-              Ahmed Ali
-            </p>
-            <p className="text-muted small" style={{ fontSize: '1rem' }}>
-              {userRole}
+          <p className="fw-bold mb-0" style={{ fontSize: "1.2rem" }}>
+  {user ? `${user.firstName || ""} ${user.lastName || ""}` : "Loading..."}
+</p>
+
+            <p className="text-muted small" style={{ fontSize: "1rem" }}>
+              {roleLabel}
             </p>
           </div>
         </div>
@@ -64,66 +161,18 @@ const Sidebar = ({ onSelectPage }) => {
         {/* Navigation Links */}
         <nav className="mt-4">
           <ul className="list-unstyled">
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('home')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faHouse} className="me-3" />
-              <a
-          href="/"
-          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
-        >
-          Home
-        </a>
-            </li>
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('dashboard')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faChartSimple} className="me-3" />
-              <a
-          href="/developerdashboard"
-          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
-        >
-          Dashboard
-        </a>
-            </li>
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('chat')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faComments} className="me-3" />
-              <a
-          href="/chat"
-          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
-        >
-          Chat
-        </a>
-            </li>
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('projects')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faProjectDiagram} className="me-3" />
-              <a
-          href="/project"
-          style={{ textDecoration: "none", color: "black" }} // Ensures black text and no underline
-        >
-          Work
-        </a>
-            </li>
-            <li
-              className="d-flex align-items-center px-4 py-2 text-dark"
-              onClick={() => handleNavigation('sessions')}
-              style={{ cursor: 'pointer' }}
-            >
-              <FontAwesomeIcon icon={faVideo} className="me-3" />
-              Sessions
-            </li>
+            {navigationLinks.map(({ icon, label, path }) => (
+              <li
+                key={path}
+                className="d-flex align-items-center px-4 py-2 text-dark"
+                style={{ cursor: "pointer" }}
+              >
+                <FontAwesomeIcon icon={icon} className="me-3" />
+                <a href={path} style={{ textDecoration: "none", color: "black" }}>
+                  {label}
+                </a>
+              </li>
+            ))}
           </ul>
         </nav>
 
@@ -131,8 +180,8 @@ const Sidebar = ({ onSelectPage }) => {
         <div className="mt-5 px-4">
           <button
             className="btn btn-danger w-100 d-flex align-items-center justify-content-center"
-            onClick={() => handleNavigation('logout')}
-            style={{ cursor: 'pointer' }}
+            onClick={handleLogout}
+            style={{ cursor: "pointer" }}
           >
             <FontAwesomeIcon icon={faSignOutAlt} className="me-2" />
             Log Out
@@ -143,24 +192,17 @@ const Sidebar = ({ onSelectPage }) => {
       {/* Bottom Navbar for Smaller Screens */}
       <nav
         className="d-lg-none bg-light border-top position-fixed bottom-0 w-100"
-        style={{ height: '60px', zIndex: 999 }}
+        style={{ height: "60px", zIndex: 999 }}
       >
         <ul className="d-flex justify-content-around align-items-center list-unstyled m-0 p-0 h-100">
-          {[ 
-            { icon: faHouse, label: 'Home', path: 'home' },
-            { icon: faChartSimple, label: 'Dashboard', path: 'dashboard' },
-            { icon: faComments, label: 'Chat', path: 'chat' },
-            { icon: faProjectDiagram, label: 'Projects', path: 'projects' },
-            { icon: faVideo, label: 'Sessions', path: 'sessions' },
-          ].map(({ icon, label, path }) => (
+          {navigationLinks.map(({ icon, label, path }) => (
             <li
               key={path}
-              onClick={() => handleNavigation(path)}
               className="d-flex flex-column align-items-center justify-content-center"
-              style={{ cursor: 'pointer', width: '20%' }} // Reduced width for better alignment
+              style={{ cursor: "pointer", width: "20%" }}
             >
-              <FontAwesomeIcon icon={icon} style={{ fontSize: '1.5rem' }} />
-              <span className="small" style={{ fontSize: '0.85rem' }}>
+              <FontAwesomeIcon icon={icon} style={{ fontSize: "1.5rem" }} />
+              <span className="small" style={{ fontSize: "0.85rem" }}>
                 {label}
               </span>
             </li>
