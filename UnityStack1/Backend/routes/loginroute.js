@@ -73,25 +73,30 @@ router.post("/login", async (req, res) => {
     // Generate JWT token
     const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    // ✅ Store token in HTTP-Only Cookie (Fixing Frontend Issues)
+    // Store token in HTTP-Only Cookie
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "Lax", // safer and works for dev
-      secure: false,   // still false because localhost is not HTTPS
+      sameSite: "Lax",
+      secure: false,
     });
     
-    
+    // Return complete user data with displayName
     return res.status(200).json({
       message: "Login successful.",
       role,
       token,
-      user: { id: user._id, email: user.email || user.companyEmail }
+      user: {
+        _id: user._id,
+        email: user.email || user.companyEmail,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        companyName: user.companyName,
+        profileImage: user.profileImage || user.logo,
+        displayName: role === 'organization' 
+          ? user.companyName 
+          : `${user.firstName} ${user.lastName || ''}`.trim()
+      }
     });
-    
-   
-    
-    
-    
   } catch (error) {
     console.error("Error in login:", error.message);
     res.status(500).json({ message: "Server error. Please try again later." });
@@ -225,7 +230,12 @@ router.get("/user", authenticateToken, async (req, res) => {
     }
 
     const userId = req.user.id;
-    console.log(`Fetching user data for ID: ${userId}`); // ✅ Debugging
+    console.log(`Fetching user data for ID: ${userId}`);
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
 
     // Fetch user from all possible collections
     const student = await Student.findById(userId);
@@ -238,17 +248,23 @@ router.get("/user", authenticateToken, async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    console.log("User found:", user); // ✅ Debugging
+    console.log("User found:", user);
 
+    // Return complete user data with displayName
     res.status(200).json({
-      id: user._id,
-      name: user.firstName || user.name || user.companyName || "User", // ✅ Display firstName if available
-      email: user.email || user.companyEmail,
+      _id: user._id,
       role: req.user.role,
-      image: user.image || null,
+      email: user.email || user.companyEmail,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      companyName: user.companyName,
+      profileImage: user.profileImage || user.logo,
+      displayName: req.user.role === 'organization' 
+        ? user.companyName 
+        : `${user.firstName} ${user.lastName || ''}`.trim()
     });
   } catch (error) {
-    console.error("Error fetching user:", error.message);
+    console.error("Error fetching user:", error);
     res.status(500).json({ message: "Server error. Please try again later." });
   }
 });

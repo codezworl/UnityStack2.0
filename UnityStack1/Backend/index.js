@@ -108,75 +108,55 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle joining a private chat room
-  socket.on("joinPrivateChat", async (otherUserId) => {
-    try {
-      const currentUser = users[socket.id];
-      if (!currentUser) {
-        throw new Error("User not found");
-      }
-
-      const roomId = getRoomId(currentUser.userId, otherUserId);
-      
-      // Join the private room
-      socket.join(roomId);
-      
-      // Store room information
-      if (!privateRooms[roomId]) {
-        privateRooms[roomId] = {
-          participants: [currentUser.userId, otherUserId],
-          messages: []
-        };
-      }
-
-      console.log(`${currentUser.userName} joined private chat room: ${roomId}`);
-      
-      // Fetch and send chat history
-      const messages = await Message.find({ roomId }).sort({ timestamp: 1 });
-      socket.emit("chatHistory", messages.map(msg => ({
-        ...msg.toObject(),
-        timestamp: msg.timestamp.toLocaleTimeString()
-      })));
-    } catch (error) {
-      console.error("Error joining private chat:", error);
-      socket.emit("error", "Failed to join private chat");
+ // Handle joining a private chat room
+socket.on("joinPrivateChat", async (roomId) => {
+  try {
+    const currentUser = users[socket.id];
+    if (!currentUser) {
+      throw new Error("User not found");
     }
-  });
 
-  // Handle sending a message to another user
-  socket.on("sendMessage", async (message, toUserId, fromUserId, fromUserName) => {
-    try {
-      console.log("Received message:", { message, toUserId, fromUserId, fromUserName });
-      
-      const timestamp = new Date();
-      const roomId = getRoomId(fromUserId, toUserId);
-      
-      const messageData = {
-        fromUserId,
-        fromUserName,
-        message,
-        timestamp,
-        toUserId,
-        roomId
-      };
+    socket.join(roomId); // Join the private room
 
-      // Save message to database
-      const newMessage = new Message(messageData);
-      await newMessage.save();
-      
-      // Get the recipient's socket ID
-      const recipientSocketId = Object.entries(users).find(([_, user]) => user.userId === toUserId)?.[0];
-      
-      // Send to the private room
-      io.to(roomId).emit("receiveMessage", {
-        ...messageData,
-        timestamp: timestamp.toLocaleTimeString()
-      });
-    } catch (error) {
-      console.error("Error saving/sending message:", error);
-      socket.emit("error", "Failed to send message");
-    }
-  });
+    // Fetch and send chat history for the two users in this private room
+    const messages = await Message.find({ roomId }).sort({ timestamp: 1 });
+    socket.emit("chatHistory", messages.map(msg => ({
+      ...msg.toObject(),
+      timestamp: msg.timestamp.toLocaleTimeString()
+    })));
+  } catch (error) {
+    console.error("Error joining private chat:", error);
+    socket.emit("error", "Failed to join private chat");
+  }
+});
+
+
+
+  
+
+// Handle sending a message to another user in the private chat room
+socket.on("sendMessage", async (message, toUserId, fromUserId, fromUserName, roomId) => {
+  try {
+    const timestamp = new Date();
+    const messageData = { fromUserId, fromUserName, message, timestamp, toUserId, roomId };
+
+    // Save the message to the database
+    const newMessage = new Message(messageData);
+    await newMessage.save();
+
+    // Emit the message to the private chat room
+    io.to(roomId).emit("receiveMessage", {
+      ...messageData,
+      timestamp: timestamp.toLocaleTimeString()
+    });
+  } catch (error) {
+    console.error("Error saving/sending message:", error);
+    socket.emit("error", "Failed to send message");
+  }
+});
+
+
+
 
   // Handle fetching chat history
   socket.on("fetchMessages", async (fromUserId, toUserId) => {
@@ -209,47 +189,85 @@ io.on("connection", (socket) => {
 });
 
 // Update the users endpoint to exclude current user
+
 app.get("/api/users", async (req, res) => {
   try {
-    const currentUserId = req.query.currentUserId; // Get current user ID from query
-    // Get all online user IDs
+    const { currentUserId } = req.query;
+    
+    if (!currentUserId) {
+      console.log("No currentUserId provided");
+      return res.status(400).json({ message: "Current user ID is required" });
+    }
+
+    console.log("Fetching users, excluding:", currentUserId);
+
+    // Convert currentUserId to ObjectId
+    let currentUserObjectId;
+    try {
+      currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
+    } catch (error) {
+      console.error("Invalid user ID format:", error);
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+
     const onlineUserIds = Object.values(users).map(u => u.userId);
 
-    // Fetch users from all collections
+    // Fetch users from all collections, excluding the current user
     const [students, developers, organizations] = await Promise.all([
-      Student.find().select('-password -verificationCode'),
-      Developer.find().select('-password -verificationCode'),
-      Organization.find().select('-password -verificationCode')
+      Student.find({ _id: { $ne: currentUserObjectId } })
+        .select('firstName lastName email profileImage'),
+      Developer.find({ _id: { $ne: currentUserObjectId } })
+        .select('firstName lastName email profileImage'),
+      Organization.find({ _id: { $ne: currentUserObjectId } })
+        .select('companyName companyEmail logo')
     ]);
 
-    // Combine and format the users with proper names and online status
+    console.log("Found students:", students.length);
+    console.log("Found developers:", developers.length);
+    console.log("Found organizations:", organizations.length);
+
+    // Combine all users with proper display names
     const allUsers = [
-      ...students.map(s => ({ 
-        ...s.toObject(), 
+      ...students.map(s => ({
+        _id: s._id,
         role: 'student',
-        displayName: s.firstName || s.name || 'Student',
+        displayName: `${s.firstName} ${s.lastName || ''}`.trim(),
+        email: s.email,
+        profileImage: s.profileImage,
         isOnline: onlineUserIds.includes(s._id.toString())
       })),
-      ...developers.map(d => ({ 
-        ...d.toObject(), 
+      ...developers.map(d => ({
+        _id: d._id,
         role: 'developer',
-        displayName: d.firstName || d.name || 'Developer',
+        displayName: `${d.firstName} ${d.lastName || ''}`.trim(),
+        email: d.email,
+        profileImage: d.profileImage,
         isOnline: onlineUserIds.includes(d._id.toString())
       })),
-      ...organizations.map(o => ({ 
-        ...o.toObject(), 
+      ...organizations.map(o => ({
+        _id: o._id,
         role: 'organization',
-        displayName: o.companyName || o.name || 'Organization',
+        displayName: o.companyName,
+        email: o.companyEmail,
+        profileImage: o.logo,
         isOnline: onlineUserIds.includes(o._id.toString())
       }))
-    ].filter(user => user._id.toString() !== currentUserId); // Filter out current user
+    ];
 
+    console.log("Total users found:", allUsers.length);
+    console.log("First few users:", allUsers.slice(0, 3));
     res.status(200).json(allUsers);
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ message: "Error fetching users" });
   }
 });
+
+
+
+
+
+
 
 app.use("/api/students", StudentRoutes);
 app.use("/api/organizations", OrganizationRoutes);

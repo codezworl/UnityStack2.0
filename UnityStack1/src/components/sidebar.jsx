@@ -23,31 +23,21 @@ const Sidebar = () => {
     const fetchUserProfile = async () => {
       try {
         const sessionRes = await axios.get("http://localhost:5000/api/user", {
-          withCredentials: true, // Ensures the cookie is sent for authenticated requests
+          withCredentials: true,
         });
   
         const sessionUser = sessionRes.data;
-        setUserType(sessionUser.role);  // Store user role (developer or student)
+        console.log("Session user:", sessionUser);
+        setUserType(sessionUser.role);
   
-        // Fetch full profile data based on user role
-        if (sessionUser.role === "developer") {
-          // If user is a developer, fetch their profile data
-          const fullDevRes = await axios.get(
-            `http://localhost:5000/api/developers/${sessionUser.id}`,
-            { withCredentials: true }
-          );
-          setUser(fullDevRes.data);  // Set developer profile data (name, image, etc.)
-        } else if (sessionUser.role === "Student") {
-          // If user is a student, fetch their profile data
-          const fullStudentRes = await axios.get(
-            `http://localhost:5000/api/students/${sessionUser.id}`, // Fetch student profile using sessionUser.id
-            { withCredentials: true }
-          );
-          setUser(fullStudentRes.data);  // Set student profile data (name, image, etc.)
-        } else {
-          // Handle other roles if needed (optional)
-          setUser(sessionUser);
-        }
+        // Set user data from session response
+        setUser({
+          ...sessionUser,
+          displayName: sessionUser.displayName || 
+            (sessionUser.role === 'organization' 
+              ? sessionUser.companyName 
+              : `${sessionUser.firstName || ''} ${sessionUser.lastName || ''}`.trim())
+        });
       } catch (error) {
         console.error("❌ Error fetching user:", error);
       }
@@ -78,11 +68,10 @@ const Sidebar = () => {
   // ✅ Determine User Role
   const roleLabel = userType === "developer" ? "Developer" : "Student";
 
-  // ✅ Profile Image Handling (Use DB Image if Available)
+  // ✅ Profile Image Handling
   const profileImage = user?.profileImage
-  ? `http://localhost:5000${user.profileImage}` // Already starts with /uploads/
-  : defaultProfile;
- // Fallback to default
+    ? `http://localhost:5000${user.profileImage}`
+    : defaultProfile;
 
   // ✅ Navigation Options for Developer and Student
   const navigationLinks = userType === "developer"

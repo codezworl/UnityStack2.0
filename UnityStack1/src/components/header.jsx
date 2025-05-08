@@ -13,14 +13,13 @@ const Header = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/user", {
-          method: "GET",
-          credentials: "include", // ✅ Send cookies
+        const response = await axios.get("http://localhost:5000/api/user", {
+          withCredentials: true,
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data);
+        if (response.data) {
+          console.log("Header - Fetched user:", response.data);
+          setUser(response.data);
         } else {
           setUser(null);
         }
@@ -35,18 +34,26 @@ const Header = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:5000/api/logout", {
-        method: "POST",
-        credentials: "include", // ✅ Send cookies
+      await axios.post("http://localhost:5000/api/logout", {}, {
+        withCredentials: true,
       });
 
-      localStorage.removeItem("token"); // ✅ Clear token from local storage
-      localStorage.removeItem("role"); // ✅ Clear role from local storage
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
       setUser(null);
-      navigate("/login"); // ✅ Redirect to login
+      navigate("/login");
     } catch (error) {
       console.error("Error logging out:", error);
     }
+  };
+
+  // Get display name based on user data
+  const getDisplayName = () => {
+    if (!user) return "";
+    return user.displayName || 
+      (user.role === 'organization' 
+        ? user.companyName 
+        : `${user.firstName || ''} ${user.lastName || ''}`.trim());
   };
 
   return (
@@ -131,7 +138,7 @@ const Header = () => {
               onMouseEnter={() => setIsUserDropdownOpen(true)}
               onMouseLeave={() => setIsUserDropdownOpen(false)}
             >
-              <span style={{ cursor: "pointer", color: "#64748b" }}>{user.name}</span>
+              <span style={{ cursor: "pointer", color: "#64748b" }}>{getDisplayName()}</span>
               {isUserDropdownOpen && (
                 <div
                   style={{
@@ -145,7 +152,7 @@ const Header = () => {
                     minWidth: "150px"
                   }}
                 >
-                  {/* ✅ Show Profile Option Based on Role */}
+                  {/* Show Profile Option Based on Role */}
                   {user?.role === "student" ? (
                     <Link
                       to="/studentprofile"
