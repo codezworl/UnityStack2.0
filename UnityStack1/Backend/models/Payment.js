@@ -22,12 +22,16 @@ const paymentSchema = new mongoose.Schema({
   },
   paymentIntentId: {
     type: String,
-    required: true
+    required: false
   },
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed'],
     default: 'pending'
+  },
+  paymentDate: {
+    type: Date,
+    default: Date.now
   },
   createdAt: {
     type: Date,

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Header from "./header";
 import StudentSidebar from "../components/sidebar"; // ✅ Ensure correct path
+import FindDeveloper from '../pages/finddevelpor';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -26,7 +27,14 @@ const StudentDashboard = () => {
     console.log("Requesting code review...");
     // Add additional logic here if needed
   };
+
   const renderContent = () => {
+    // First check if it's the Find Developer page
+    if (selectedPage === 'finddeveloper') {
+      return <FindDeveloper />;
+    }
+
+    // If not Find Developer, render the default dashboard content
     return (
       <div className="dashboard-content">
         <div className="row g-4">

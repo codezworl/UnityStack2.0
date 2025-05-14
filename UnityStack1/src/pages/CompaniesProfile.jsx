@@ -9,9 +9,68 @@ import {
   FaFacebookF,
   FaLinkedin,
 } from "react-icons/fa";
-
+import axios from "axios";
 import Header from "../components/header";
 import Footer from "../components/footer";
+
+// Login Modal Component
+const LoginModal = ({ isOpen, onClose, onLogin }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '2rem',
+        borderRadius: '8px',
+        maxWidth: '400px',
+        width: '90%',
+        textAlign: 'center'
+      }}>
+        <h2 style={{ marginBottom: '1rem' }}>Login Required</h2>
+        <p style={{ marginBottom: '1.5rem' }}>Please login to start messaging this company.</p>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              background: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onLogin}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              borderRadius: '4px',
+              background: '#1d4ed8',
+              color: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            Login Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const CompanyProfile = () => {
   const navigate = useNavigate();
@@ -41,14 +100,15 @@ const CompanyProfile = () => {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/user", {
-          credentials: 'include'
+        const response = await axios.get("http://localhost:5000/api/user", {
+          withCredentials: true
         });
-        if (!response.ok) throw new Error('Failed to fetch user');
-        const userData = await response.json();
-        setLoggedInUser(userData);
+        if (response.data) {
+          setLoggedInUser(response.data);
+        }
       } catch (error) {
         console.error('Error fetching user:', error);
+        setLoggedInUser(null);
       }
     };
 
@@ -56,13 +116,44 @@ const CompanyProfile = () => {
     fetchUser();
   }, [id]);
 
-  const handleMessageClick = () => {
-    if (!loggedInUser) {
-      setShowLoginModal(true);
-    } else {
+  // Updated handleMessageClick function with return-to-page functionality
+  const handleMessageClick = async () => {
+    try {
+      // Check if user is logged in
+      const response = await axios.get("http://localhost:5000/api/user", {
+        withCredentials: true
+      });
+
+      if (response.data) {
+        // Store the selected company ID in localStorage
+        localStorage.setItem('selectedChatDeveloper', company._id);
+        // Navigate to chat page
+        navigate('/chat');
+      } else {
+        // Store the selected company ID in localStorage before showing login modal
+        localStorage.setItem('selectedChatDeveloper', company._id);
+        // User is not logged in, show login modal
+        setShowLoginModal(true);
+      }
+    } catch (error) {
+      // Store the selected company ID in localStorage before showing login modal
       localStorage.setItem('selectedChatDeveloper', company._id);
-      navigate('/chat');
+      // If error, user is not logged in
+      setShowLoginModal(true);
     }
+  };
+
+  // Handle login modal actions
+  const handleLoginModalClose = () => {
+    setShowLoginModal(false);
+  };
+
+  const handleLoginModalLogin = () => {
+    // Store the current page and selected company info for redirect after login
+    localStorage.setItem('returnTo', `/companiesprofile/${id}`);
+    localStorage.setItem('returnAction', 'chat');
+    setShowLoginModal(false);
+    navigate('/login');
   };
 
   if (loading) return <div>Loading...</div>;
@@ -281,13 +372,27 @@ const CompanyProfile = () => {
             </a>
           </p>
 
-          {/* Message Button */}
+          {/* Updated Message Button */}
           <button
-            className="btn btn-primary mt-3"
             onClick={handleMessageClick}
-            style={{ width: '100%' }}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              backgroundColor: '#2563EB',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              marginTop: '15px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
           >
-            Message
+            💬 Message Company
           </button>
 
           {/* Social Accounts */}
@@ -395,28 +500,14 @@ const CompanyProfile = () => {
             </div>
           )}
         </div>
+
+        {/* Updated Login Modal */}
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={handleLoginModalClose}
+          onLogin={handleLoginModalLogin}
+        />
       </div>
-      {/* Login Modal */}
-      {showLoginModal && (
-        <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1">
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Login Required</h5>
-                <button type="button" className="btn-close" onClick={() => setShowLoginModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <p>Please login to message this company.</p>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowLoginModal(false)}>Close</button>
-                <button type="button" className="btn btn-primary" onClick={() => navigate('/login')}>Login Now</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {showLoginModal && <div className="modal-backdrop fade show"></div>}
 
       <Footer />
     </>

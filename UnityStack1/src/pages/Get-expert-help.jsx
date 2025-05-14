@@ -307,6 +307,9 @@ const GetHelp = () => {
   };
 
   const handleLoginModalLogin = () => {
+    // Store the current page and selected developer info for redirect after login
+    localStorage.setItem('returnTo', '/Getexperthelp');
+    localStorage.setItem('returnAction', 'chat');
     setShowLoginModal(false);
     navigate('/login');
   };

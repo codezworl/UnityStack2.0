@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FiDollarSign, FiFileText, FiUser, FiClock } from "react-icons/fi";
-//import { toast } from "react-toastify";
 import { loadStripe } from '@stripe/stripe-js';
 import noProjects from "../assets/freelance-job.png";  // Changed to use an existing image
+import { useNavigate } from "react-router-dom";
 
+const BidModal = ({ isOpen, onClose, project, bids, onAssignProject, onChatClick }) => {
+  useEffect(() => {
+    console.log("🎭 BidModal - Project:", project);
+    console.log("📋 BidModal - Bids:", bids);
+  }, [project, bids]);
 
-
-const BidModal = ({ isOpen, onClose, project, bids, onAssignProject }) => {
   if (!isOpen) return null;
-
-  console.log("BidModal - Project:", project);
-  console.log("BidModal - Bids:", bids);
 
   return (
     <div style={{
@@ -61,136 +61,290 @@ const BidModal = ({ isOpen, onClose, project, bids, onAssignProject }) => {
           </button>
         </div>
 
-        {bids && bids.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {bids.map((bid) => (
-              <div 
-                key={bid._id}
-                style={{
+        <div style={{ marginTop: '20px' }}>
+          {bids && bids.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {bids.map((bid) => (
+                <div key={bid._id} style={{
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   padding: '20px',
                   backgroundColor: '#f9fafb'
-                }}
-              >
-                {/* Developer Info Section */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '20px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{
-                      width: '50px',
-                      height: '50px',
-                      borderRadius: '50%',
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '20px',
-                      fontWeight: '500'
-                    }}>
-                      {(bid.userName || 'A')[0].toUpperCase()}
-                    </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '15px'
+                  }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '18px', color: '#1f2937' }}>
-                        {bid.userName || 'Anonymous Developer'}
+                        {bid.userName} ({bid.userRole})
                       </h3>
-                      <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '14px' }}>
-                        {bid.userRole || 'Developer'}
+                      <p style={{ margin: '5px 0 0', color: '#6b7280' }}>
+                        Submitted: {new Date(bid.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <h4 style={{ margin: 0, color: '#2563eb', fontSize: '24px', fontWeight: '600' }}>
+                    <div style={{
+                      backgroundColor: '#e5e7eb',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      fontWeight: 'bold'
+                    }}>
                       PKR {bid.amount}
-                    </h4>
-                    <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '14px' }}>
-                      Submitted: {new Date(bid.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <h4 style={{ margin: '0 0 10px', color: '#374151' }}>Proposal</h4>
+                    <p style={{ margin: 0, color: '#4b5563', lineHeight: '1.5' }}>
+                      {bid.proposal}
                     </p>
                   </div>
-                </div>
 
-                {/* Proposal Section */}
-                <div style={{ 
-                  marginBottom: '20px',
-                  padding: '15px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#1f2937' }}>
-                    Proposal
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '15px', color: '#4b5563', lineHeight: '1.5' }}>
-                    {bid.proposal}
-                  </p>
+                  <div style={{
+                    display: 'flex',
+                    gap: '10px',
+                    justifyContent: 'flex-end'
+                  }}>
+                    <button
+                      onClick={() => {
+                        // Handle view profile with correct routes
+                        const userId = bid.bidderId || bid.userId;
+                        if (userId) {
+                          // Check user role to determine correct route
+                          if (bid.userRole === 'organization') {
+                            window.location.href = `/companiesprofile/${userId}`;
+                          } else {
+                            // For developer and student roles, use /profile route
+                            window.location.href = `/profile/${userId}`;
+                          }
+                        }
+                      }}
+                      style={{
+                        backgroundColor: '#6B7280',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      View Profile
+                    </button>
+                    <button
+                      onClick={() => onChatClick && onChatClick(bid)}
+                      style={{
+                        backgroundColor: '#10B981',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                      disabled={!bid.bidderId && !bid.userId}
+                    >
+                      💬 Message
+                    </button>
+                    <button
+                      onClick={() => onAssignProject(bid)}
+                      style={{
+                        backgroundColor: '#2563eb',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Assign Project
+                    </button>
+                  </div>
                 </div>
-
-                {/* Action Buttons */}
-                <div style={{
-                  display: 'flex',
-                  gap: '12px',
-                  justifyContent: 'flex-end',
-                  borderTop: '1px solid #e5e7eb',
-                  paddingTop: '20px'
-                }}>
-                  <button
-                    onClick={() => handleChatWithDeveloper(bid.userId)}
-                    style={{
-                      padding: '10px 20px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      backgroundColor: 'white',
-                      color: '#1f2937',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    Chat with Developer
-                  </button>
-                  <button
-                    onClick={() => onAssignProject(bid)}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    Assign Project
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{
-            textAlign: 'center',
-            padding: '48px 0',
-            color: '#6b7280',
-            backgroundColor: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px dashed #e5e7eb'
-          }}>
-            <p style={{ fontSize: '16px', margin: 0 }}>No bids received yet</p>
-          </div>
-        )}
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              textAlign: 'center',
+              padding: '40px',
+              color: '#6b7280'
+            }}>
+              <p style={{ margin: 0, fontSize: '16px' }}>No bids received yet</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
+const PaymentModalNew = ({ isOpen, onClose, project, fetchInvoiceProjects }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
+  const handlePayment = async () => {
+    console.log("handlePayment started");
+  
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert("You must be logged in.");
+      return;
+    }
+  
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/payments/simple-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          projectId: project._id,
+          amount: project.acceptedBidAmount || project.budget,
+          developerId: project.assignedDeveloper._id || project.assignedDeveloper
+        })
+      });
+      console.log("Payment response status:", response.status);
+  
+      if (!response.ok) {
+        const err = await response.json();
+        console.error("Payment error response:", err);
+        throw new Error(err.message || "Payment failed");
+      }
+  
+      const data = await response.json();
+      console.log("Payment success data:", data);
+      
+      // Update project status to in-progress after successful payment
+      const updateResponse = await fetch(`http://localhost:5000/api/projects/${project._id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'in-progress' })
+      });
+      
+      if (updateResponse.ok) {
+        console.log("Project status updated to in-progress");
+      }
+      
+      alert("Payment successful! Project is now in progress.");
+      onClose();
+      if (fetchInvoiceProjects) fetchInvoiceProjects();
+    } catch (err) {
+      console.error("Payment error:", err);
+      setError(err.message || "Payment failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const amount = project?.acceptedBidAmount || project?.budget || 0;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '24px',
+        width: '100%',
+        maxWidth: '500px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+        }}>
+          <h2 style={{
+            margin: 0,
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#111827',
+          }}>
+            Payment Details
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '20px',
+              cursor: 'pointer',
+              color: '#6B7280',
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <p style={{ margin: '0 0 8px 0', color: '#374151' }}>
+            Project: {project?.title}
+          </p>
+          <p style={{ margin: '0 0 8px 0', color: '#374151' }}>
+            Developer: {project?.assignedDeveloper?.firstName} {project?.assignedDeveloper?.lastName}
+          </p>
+          <p style={{ margin: '0', color: '#374151', fontWeight: '500' }}>
+            Amount: PKR {amount.toLocaleString()}
+          </p>
+        </div>
+
+        {error && (
+          <div style={{
+            color: '#DC2626',
+            fontSize: '14px',
+            marginBottom: '16px',
+            padding: '12px',
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            borderRadius: '6px',
+          }}>
+            {error}
+          </div>
+        )}
+
+        <button
+          onClick={handlePayment}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: loading ? '#9CA3AF' : '#2563EB',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {loading ? 'Processing...' : `Pay PKR ${amount.toLocaleString()}`}
+        </button>
+      </div>
+    </div>
+  );
+};
 const FindDeveloper = () => {
   const [bidsList, setBidsList] = useState([]);
   const [activeTab, setActiveTab] = useState("post"); // Active tab state
@@ -245,6 +399,43 @@ const FindDeveloper = () => {
 
   // Add this state at the top with other state declarations
   const [showBidDetails, setShowBidDetails] = useState(false);
+
+  const [userRole, setUserRole] = useState("");
+  const [userId, setUserId] = useState(null);
+  const [userName, setUserName] = useState("");
+
+  // Add navigate hook
+  const navigate = useNavigate();
+  
+  // Add state for login modal
+  const [showChatLoginModal, setShowChatLoginModal] = useState(false);
+  const [selectedChatUser, setSelectedChatUser] = useState(null);
+
+  // Add these state variables near the top with other useState declarations
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState(null);
+
+  const [showPaymentModalNew, setShowPaymentModalNew] = useState(false);
+  const [selectedProjectForPayment, setSelectedProjectForPayment] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/user", { credentials: "include" });
+        if (!res.ok) throw new Error("User fetch failed");
+  
+        const data = await res.json();
+        setUserName(data.name);
+        setUserRole(data.role);
+        setUserId(data.id);
+        console.log("✅ Logged in as:", data.name, data.role, data.id);
+      } catch (err) {
+        console.warn("❌ User not logged in:", err.message);
+      }
+    };
+  
+    fetchUser();
+  }, []);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -348,6 +539,10 @@ const FindDeveloper = () => {
         skills: formData.skills,
         budget: budget,
         deadline: formData.deadline,
+        userRole: userRole,
+        userId: userId,
+        userName: userName,
+        type: formData.type
       };
 
       console.log("Sending project data:", projectData);
@@ -359,7 +554,7 @@ const FindDeveloper = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(projectData),
-        credentials: "include", // Include cookies in the request
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -397,8 +592,8 @@ const FindDeveloper = () => {
     }
   };
 
-  // Add function to fetch projects
-  const fetchProjects = async () => {
+  // Function to fetch user's own projects for review bids tab
+  const fetchUserProjects = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -406,6 +601,8 @@ const FindDeveloper = () => {
         return;
       }
 
+      console.log("🔍 Fetching user's own projects for review bids...");
+      
       const response = await fetch("http://localhost:5000/api/projects", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -418,15 +615,57 @@ const FindDeveloper = () => {
       }
 
       const data = await response.json();
-      setProjects(data);
+      console.log("📋 User's projects received:", data);
+      setCurrentRequests(data); // Set to currentRequests for post tab
+      setProjects(data); // Also set to projects for bids tab
     } catch (error) {
-      console.error("Error fetching projects:", error);
+      console.error("Error fetching user projects:", error);
     }
   };
 
-  // Add useEffect to fetch projects on component mount
+  // Function to fetch available projects from other users (for bidding)
+  const fetchAvailableProjects = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.warn("No token found, user might need to login");
+        return;
+      }
+
+      const response = await fetch("http://localhost:5000/api/projects/available", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch available projects");
+      }
+
+      const data = await response.json();
+      setProjects(data);
+    } catch (error) {
+      console.error("Error fetching available projects:", error);
+    }
+  };
+
+  // Update useEffect to fetch different data based on active tab
   useEffect(() => {
-    fetchProjects();
+    if (activeTab === "post") {
+      fetchUserProjects(); // Fetch user's own projects for management
+    } else if (activeTab === "bids") {
+      fetchUserProjects(); // Fetch user's own projects to review bids
+    } else if (activeTab === "active-projects") {
+      fetchActiveProjects();
+    } else if (activeTab === "invoice") {
+      fetchInvoiceProjects();
+    }
+  }, [activeTab]);
+
+  // Fetch user projects on component mount
+  useEffect(() => {
+    fetchUserProjects();
   }, []);
 
   // Add this function to handle custom payment input
@@ -518,57 +757,47 @@ const FindDeveloper = () => {
         alert("Please login to view bids");
         return;
       }
-
-      console.log("Fetching bids for project:", projectId);
-
+  
+      console.log("🔍 Fetching bids for project:", projectId);
+      
       const response = await fetch(
         `http://localhost:5000/api/projects/${projectId}/bids`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
           credentials: "include",
         }
       );
-
+  
       if (!response.ok) {
-        throw new Error("Failed to fetch bids");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch bids");
       }
-
+  
       const data = await response.json();
-      console.log("Received bids data:", data);
-
+      console.log("📋 Bids data received:", data);
+      
       // Find the current project
       const currentProject = projects.find(p => p._id === projectId);
       if (!currentProject) {
         throw new Error("Project not found");
       }
-
-      // Set the project and bids
-      setSelectedProject({
+  
+      // Update the project with the bids data
+      const projectWithBids = {
         ...currentProject,
-        title: currentProject.title,
-        description: currentProject.description
-      });
-      
-      // Format and set the bids list with proper bidder information
-      setBidsList(data.bids.map(bid => ({
-        _id: bid._id,
-        userName: bid.userName || bid.bidderName || "Anonymous Developer",
-        userRole: bid.userRole || "Developer",
-        amount: bid.amount,
-        proposal: bid.proposal,
-        createdAt: bid.createdAt || bid.submittedAt,
-        userId: bid.bidderId || bid.userId, // Use bidderId from the bid data
-        bidderId: bid.bidderId || bid.userId // Ensure bidderId is set
-      })));
-
-      // Show the modal
+        bids: data.bids || []
+      };
+  
+      // Set the project and show modal
+      setSelectedProject(projectWithBids);
+      setBidsList(data.bids || []);
       setShowBidModal(true);
+  
     } catch (error) {
       console.error("Error fetching bids:", error);
-      alert("Failed to fetch bids. Please try again.");
+      alert(error.message || "Failed to fetch bids. Please try again.");
     }
   };
 
@@ -938,11 +1167,16 @@ const FindDeveloper = () => {
                       View Profile
                     </button>
                     <button
-                      onClick={() => handleChatWithDeveloper(bid.userId)}
+                      onClick={() => handleChatClick(bid)}
                       className="btn-secondary"
-                      disabled={!bid.userId}
+                      disabled={loading || !bid.bidderId}
+                      style={{
+                        backgroundColor: "#10B981",
+                        color: "white",
+                        border: "none"
+                      }}
                     >
-                      Chat
+                      💬 Message
                     </button>
                     <button
                       onClick={() => onAssignProject(bid)}
@@ -1048,7 +1282,7 @@ const FindDeveloper = () => {
           .developer-info {
             display: flex;
             gap: 16px;
-            align-items: center;
+            alignItems: center;
           }
 
           .avatar {
@@ -1122,6 +1356,7 @@ const FindDeveloper = () => {
             font-size: 14px;
             cursor: pointer;
             transition: all 0.2s;
+            font-weight: 500;
           }
 
           .btn-primary {
@@ -1138,11 +1373,23 @@ const FindDeveloper = () => {
           .btn-secondary {
             border: 1px solid #e5e7eb;
             background-color: white;
+            color: #374151;
           }
 
           .btn-secondary:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+          }
+
+          /* Message button specific styling */
+          .btn-secondary:nth-child(2) {
+            background-color: #10B981;
+            color: white;
+            border: none;
+          }
+
+          .btn-secondary:nth-child(2):hover:not(:disabled) {
+            background-color: #059669;
           }
 
           .no-bids {
@@ -2171,22 +2418,14 @@ const FindDeveloper = () => {
             </div>
 
             <button
-              type="submit"
-              disabled={loading || !isStripeReady}
-              style={{
-                width: '100%',
-                padding: '12px',
-                backgroundColor: loading || !isStripeReady ? '#9CA3AF' : '#2563EB',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: loading || !isStripeReady ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loading ? 'Processing...' : 'Pay Now'}
-            </button>
+  onClick={() => {
+    setSelectedProjectForPayment(project);
+    setShowPaymentModalNew(true);
+  }}
+>
+  Pay Now
+</button>
+
           </form>
         </div>
       </div>
@@ -2313,6 +2552,184 @@ const FindDeveloper = () => {
       console.error("Error processing payment:", error);
       alert(error.message || "Failed to process payment. Please try again.");
     }
+  };
+
+  const handleEditProject = (projectId) => {
+    console.log("handleEditProject called with projectId:", projectId);
+    console.log("Current projects:", projects);
+    
+    const project = projects.find(p => p._id === projectId);
+    console.log("Found project:", project);
+    
+    if (project) {
+      setFormData({
+        title: project.title,
+        description: project.description,
+        skills: project.skills || [],
+        skillInput: "",
+        budget: project.budget,
+        deadline: new Date(project.deadline).toISOString().split('T')[0],
+        file: null,
+        type: project.type || "Full Stack Project"
+      });
+      setIsEditing(true);
+      setEditingProjectId(projectId);
+      
+      // Navigate to the post tab and show the form
+      setActiveTab("post");
+      setShowForm(true);
+      
+      console.log("Edit form should now be visible on post tab");
+    } else {
+      console.error("Project not found with ID:", projectId);
+      alert("Project not found. Please refresh the page and try again.");
+    }
+  };
+
+  // Add a new handleUpdateProject function
+  const handleUpdateProject = async (e) => {
+    e.preventDefault();
+    setUploading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Please login to update the project");
+      }
+
+      // Validate budget
+      const budget = parseFloat(formData.budget);
+      if (isNaN(budget) || budget <= 0) {
+        alert("Please enter a valid budget amount greater than 0");
+        setUploading(false);
+        return;
+      }
+
+      // Validate skills
+      if (formData.skills.length < 2) {
+        alert("Please select at least 2 skills");
+        setUploading(false);
+        return;
+      }
+
+      // Validate deadline
+      const deadlineDate = new Date(formData.deadline);
+      if (deadlineDate <= new Date()) {
+        alert("Deadline must be in the future");
+        setUploading(false);
+        return;
+      }
+
+      const projectData = {
+        title: formData.title,
+        description: formData.description,
+        skills: formData.skills,
+        budget: budget,
+        deadline: formData.deadline,
+        type: formData.type
+      };
+
+      console.log("Updating project with ID:", editingProjectId);
+      console.log("Project data:", projectData);
+
+      const response = await fetch(`http://localhost:5000/api/projects/${editingProjectId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(projectData),
+        credentials: "include",
+      });
+
+      const responseData = await response.json();
+      console.log("Response:", responseData);
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to update project");
+      }
+
+      // Update the project in the projects array
+      setProjects(prevProjects => 
+        prevProjects.map(p => 
+          p._id === editingProjectId ? responseData.data || responseData : p
+        )
+      );
+
+      // Reset form and edit state
+      setFormData({
+        title: "",
+        description: "",
+        skills: [],
+        skillInput: "",
+        budget: "",
+        deadline: "",
+        file: null,
+        type: "Full Stack Project",
+      });
+      setShowForm(false);
+      setIsEditing(false);
+      setEditingProjectId(null);
+      
+      // Navigate back to bids tab after successful update
+      setActiveTab("bids");
+      
+      alert("Project updated successfully!");
+      
+      // Refresh the projects list
+      fetchUserProjects();
+
+    } catch (error) {
+      console.error("Error updating project:", error);
+      alert(error.message || "Failed to update project. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Add chat functionality similar to Get Expert Help
+  const handleChatClick = async (bid) => {
+    try {
+      // Check if user is logged in
+      const response = await fetch("http://localhost:5000/api/user", { 
+        credentials: "include" 
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        // Store the selected developer ID in localStorage (same as Get Expert Help)
+        localStorage.setItem('selectedChatDeveloper', bid.bidderId || bid.userId);
+        // Navigate to chat page
+        navigate('/chat');
+      } else {
+        // Store developer ID before showing login modal
+        localStorage.setItem('selectedChatDeveloper', bid.bidderId || bid.userId);
+        // User is not logged in, show login modal
+        setSelectedChatUser(bid);
+        setShowChatLoginModal(true);
+      }
+    } catch (error) {
+      // Store developer ID before showing login modal
+      localStorage.setItem('selectedChatDeveloper', bid.bidderId || bid.userId);
+      // If error, user is not logged in
+      setSelectedChatUser(bid);
+      setShowChatLoginModal(true);
+    }
+  };
+
+  // Handle login modal actions
+  const handleChatLoginModalClose = () => {
+    setShowChatLoginModal(false);
+    setSelectedChatUser(null);
+  };
+
+  const handleChatLoginModalLogin = () => {
+    if (selectedChatUser) {
+      // Store using the same key as Get Expert Help
+      localStorage.setItem('selectedChatDeveloper', selectedChatUser.bidderId || selectedChatUser.userId);
+    }
+    setShowChatLoginModal(false);
+    navigate('/login');
   };
 
   return (
@@ -2497,16 +2914,32 @@ const FindDeveloper = () => {
               <div className="card shadow-sm mb-4">
                 <div className="card-body">
                   <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h5>Create Project Request</h5>
+                    <h5>{isEditing ? "Edit Project" : "Create Project Request"}</h5>
                     <button
                       className="btn btn-secondary"
-                      onClick={() => setShowForm(false)}
+                      onClick={() => {
+                        setShowForm(false);
+                        setIsEditing(false);
+                        setEditingProjectId(null);
+                        setFormData({
+                          title: "",
+                          description: "",
+                          skills: [],
+                          skillInput: "",
+                          budget: "",
+                          deadline: "",
+                          file: null,
+                          type: "Full Stack Project",
+                        });
+                        // Navigate back to bids tab after canceling
+                        setActiveTab("bids");
+                      }}
                     >
                       <i className="fas fa-times"></i> Cancel
                     </button>
                   </div>
 
-                  <form onSubmit={handleSubmit}>
+                  <form onSubmit={isEditing ? handleUpdateProject : handleSubmit}>
                     <div className="mb-3">
                       <label className="form-label">Project Type</label>
                       <select
@@ -2704,12 +3137,12 @@ const FindDeveloper = () => {
                               role="status"
                               aria-hidden="true"
                             ></span>
-                            Submitting...
+                            {isEditing ? "Updating..." : "Submitting..."}
                           </>
                         ) : (
                           <>
-                            <i className="fas fa-paper-plane me-2"></i>
-                            Submit Project Request
+                            <i className={`fas ${isEditing ? 'fa-save' : 'fa-paper-plane'} me-2`}></i>
+                            {isEditing ? "Save Changes" : "Submit Project Request"}
                           </>
                         )}
                       </button>
@@ -2966,7 +3399,20 @@ const FindDeveloper = () => {
                       {activeProjects.map((project) => {
                         const timeRemaining = new Date(project.deadline) - new Date();
                         const daysRemaining = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
-                        
+                        // Get developer name
+                        let devName = "Developer";
+                        if (project.assignedDeveloper && (project.assignedDeveloper.firstName || project.assignedDeveloper.lastName)) {
+                          devName = `${project.assignedDeveloper.firstName || ''} ${project.assignedDeveloper.lastName || ''}`.trim();
+                        } else if (project.developerName) {
+                          devName = project.developerName;
+                        }
+                        // Get developer avatar initials
+                        let devInitials = "D";
+                        if (project.assignedDeveloper && (project.assignedDeveloper.firstName || project.assignedDeveloper.lastName)) {
+                          devInitials = `${project.assignedDeveloper.firstName?.charAt(0) || ''}${project.assignedDeveloper.lastName?.charAt(0) || ''}`.toUpperCase();
+                        } else if (project.developerName) {
+                          devInitials = project.developerName.charAt(0).toUpperCase();
+                        }
                         return (
                           <tr key={project._id} style={{
                             backgroundColor: "white",
@@ -2979,7 +3425,7 @@ const FindDeveloper = () => {
                                   margin: 0,
                                   fontWeight: "500",
                                   color: "#111827",
-                                  fontSize: "14px",
+                                  fontSize: "16px",
                                 }}>
                                   {project.title}
                                 </p>
@@ -2988,7 +3434,7 @@ const FindDeveloper = () => {
                                   fontSize: "14px",
                                   color: "#6B7280",
                                 }}>
-                                  {project.description}
+                                  Budget: PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}
                                 </p>
                               </div>
                             </td>
@@ -3010,7 +3456,7 @@ const FindDeveloper = () => {
                                   color: "#4B5563",
                                   fontWeight: "500",
                                 }}>
-                                  {project.assignedDeveloper?.userName?.charAt(0) || 'D'}
+                                  {devInitials}
                                 </div>
                                 <div>
                                   <p style={{
@@ -3019,7 +3465,14 @@ const FindDeveloper = () => {
                                     fontSize: "14px",
                                     color: "#111827",
                                   }}>
-                                    {project.assignedDeveloper?.userName || 'Developer'}
+                                    {devName}
+                                  </p>
+                                  <p style={{
+                                    margin: "2px 0 0 0",
+                                    fontSize: "12px",
+                                    color: "#6B7280",
+                                  }}>
+                                    {project.assignedDeveloper?.email}
                                   </p>
                                 </div>
                               </div>
@@ -3029,16 +3482,19 @@ const FindDeveloper = () => {
                                 <p style={{
                                   margin: 0,
                                   fontSize: "14px",
-                                  color: "#6B7280",
+                                  color: daysRemaining < 0 ? "#DC2626" : "#6B7280",
+                                  fontWeight: daysRemaining < 7 ? "500" : "normal",
                                 }}>
-                                  {daysRemaining} days remaining
+                                  {daysRemaining < 0 
+                                    ? `${Math.abs(daysRemaining)} days overdue`
+                                    : `${daysRemaining} days remaining`}
                                 </p>
                                 <p style={{
                                   margin: "4px 0 0 0",
-                                  fontSize: "14px",
+                                  fontSize: "12px",
                                   color: "#6B7280",
                                 }}>
-                                  Deadline: {new Date(project.deadline).toLocaleDateString()}
+                                  Due: {new Date(project.deadline).toLocaleDateString()}
                                 </p>
                               </div>
                             </td>
@@ -3047,56 +3503,32 @@ const FindDeveloper = () => {
                                 padding: "6px 12px",
                                 borderRadius: "4px",
                                 fontSize: "12px",
-                                backgroundColor: "#FFF3E0",
-                                color: "#E65100",
+                                backgroundColor: project.status === 'in-progress' ? "#FEF3C7" : "#DBEAFE",
+                                color: project.status === 'in-progress' ? "#92400E" : "#1E40AF",
+                                fontWeight: "500",
                               }}>
-                                {project.paymentStatus === 'pending' ? 'Payment Pending' : 'In Progress'}
+                                {project.status === 'in-progress' ? 'In Progress' : project.status}
                               </span>
                             </td>
                             <td style={{ padding: "16px 24px", textAlign: "right" }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                {project.paymentStatus === 'pending' ? (
-                                  <button
-                                    onClick={() => {
-                                      setSelectedProject(project);
-                                      setSelectedBid({
-                                        amount: project.budget,
-                                        bidderId: project.assignedDeveloper?._id,
-                                        userName: project.assignedDeveloper?.userName
-                                      });
-                                      setShowPaymentModal(true);
-                                    }}
-                                    style={{
-                                      padding: "8px 16px",
-                                      backgroundColor: "#2563EB",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "14px",
-                                      fontWeight: "500",
-                                    }}
-                                  >
-                                    Pay Now
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => handleViewDetails(project._id)}
-                                    style={{
-                                      padding: "8px 16px",
-                                      backgroundColor: "#2563EB",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "6px",
-                                      cursor: "pointer",
-                                      fontSize: "14px",
-                                      fontWeight: "500",
-                                    }}
-                                  >
-                                    View Details
-                                  </button>
-                                )}
-                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedProject(project);
+                                  setShowProjectDetails(true);
+                                }}
+                                style={{
+                                  padding: "8px 16px",
+                                  backgroundColor: "#2563EB",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  fontSize: "14px",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                View Details
+                              </button>
                             </td>
                           </tr>
                         );
@@ -3146,16 +3578,16 @@ const FindDeveloper = () => {
             <div style={{ padding: "20px" }}>
               <div className="card shadow-sm">
                 <div className="card-body">
-                  <h3 className="mb-4">Project Bids</h3>
+                  <h3 className="mb-4">Review Project Bids</h3>
 
                   <div className="table-responsive">
-                    <table className="table table-hover">
+                    <table className="table table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Project</th>
-                          <th>Bids Received</th>
-                          <th>Budget</th>
-                          <th>Deadline</th>
+                          <th>Project Details</th>
+                          <th>Created By</th>
+                          <th>Date</th>
+                          <th>Bids</th>
                           <th>Status</th>
                           <th>Actions</th>
                         </tr>
@@ -3167,18 +3599,46 @@ const FindDeveloper = () => {
                               <div>
                                 <h6 className="mb-1">{project.title}</h6>
                                 <p className="text-muted small mb-0">
-                                  {project.description}
+                                  {project.description?.substring(0, 100)}...
                                 </p>
+                                <div className="mt-1">
+                                  {project.skills?.slice(0, 3).map((skill, index) => (
+                                    <span
+                                      key={index}
+                                      className="badge bg-light text-dark me-1"
+                                    >
+                                      {skill}
+                                    </span>
+                                  ))}
+                                  {project.skills?.length > 3 && (
+                                    <span className="badge bg-light text-dark">
+                                      +{project.skills.length - 3} more
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+                            </td>
+                            <td>
+                              <div className="d-flex align-items-center">
+                                <div className="ms-2">
+                                  <div className="fw-bold">
+                                    {project.createdBy === 'Organization' ? project.companyName :
+                                     project.createdBy === 'Developer' ? project.developerName :
+                                     project.userName}
+                                  </div>
+                                  <small className="text-muted">
+                                    {project.createdBy}
+                                  </small>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              {new Date(project.createdAt).toLocaleDateString()}
                             </td>
                             <td>
                               <span className="badge bg-primary">
                                 {project.bids?.length || 0} bids
                               </span>
-                            </td>
-                            <td>PKR {project.budget?.toLocaleString()}</td>
-                            <td>
-                              {new Date(project.deadline).toLocaleDateString()}
                             </td>
                             <td>
                               <span
@@ -3198,40 +3658,61 @@ const FindDeveloper = () => {
                                 <button
                                   className="btn btn-primary btn-sm"
                                   onClick={() => handleViewBids(project._id)}
-                                  disabled={project.status === "closed"}
+                                  disabled={project.status !== "open"}
                                 >
+                                  <i className="fas fa-eye me-1"></i>
                                   View Bids
                                 </button>
-                                {project.status === "open" && (
-                                  <button
-                                    className="btn btn-danger btn-sm"
-                                    onClick={() =>
-                                      handleCloseProject(project._id)
-                                    }
-                                  >
-                                    Close
-                                  </button>
-                                )}
+                                <button
+                                  className="btn btn-warning btn-sm"
+                                  onClick={() => {
+                                    console.log("Edit clicked for project:", project._id);
+                                    handleEditProject(project._id);
+                                  }}
+                                  disabled={project.status !== "open"}
+                                >
+                                  <i className="fas fa-edit me-1"></i>
+                                  Edit
+                                </button>
+                                <button
+                                  className="btn btn-danger btn-sm"
+                                  onClick={() => handleCloseProject(project._id)}
+                                  disabled={project.status !== "open"}
+                                >
+                                  <i className="fas fa-times me-1"></i>
+                                  Close
+                                </button>
                               </div>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+
+                    {projects.length === 0 && (
+                      <div className="text-center py-5">
+                        <div style={{ marginBottom: "20px" }}>
+                          <img
+                            src={noProjects}
+                            alt="No projects"
+                            style={{ width: "150px", opacity: "0.5" }}
+                          />
+                        </div>
+                        <h5>No Projects Available</h5>
+                        <p className="text-muted">
+                          There are no projects to review bids for at the moment.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
-
-  
-
-
-
-</div>
-          
+          </div>
         )}
 
         {/* Invoice Tab */}
+               
         {activeTab === "invoice" && (
           <div className="tab-pane fade show active">
             <div style={{ padding: "24px" }}>
@@ -3265,10 +3746,10 @@ const FindDeveloper = () => {
                   alignItems: "center",
                   gap: "8px",
                 }}>
-                  <FiDollarSign /> Pending Payments
+                  Pending Payments
                 </h3>
 
-                {invoiceProjects.length === 0 ? (
+                {invoiceProjects.filter(project => project.paymentStatus === 'pending').length === 0 ? (
                   <div style={{
                     textAlign: "center",
                     padding: "32px",
@@ -3283,102 +3764,70 @@ const FindDeveloper = () => {
                     display: "grid",
                     gap: "16px",
                   }}>
-                    {invoiceProjects.map(project => (
-                      <div key={project._id} style={{
-                        backgroundColor: "white",
-                        borderRadius: "12px",
-                        border: "1px solid #E5E7EB",
-                        padding: "20px",
-                      }}>
-                        <div style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          marginBottom: "16px",
+                    {invoiceProjects.filter(project => project.paymentStatus === 'pending').map(project => {
+                      // Get developer name with better logic
+                      let devName = "Developer";
+                      
+                      // Check if assignedDeveloper is populated
+                      if (project.assignedDeveloper) {
+                        if (typeof project.assignedDeveloper === 'object') {
+                          // If it's populated as an object
+                          const { firstName, lastName, companyName } = project.assignedDeveloper;
+                          if (firstName || lastName) {
+                            devName = `${firstName || ''} ${lastName || ''}`.trim();
+                          } else if (companyName) {
+                            devName = companyName;
+                          }
+                        } else {
+                          // If it's just an ID, we need to handle it differently
+                          devName = "Developer (ID: " + project.assignedDeveloper + ")";
+                        }
+                      }
+                      
+                      // Fallback to other name fields
+                      if (devName === "Developer" && project.developerName) {
+                        devName = project.developerName;
+                      }
+                      
+                      return (
+                        <div key={project._id} style={{
+                          backgroundColor: "white",
+                          borderRadius: "12px",
+                          border: "1px solid #E5E7EB",
+                          padding: "20px",
+                          marginBottom: "12px"
                         }}>
-                          <div>
-                            <h4 style={{
-                              fontSize: "16px",
-                              fontWeight: "600",
-                              marginBottom: "4px",
-                            }}>
-                              {project.title}
-                            </h4>
-                            <p style={{
-                              color: "#6B7280",
-                              fontSize: "14px",
-                              margin: "0",
-                            }}>
-                              Invoice #: {project._id.slice(-6).toUpperCase()}
-                            </p>
-                            <p style={{
-                              color: "#6B7280",
-                              fontSize: "14px",
-                              margin: "4px 0 0 0",
-                            }}>
-                              Developer: {project.assignedDeveloper?.userName || "Not assigned"}
-                            </p>
-                          </div>
-                          <span style={{
-                            backgroundColor: "#FEF3C7",
-                            color: "#92400E",
-                            padding: "4px 8px",
-                            borderRadius: "12px",
-                            fontSize: "12px",
-                            fontWeight: "500",
-                          }}>
-                            Payment Pending
-                          </span>
-                        </div>
-
-                        <div style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "12px 0",
-                          borderTop: "1px solid #E5E7EB",
-                        }}>
-                          <div>
-                            <p style={{
-                              margin: "0",
-                              fontSize: "14px",
-                              color: "#6B7280",
-                            }}>
-                              Amount
-                            </p>
-                            <p style={{
-                              margin: "0",
-                              fontSize: "16px",
-                              fontWeight: "600",
-                            }}>
-                              PKR {project.budget?.toLocaleString()}
-                            </p>
+                          <h4 style={{
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            marginBottom: "8px",
+                          }}>{project.title}</h4>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+                            <div><strong>Payment To:</strong> {devName}</div>
+                            <div><strong>Amount:</strong> PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}</div>
+                            <div><strong>Status:</strong> <span style={{ color: '#92400E', background: '#FEF3C7', padding: '2px 10px', borderRadius: '8px', fontWeight: 500 }}>Pending</span></div>
                           </div>
                           <button
                             onClick={() => {
-                              setSelectedProject(project);
-                              setSelectedBid({
-                                amount: project.budget,
-                                bidderId: project.assignedDeveloper?._id,
-                                userName: project.assignedDeveloper?.userName
-                              });
-                              setShowPaymentModal(true);
+                              setSelectedProjectForPayment(project);
+                              setShowPaymentModalNew(true);
                             }}
                             style={{
-                              padding: "8px 16px",
+                              padding: "8px 20px",
                               backgroundColor: "#2563EB",
                               color: "white",
                               border: "none",
                               borderRadius: "6px",
-                              cursor: "pointer",
                               fontSize: "14px",
+                              fontWeight: "500",
+                              cursor: "pointer"
                             }}
                           >
                             Pay Now
                           </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -3461,57 +3910,83 @@ const FindDeveloper = () => {
                       <tbody>
                         {invoiceProjects
                           .filter(project => project.paymentStatus === "paid")
-                          .map(project => (
-                            <tr key={project._id}>
-                              <td style={{
-                                padding: "12px 16px",
-                                borderBottom: "1px solid #E5E7EB",
-                              }}>
-                                <div>
-                                  <p style={{ margin: "0", fontWeight: "500" }}>{project.title}</p>
-                                  <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#6B7280" }}>
-                                    Invoice #: {project._id.slice(-6).toUpperCase()}
-                                  </p>
-                                </div>
-                              </td>
-                              <td style={{
-                                padding: "12px 16px",
-                                borderBottom: "1px solid #E5E7EB",
-                              }}>
-                                {project.assignedDeveloper?.userName || "Not assigned"}
-                              </td>
-                              <td style={{
-                                padding: "12px 16px",
-                                textAlign: "right",
-                                borderBottom: "1px solid #E5E7EB",
-                              }}>
-                                PKR {project.budget?.toLocaleString()}
-                              </td>
-                              <td style={{
-                                padding: "12px 16px",
-                                textAlign: "right",
-                                borderBottom: "1px solid #E5E7EB",
-                              }}>
-                                {new Date(project.paymentDate).toLocaleDateString()}
-                              </td>
-                              <td style={{
-                                padding: "12px 16px",
-                                textAlign: "right",
-                                borderBottom: "1px solid #E5E7EB",
-                              }}>
-                                <span style={{
-                                  backgroundColor: "#DCFCE7",
-                                  color: "#166534",
-                                  padding: "4px 8px",
-                                  borderRadius: "12px",
-                                  fontSize: "12px",
-                                  fontWeight: "500",
+                          .map(project => {
+                            // Same developer name logic as above
+                            let devName = "Developer";
+                            
+                            // Check if assignedDeveloper is populated
+                            if (project.assignedDeveloper) {
+                              if (typeof project.assignedDeveloper === 'object') {
+                                // If it's populated as an object
+                                const { firstName, lastName, companyName } = project.assignedDeveloper;
+                                if (firstName || lastName) {
+                                  devName = `${firstName || ''} ${lastName || ''}`.trim();
+                                } else if (companyName) {
+                                  devName = companyName;
+                                }
+                              } else {
+                                // If it's just an ID, we need to handle it differently
+                                devName = "Developer (ID: " + project.assignedDeveloper + ")";
+                              }
+                            }
+                            
+                            // Fallback to other name fields
+                            if (devName === "Developer" && project.developerName) {
+                              devName = project.developerName;
+                            }
+                            
+                            return (
+                              <tr key={project._id}>
+                                <td style={{
+                                  padding: "12px 16px",
+                                  borderBottom: "1px solid #E5E7EB",
                                 }}>
-                                  Paid
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                                  <div>
+                                    <p style={{ margin: "0", fontWeight: "500" }}>{project.title}</p>
+                                    <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#6B7280" }}>
+                                      Invoice #: {project._id.slice(-6).toUpperCase()}
+                                    </p>
+                                  </div>
+                                </td>
+                                <td style={{
+                                  padding: "12px 16px",
+                                  borderBottom: "1px solid #E5E7EB",
+                                }}>
+                                  {devName}
+                                </td>
+                                <td style={{
+                                  padding: "12px 16px",
+                                  textAlign: "right",
+                                  borderBottom: "1px solid #E5E7EB",
+                                }}>
+                                  PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}
+                                </td>
+                                <td style={{
+                                  padding: "12px 16px",
+                                  textAlign: "right",
+                                  borderBottom: "1px solid #E5E7EB",
+                                }}>
+                                  {project.paymentDate ? new Date(project.paymentDate).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td style={{
+                                  padding: "12px 16px",
+                                  textAlign: "right",
+                                  borderBottom: "1px solid #E5E7EB",
+                                }}>
+                                  <span style={{
+                                    backgroundColor: "#DCFCE7",
+                                    color: "#166534",
+                                    padding: "4px 8px",
+                                    borderRadius: "12px",
+                                    fontSize: "12px",
+                                    fontWeight: "500",
+                                  }}>
+                                    Paid
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
@@ -3553,7 +4028,75 @@ const FindDeveloper = () => {
         project={selectedProject}
         bids={bidsList}
         onAssignProject={handleAssignProject}
+        onChatClick={handleChatClick}
       />
+
+      {showChatLoginModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ marginBottom: '1rem' }}>Login Required</h2>
+            <p style={{ marginBottom: '1.5rem' }}>
+              Please login to start chatting with {selectedChatUser?.userName || 'this user'}.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={handleChatLoginModalClose}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  background: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleChatLoginModalLogin}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: '#1d4ed8',
+                  color: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                Login Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showPaymentModalNew && selectedProjectForPayment && (
+        <PaymentModalNew
+          isOpen={showPaymentModalNew}
+          onClose={() => {
+            setShowPaymentModalNew(false);
+            setSelectedProjectForPayment(null);
+          }}
+          project={selectedProjectForPayment}
+          fetchInvoiceProjects={fetchInvoiceProjects}
+        />
+      )}
     </div>
   );
 };
@@ -3688,85 +4231,114 @@ const ProjectHistory = () => {
                 <thead className="table-light">
                   <tr>
                     <th>Project Details</th>
-                    <th>Developer</th>
+                    <th>Client/Developer</th>
                     <th>Timeline</th>
                     <th>Status</th>
                     <th>Budget</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {projectHistory.map((project) => (
-                    <tr key={project._id}>
-                      <td>
-                        <div>
-                          <h6 className="mb-1">{project.title}</h6>
-                          <p className="text-muted small mb-0">
-                            {project.description}
-                          </p>
-                          <div className="mt-1">
-                            {project.skills.map((skill, index) => (
-                              <span
-                                key={index}
-                                className="badge bg-light text-dark me-1"
-                              >
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="d-flex align-items-center">
-                          <img
-                            src={
-                              project.developer.profilePicture ||
-                              `https://ui-avatars.com/api/?name=${project.developer.name}`
-                            }
-                            alt={project.developer.name}
-                            className="rounded-circle me-2"
-                            width="40"
-                            height="40"
-                          />
+                  {projectHistory.map((project) => {
+                    // Get the other party's name (client or developer)
+                    let otherPartyName = "Unknown";
+                    let otherPartyEmail = "";
+                    
+                    if (project.assignedDeveloper) {
+                      // If current user is the client, show developer info
+                      otherPartyName = `${project.assignedDeveloper.firstName || ''} ${project.assignedDeveloper.lastName || ''}`.trim();
+                      otherPartyEmail = project.assignedDeveloper.email;
+                    } else if (project.companyName) {
+                      // If current user is the developer, show company info
+                      otherPartyName = project.companyName;
+                      otherPartyEmail = project.companyEmail || "";
+                    } else if (project.userName) {
+                      // If current user is the developer, show student/client info
+                      otherPartyName = project.userName;
+                      otherPartyEmail = project.userEmail || "";
+                    }
+
+                    return (
+                      <tr key={project._id}>
+                        <td>
                           <div>
-                            <div>{project.developer.name}</div>
-                            <small className="text-muted">
-                              {project.developer.email}
-                            </small>
+                            <h6 className="mb-1">{project.title}</h6>
+                            <p className="text-muted small mb-0">
+                              {project.description}
+                            </p>
+                            <div className="mt-1">
+                              {project.skills?.map((skill, index) => (
+                                <span
+                                  key={index}
+                                  className="badge bg-light text-dark me-1"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div>
-                          <div className="small text-muted">Started</div>
+                        </td>
+                        <td>
+                          <div className="d-flex align-items-center">
+                            <div
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "50%",
+                                backgroundColor: "#2563EB",
+                                color: "white",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "16px",
+                                fontWeight: "500",
+                                marginRight: "8px"
+                              }}
+                            >
+                              {otherPartyName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div>{otherPartyName}</div>
+                              <small className="text-muted">
+                                {otherPartyEmail}
+                              </small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
                           <div>
-                            {new Date(project.startDate).toLocaleDateString()}
+                            <div className="small text-muted">Started</div>
+                            <div>
+                              {project.startDate ? new Date(project.startDate).toLocaleDateString() : "N/A"}
+                            </div>
+                            <div className="small text-muted mt-1">Completed</div>
+                            <div>
+                              {project.completionDate ? new Date(project.completionDate).toLocaleDateString() : 
+                               project.paymentDate ? new Date(project.paymentDate).toLocaleDateString() : "N/A"}
+                            </div>
                           </div>
-                          <div className="small text-muted mt-1">Completed</div>
-                          <div>
-                            {new Date(
-                              project.completionDate
-                            ).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              project.status === "completed"
+                                ? "bg-success"
+                                : project.paymentStatus === "paid"
+                                ? "bg-info"
+                                : "bg-danger"
+                            }`}
+                          >
+                            {project.status === "completed" ? "Completed" : 
+                             project.paymentStatus === "paid" ? "Paid" : project.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="fw-bold text-success">
+                            PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            project.status === "completed"
-                              ? "bg-success"
-                              : "bg-danger"
-                          }`}
-                        >
-                          {project.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="fw-bold text-success">
-                          PKR {project.budget.toLocaleString()}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -19,6 +19,7 @@ import defaultProfile from "../assets/logo.jpg"; // Default Profile Image
 const Sidebar = ({ onSelectPage, selectedPage }) => {
   const [user, setUser] = useState(null);
   const [userType, setUserType] = useState(""); // "developer" or "student"
+  const [unreadChats, setUnreadChats] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,6 +52,45 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
     fetchUserProfile();
   }, []);
 
+  // Add useEffect for fetching unread chats
+  useEffect(() => {
+    const fetchUnreadChats = async () => {
+      try {
+        const response = await axios.get(`http://localhost:5000/api/unread-count/${user?._id}`, {
+          withCredentials: true,
+        });
+        console.log("Unread chats response:", response.data);
+        if (response.data && response.data.count > 0) {
+          setUnreadChats(response.data.count);
+        } else {
+          setUnreadChats(0);
+        }
+      } catch (error) {
+        console.error("Error fetching unread chats:", error);
+        setUnreadChats(0);
+      }
+    };
+
+    // Fetch initially
+    if (user?._id) {
+      fetchUnreadChats();
+    }
+
+    // Set up polling every 30 seconds
+    const interval = setInterval(() => {
+      if (user?._id) {
+        fetchUnreadChats();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [user?._id]);
+
+  // Debug log for unreadChats state
+  useEffect(() => {
+    console.log("Current unread chats:", unreadChats);
+  }, [unreadChats]);
+
   // ✅ Handle Logout
   const handleLogout = async () => {
     try {
@@ -80,14 +120,17 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
   const navigationLinks =
     userType === "developer"
       ? [
-          { icon: faHouse, label: "Home", page: "home" },
           {
             icon: faChartSimple,
             label: "Dashboard",
             page: "dashboard",
           },
-          { icon: faComments, label: "Chat", page: "chat" },
-          { icon: faBriefcase, label: "Work", page: "work" },
+          { 
+            icon: faComments, 
+            label: "Chat", 
+            page: "/chat",
+            notification: unreadChats > 0 ? unreadChats : null
+          },
           { icon: faVideo, label: "Sessions", page: "sessions" },
           {
             icon: faUser,
@@ -99,7 +142,12 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
       : [
           { icon: faHouse, label: "Dashboard", page: "studentdashboard" },
           { icon: faChartSimple, label: "Account", page: "account" },
-          { icon: faComments, label: "Chat", page: "chat" },
+          { 
+            icon: faComments, 
+            label: "Chat", 
+            page: "/chat",
+            notification: unreadChats > 0 ? unreadChats : null
+          },
           {
             icon: faUser,
             label: "Find Developer",
@@ -112,6 +160,14 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
           },
           { icon: faVideo, label: "Session History", page: "SessionHistory" },
         ];
+
+  const handleNavigation = (page) => {
+    if (page.startsWith('/')) {
+      navigate(page);  // Use navigate for absolute paths
+    } else {
+      onSelectPage(page);  // Use onSelectPage for relative paths
+    }
+  };
 
   return (
     <>
@@ -141,11 +197,7 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
             }}
           />
           <img
-            src={
-              user?.profileImage
-                ? `http://localhost:5000${user.profileImage}` // ✅ Use full image path from DB
-                : defaultProfile
-            }
+            src={profileImage}
             alt="Profile"
             className="rounded-circle border border-3 border-white position-absolute"
             style={{
@@ -173,44 +225,48 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
 
         {/* Navigation Links */}
         <nav className="mt-4">
-          <ul className="list-unstyled">
-            {navigationLinks.map(({ icon, label, page }) => (
-              <li
-                key={page}
-                className={`d-flex align-items-center px-4 py-2 text-dark sidebar-link${selectedPage === page ? ' active' : ''}`}
-                style={{
-                  cursor: "pointer",
-                  borderRadius: "8px",
-                  marginBottom: "8px",
-                  transition: "background 0.2s, color 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "18px",
-                  fontSize: "1.08rem",
-                  fontWeight: 500,
-                  minHeight: "44px",
-                  background: selectedPage === page ? '#e0e7ef' : 'transparent',
-                  color: selectedPage === page ? '#2563eb' : 'black',
-                }}
-                onClick={() => onSelectPage && onSelectPage(page)}
-              >
-                <FontAwesomeIcon
-                  icon={icon}
-                  className="me-3"
-                  style={{ minWidth: "22px", fontSize: "1.2rem" }}
-                />
+          {navigationLinks.map((link, index) => (
+            <div
+              key={index}
+              className={`d-flex align-items-center px-4 py-3 cursor-pointer ${
+                selectedPage === link.page ? "bg-primary text-white" : ""
+              }`}
+              onClick={() => handleNavigation(link.page)}
+              style={{
+                cursor: "pointer",
+                transition: "all 0.2s",
+                borderRadius: "8px",
+                margin: "4px 12px",
+                position: "relative"
+              }}
+            >
+              <FontAwesomeIcon
+                icon={link.icon}
+                className="me-3"
+                style={{ width: "20px" }}
+              />
+              <span>{link.label}</span>
+              {link.notification && link.notification > 0 && (
                 <span
+                  className="ms-auto bg-danger text-white rounded-circle d-flex align-items-center justify-content-center"
                   style={{
-                    textDecoration: "none",
-                    color: selectedPage === page ? '#2563eb' : 'black',
-                    fontWeight: 500,
+                    width: "24px",
+                    height: "24px",
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    zIndex: 1
                   }}
                 >
-                  {label}
+                  {link.notification}
                 </span>
-              </li>
-            ))}
-          </ul>
+              )}
+            </div>
+          ))}
         </nav>
 
         {/* Log Out Button */}

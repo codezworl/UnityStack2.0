@@ -14,7 +14,7 @@ import {
 import BlogsAndEvents from "../pages/Blogs&event";
 import Profile from "../pages/companyAccount";
 import FindDeveloper from "../pages/finddevelpor";
-import ComChat from "../pages/ComChat";
+import ComChat from "../pages/Chat";
 import FindWork from "../pages/findwork";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";

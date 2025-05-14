@@ -161,55 +161,51 @@ const FindWork = () => {
  // Ensure that you collect and send these parameters from the form submission
  const handleBidSubmit = async (e) => {
   e.preventDefault();
-
-  // Log the data
-  console.log("Bid form data:", {
-    bidAmount,
-    bidProposal,
-    userName,
-    userRole,
-    userId,
-    selectedProject
-  });
-
-  // Validate that all fields are provided
-  if (!bidAmount.trim() || !bidProposal.trim() || !userName || !userRole || !userId) {
-    alert("Please fill in all fields before submitting.");
-    return;
-  }
-
-  const bidData = {
-    amount: bidAmount,
-    proposal: bidProposal,
-    bidderName: userName,
-    userRole: bidderType,  // ✅ use properly capitalized role
-    userName: userName,
-    userId: userId,
-    projectId: selectedProject._id,
-  };
+  setIsSubmittingBid(true);
 
   try {
+    // Get the current user info from the server
+    const userResponse = await fetch("http://localhost:5000/api/user", { 
+      credentials: "include" 
+    });
+    
+    if (!userResponse.ok) {
+      throw new Error("Failed to get user information");
+    }
+
+    const userData = await userResponse.json();
+    
+    // Create the bid data using the fresh user data
+    const bidData = {
+      amount: bidAmount,
+      proposal: bidProposal
+    };
+
     const response = await fetch(`http://localhost:5000/api/projects/${selectedProject._id}/bids`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
       },
+      credentials: "include",
       body: JSON.stringify(bidData),
     });
 
-    const result = await response.json();
     if (!response.ok) {
-      throw new Error(result.message || "Error submitting bid");
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to submit bid");
     }
 
+    // Success handling
     alert("Bid submitted successfully!");
+    setShowBidModal(false);
     setBidAmount("");
     setBidProposal("");
-    setIsSubmittingBid(false);
-  } catch (err) {
-    console.error("Error submitting bid:", err.message);
-    alert(err.message || "An error occurred while submitting your bid");
+    setSelectedProject(null);
+
+  } catch (error) {
+    console.error("Error submitting bid:", error);
+    alert(error.message || "Failed to submit bid");
+  } finally {
     setIsSubmittingBid(false);
   }
 };

@@ -46,14 +46,31 @@ const Login = () => {
       // ✅ Store token and role
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
-  
-      // ✅ Navigate based on role
-      if (role === "student") {
-        navigate("/studentdashboard");
-      } else if (role === "developer") {
-        navigate("/developerdashboard");
-      } else if (role === "organization") {
-        navigate("/companydashboard");
+
+      // Check for return URL
+      const returnTo = localStorage.getItem('returnTo');
+      const returnAction = localStorage.getItem('returnAction');
+      
+      if (returnTo && returnAction === 'chat') {
+        // Clear the return info
+        localStorage.removeItem('returnTo');
+        localStorage.removeItem('returnAction');
+        // Navigate to chat page (the selectedChatDeveloper is already stored)
+        navigate('/chat');
+      } else if (returnTo) {
+        // Clear return info and go back to the stored page
+        localStorage.removeItem('returnTo');
+        localStorage.removeItem('returnAction');
+        navigate(returnTo);
+      } else {
+        // Default dashboard navigation when clicking login from header
+        if (role === "student") {
+          navigate("/studentdashboard");
+        } else if (role === "developer") {
+          navigate("/developerdashboard");
+        } else if (role === "organization") {
+          navigate("/companydashboard");
+        }
       }
   
       toast.success("Login successful");

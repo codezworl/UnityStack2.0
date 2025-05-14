@@ -56,6 +56,15 @@ const Header = () => {
         : `${user.firstName || ''} ${user.lastName || ''}`.trim());
   };
 
+  // Add function to handle header login click
+  const handleHeaderLogin = () => {
+    // Clear any stored return location when clicking login from header
+    localStorage.removeItem('returnTo');
+    localStorage.removeItem('returnAction');
+    localStorage.removeItem('selectedChatDeveloper');
+    navigate('/login');
+  };
+
   return (
     <header
       style={{
@@ -187,7 +196,20 @@ const Header = () => {
               )}
             </div>
           ) : (
-            <Link to="/login" style={{ textDecoration: "none", color: "#ffffff", backgroundColor: "#1d4ed8", padding: "8px 20px", borderRadius: "5px" }}>Log in</Link>
+            <button 
+              onClick={handleHeaderLogin}
+              style={{ 
+                textDecoration: "none", 
+                color: "#ffffff", 
+                backgroundColor: "#1d4ed8", 
+                padding: "8px 20px", 
+                borderRadius: "5px",
+                border: "none",
+                cursor: "pointer"
+              }}
+            >
+              Log in
+            </button>
           )}
         </nav>
       </div>

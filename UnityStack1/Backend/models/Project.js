@@ -13,13 +13,33 @@ const projectSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  // Fields for organization/company
   companyId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Organization',  // ✅ Fix: Use capital 'O' to match model registration
-    required: true
+    ref: 'Organization'
   },
   companyName: {
+    type: String
+  },
+  // Fields for developer
+  developerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Developer'
+  },
+  developerName: {
+    type: String
+  },
+  // Fields for other users (students, etc.)
+  userId: {
+    type: mongoose.Schema.Types.ObjectId
+  },
+  userName: {
+    type: String
+  },
+  // Track who created the project
+  createdBy: {
     type: String,
+    enum: ['Organization', 'Developer', 'Student'],
     required: true
   },
   skills: [{
@@ -37,6 +57,11 @@ const projectSchema = new mongoose.Schema({
   file: {
     type: String
   },
+  type: {
+    type: String,
+    enum: ['Full Stack Project', 'Front End', 'Back End', 'API', 'Mobile App', 'Other'],
+    default: 'Full Stack Project'
+  },
   status: {
     type: String,
     enum: ['open', 'assigned', 'in-progress', 'completed', 'cancelled', 'closed'],
@@ -48,11 +73,11 @@ const projectSchema = new mongoose.Schema({
   },
   bids: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Bid'  // Reference to the Bid model
+    ref: 'Bid'
   }],
   assignedDeveloper: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Developer'  // Reference to the Developer model
+    ref: 'Developer'
   },
   assignedDate: {
     type: Date
@@ -80,7 +105,14 @@ const projectSchema = new mongoose.Schema({
   },
   startDate: {
     type: Date
-  }
+  },
+  acceptedBid: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Bid'
+  },
+  acceptedBidAmount: {
+    type: Number
+  },
 }, { timestamps: true });
 
 // Pre-save middleware to handle project assignment
@@ -98,7 +130,10 @@ projectSchema.pre('save', function(next) {
 });
 
 // Indexes for optimizing queries
-projectSchema.index({ status: 1, companyId: 1 });
+projectSchema.index({ status: 1 });
+projectSchema.index({ companyId: 1 });
+projectSchema.index({ developerId: 1 });
+projectSchema.index({ userId: 1 });
 projectSchema.index({ assignedDeveloper: 1 });
 
 module.exports = mongoose.model('Project', projectSchema);

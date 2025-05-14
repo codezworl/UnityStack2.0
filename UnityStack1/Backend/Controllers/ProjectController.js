@@ -2,7 +2,7 @@ const Project = require("../models/Project");
 const ProjectHistory = require("../models/ProjectHistory");
 const Organization = require("../models/Organization");
 const Notification = require("../models/notification");
-const Developer =require("../models/Develpor");
+const Developer = require("../models/Develpor");
 const Bid = require('../models/Bid');
 
 // Add this helper function at the top of the file after imports
@@ -23,61 +23,106 @@ const createNotification = async ({ userId, type, message, projectId }) => {
 // Create a new project
 const createProject = async (req, res) => {
   try {
-    const { title, description, skills, budget, deadline } = req.body;
-    const companyId = req.user.id;
+    const { title, description, skills, budget, deadline, type } = req.body;
+    const userId = req.user._id;
+    const userRole = req.userRole;
 
     // Validate required fields
     if (!title || !description || !skills || !budget || !deadline) {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
-    // Get company details
-    const company = await Organization.findById(companyId);
-    if (!company) {
-      return res.status(404).json({ message: "Company not found" });
-    }
-
-    // Create project object
-    const project = new Project({
+    // Create project object with common fields
+    const projectData = {
       title,
       description,
       skills,
       budget,
       deadline,
-      companyId,
-      companyName: company.companyName,
       status: 'open',
       bids: [],
-      file: req.file ? req.file.filename : null
-    });
+      file: req.file ? req.file.filename : null,
+      type: type || 'Full Stack Project'
+    };
 
+    // Add user-specific fields based on role
+    if (userRole === 'organization') {
+      projectData.companyId = userId;
+      projectData.companyName = req.user.companyName;
+      projectData.createdBy = 'Organization';
+    } else if (userRole === 'developer') {
+      projectData.developerId = userId;
+      projectData.developerName = `${req.user.firstName} ${req.user.lastName}`;
+      projectData.createdBy = 'Developer';
+    } else {
+      // For students
+      projectData.userId = userId;
+      projectData.userName = `${req.user.firstName} ${req.user.lastName}`;
+      projectData.createdBy = 'Student';
+    }
+
+    // Create and save the project
+    const project = new Project(projectData);
     await project.save();
+
     res.status(201).json(project);
   } catch (error) {
     console.error("Error creating project:", error);
-    res.status(500).json({ message: "Error creating project" });
+    res.status(500).json({ message: "Error creating project", error: error.message });
   }
 };
 
 // Get all projects for a company
+// Get all projects for the current user (works for all roles)
 const getAllProjects = async (req, res) => {
   try {
-    const companyId = req.user.id;
-    const projects = await Project.find({ 
-      companyId,
+    const userId = req.user._id;
+    const userRole = req.userRole || req.user.role;
+    
+    let query = {
       status: { $ne: 'assigned' }, // Exclude assigned projects
       isVisible: true // Only show visible projects
-    })
-    .populate({
-      path: 'bids.bidderId',
-      select: 'firstName lastName companyName email profilePicture rating experience skills'
-    })
-    .sort({ createdAt: -1 });
+    };
 
-    res.status(200).json(projects);
+    // Add role-specific filters
+    if (userRole === 'organization') {
+      query.companyId = userId;
+    } else if (userRole === 'developer') {
+      query.developerId = userId;
+    } else if (userRole === 'student') {
+      query.userId = userId;
+    } else {
+      // Fallback for any other role
+      query.$or = [
+        { companyId: userId },
+        { developerId: userId },
+        { userId: userId }
+      ];
+    }
+
+    const projects = await Project.find(query)
+      .populate({
+        path: 'bids',
+        select: 'amount proposal userName userRole bidderId createdAt status'
+      })
+      .sort({ createdAt: -1 });
+
+    // For each project, also populate the bid details for better display
+    const populatedProjects = await Promise.all(
+      projects.map(async (project) => {
+        await project.populate({
+          path: 'bids',
+          model: 'Bid',
+          select: 'amount proposal userName userRole bidderId createdAt status'
+        });
+        return project;
+      })
+    );
+
+    res.status(200).json(populatedProjects);
   } catch (error) {
     console.error("Error fetching projects:", error);
-    res.status(500).json({ message: "Error fetching projects" });
+    res.status(500).json({ message: "Error fetching projects", error: error.message });
   }
 };
 
@@ -104,37 +149,55 @@ const getProjectById = async (req, res) => {
 // Update project
 const updateProject = async (req, res) => {
   try {
-    const { title, description, skills, budget, deadline } = req.body;
-    const projectId = req.params.id;
-    const companyId = req.user.id;
-
-    // Find project and verify ownership
-    const project = await Project.findOne({ _id: projectId, companyId });
+    const { id } = req.params;
+    const { title, description, skills, budget, deadline, type } = req.body;
+    
+    // Find the project first
+    const project = await Project.findById(id);
+    
     if (!project) {
-      return res.status(404).json({ message: "Project not found or unauthorized" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "Project not found" 
+      });
     }
 
-    // Update project fields
+    // Check if the user owns this project
+    if (project.userId && project.userId.toString() !== req.user.id) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Not authorized to update this project" 
+      });
+    }
+
+    // Update the project
     const updatedProject = await Project.findByIdAndUpdate(
-      projectId,
+      id,
       {
-        title: title || project.title,
-        description: description || project.description,
-        skills: skills || project.skills,
-        budget: budget || project.budget,
-        deadline: deadline || project.deadline,
-        file: req.file ? req.file.filename : project.file
+        title,
+        description,
+        skills,
+        budget: Number(budget),
+        deadline: new Date(deadline),
+        type,
+        lastUpdate: new Date()
       },
-      { new: true }
-    ).populate({
-      path: 'bids.bidderId',
-      select: 'firstName lastName companyName email profilePicture rating experience skills'
+      { new: true, runValidators: true }
+    ).populate('bids');
+
+    res.status(200).json({
+      success: true,
+      message: "Project updated successfully",
+      data: updatedProject
     });
 
-    res.status(200).json(updatedProject);
   } catch (error) {
-    console.error("Error updating project:", error);
-    res.status(500).json({ message: "Error updating project" });
+    console.error('Error updating project:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update project",
+      error: error.message
+    });
   }
 };
 
@@ -211,102 +274,178 @@ const closeProject = async (req, res) => {
 // Assign project to developer
 const assignProject = async (req, res) => {
   try {
-    const { developerId, paymentInfo } = req.body;
-    const projectId = req.params.id;
-    const companyId = req.user.id;
+    const { id: projectId } = req.params;
+    const { developerId, status = "assigned", startDate } = req.body; // Default to "assigned"
 
-    // Find project and verify ownership
-    const project = await Project.findOne({ _id: projectId, companyId })
-      .populate({
-        path: 'bids',
-        select: 'amount proposal bidderId status userName userRole'
-      });
+    console.log("Assigning project:", projectId, "to developer:", developerId);
 
+    // Find the project
+    const project = await Project.findById(projectId);
     if (!project) {
-      return res.status(404).json({ message: "Project not found or unauthorized" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "Project not found" 
+      });
     }
 
-    // Verify the bid exists and get the bidderId
-    const selectedBid = project.bids.find(bid => bid.bidderId && bid.bidderId.toString() === developerId);
-    if (!selectedBid) {
-      return res.status(400).json({ message: "No bid found from this bidder" });
+    // Get user information
+    const currentUserId = req.user._id || req.user.id;
+    console.log("Current user ID:", currentUserId);
+
+    // Check authorization (existing auth code...)
+    let isAuthorized = false;
+    
+    if (project.userId && project.userId.toString() === currentUserId.toString()) {
+      isAuthorized = true;
+    } else if (project.companyId && project.companyId.toString() === currentUserId.toString()) {
+      isAuthorized = true;
+    } else if (project.developerId && project.developerId.toString() === currentUserId.toString()) {
+      isAuthorized = true;
     }
 
-    // Update project status and assigned bidder
-    project.status = 'assigned';
+    if (!isAuthorized) {
+      console.log("Authorization failed for user:", currentUserId);
+      return res.status(403).json({ 
+        success: false, 
+        message: "Not authorized to assign this project" 
+      });
+    }
+
+    // Find the accepted bid
+    const acceptedBid = req.body.bidId 
+      ? await Bid.findById(req.body.bidId)
+      : await Bid.findOne({
+          projectId: project._id,
+          $or: [{ bidderId: developerId }, { userId: developerId }]
+        });
+
+    console.log("Found accepted bid:", acceptedBid);
+
+    // Update project with assignment details
     project.assignedDeveloper = developerId;
-    project.assignedDeveloperName = selectedBid.userName; // Store the bidder's username
-    project.assignedDeveloperRole = selectedBid.userRole; // Store the bidder's role
+    project.status = "assigned"; // Always set to "assigned" initially
     project.assignedDate = new Date();
-    project.isVisible = false; // Hide from marketplace
-    project.paymentStatus = 'paid'; // Set as paid since payment is made
-    project.paymentDate = new Date();
-
-    // Update bid status
-    project.bids = project.bids.map(bid => ({
-      ...bid.toObject(),
-      status: bid.bidderId && bid.bidderId.toString() === developerId ? 'accepted' : 'rejected'
-    }));
+    project.isVisible = false;
+    project.paymentStatus = 'pending'; // Set payment status to pending
+    
+    // Store the accepted bid info
+    if (acceptedBid) {
+      project.acceptedBid = acceptedBid._id;
+      project.acceptedBidAmount = acceptedBid.amount;
+      console.log("Stored accepted bid amount:", acceptedBid.amount);
+    } else {
+      console.log("Warning: No bid found for developer:", developerId);
+      project.acceptedBidAmount = project.budget;
+    }
 
     await project.save();
 
-    // Create notifications for both parties
-    await createNotification({
-      userId: developerId,
-      type: 'PROJECT_ASSIGNED',
-      message: `You have been assigned to project: ${project.title}`,
-      projectId: project._id
-    });
-
-    await createNotification({
-      userId: companyId,
-      type: 'PROJECT_PAYMENT_CONFIRMED',
-      message: `Payment confirmed for project: ${project.title}`,
-      projectId: project._id
-    });
-
-    // Fetch the updated project with populated fields
-    const updatedProject = await Project.findById(project._id)
-      .populate({
-        path: 'bids',
-        select: 'amount proposal bidderId status userName userRole'
-      });
+    console.log("Project assigned successfully with status: assigned");
 
     res.status(200).json({
+      success: true,
       message: "Project assigned successfully",
-      project: updatedProject
+      data: project
     });
+
   } catch (error) {
-    console.error("Error assigning project:", error);
-    res.status(500).json({ message: "Error assigning project", error: error.message });
+    console.error('Error assigning project:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to assign project",
+      error: error.message
+    });
   }
 };
 
 // Get project history
 const getProjectHistory = async (req, res) => {
   try {
-    const companyId = req.user.id;
-    const projects = await Project.find({
-      companyId,
-      status: { $in: ['completed', 'cancelled'] }
-    }).populate('assignedDeveloper', 'name email profilePicture');
+    const userId = req.user._id || req.user.id;
+    const userRole = req.userRole || req.user.role;
+    
+    console.log("Fetching project history for user:", userId, "with role:", userRole);
+    
+    // Build comprehensive query for all user roles
+    let query = {
+      $and: [
+        {
+          $or: [
+            { status: 'completed' },
+            { status: 'cancelled' },
+            { paymentStatus: 'paid' } // Include paid projects regardless of status
+          ]
+        },
+        {
+          $or: [
+            { userId: userId },           // Projects created by student
+            { companyId: userId },        // Projects created by organization  
+            { developerId: userId },      // Projects created by developer
+            { assignedDeveloper: userId } // Projects assigned to developer
+          ]
+        }
+      ]
+    };
+
+    const projects = await Project.find(query)
+      .populate('assignedDeveloper', 'firstName lastName email')
+      .populate('companyId', 'companyName email') 
+      .populate('userId', 'firstName lastName email')
+      .populate('developerId', 'firstName lastName email')
+      .sort({ completionDate: -1, paymentDate: -1 });
+
+    console.log("Found projects for history:", projects.length);
+
+    // Build comprehensive stats query  
+    let statsQuery = {
+      $or: [
+        { userId: userId },           // Projects created by student
+        { companyId: userId },        // Projects created by organization
+        { developerId: userId },      // Projects created by developer  
+        { assignedDeveloper: userId } // Projects assigned to developer
+      ]
+    };
+
+    const totalProjects = await Project.countDocuments(statsQuery);
+    const completedProjects = await Project.countDocuments({
+      ...statsQuery,
+      status: 'completed'
+    });
+    const cancelledProjects = await Project.countDocuments({
+      ...statsQuery, 
+      status: 'cancelled'
+    });
+
+    // Calculate earnings differently based on role
+    let earningsQuery;
+    if (userRole === 'developer') {
+      // For developers: earnings from projects assigned to them
+      earningsQuery = { assignedDeveloper: userId, paymentStatus: 'paid' };
+    } else {
+      // For organizations/students: total spent on their projects
+      earningsQuery = { 
+        $or: [{ userId: userId }, { companyId: userId }, { developerId: userId }],
+        paymentStatus: 'paid'
+      };
+    }
+
+    const earningsResult = await Project.aggregate([
+      { $match: earningsQuery },
+      { $group: { _id: null, total: { $sum: { $ifNull: ["$acceptedBidAmount", "$budget"] } } } }
+    ]);
 
     const stats = {
-      total: await Project.countDocuments({ companyId }),
-      completed: await Project.countDocuments({ companyId, status: 'completed' }),
-      cancelled: await Project.countDocuments({ companyId, status: 'cancelled' }),
-      totalEarnings: await Project.aggregate([
-        { $match: { companyId: companyId.toString(), status: 'completed' } },
-        { $group: { _id: null, total: { $sum: "$budget" } } }
-      ])
+      total: totalProjects,
+      completed: completedProjects, 
+      cancelled: cancelledProjects,
+      totalEarnings: earningsResult[0]?.total || 0
     };
+
+    console.log("Project history stats:", stats);
 
     res.status(200).json({
       projects,
-      stats: {
-        ...stats,
-        totalEarnings: stats.totalEarnings[0]?.total || 0
-      }
+      stats
     });
   } catch (error) {
     console.error("Error fetching project history:", error);
@@ -317,42 +456,60 @@ const getProjectHistory = async (req, res) => {
 // Inside the 'submitBid' function in your controller
 
 const submitBid = async (req, res) => {
-  const { amount, proposal, bidderName, userRole, userName } = req.body;
-  const userId = req.user.id;
-  const { id } = req.params;
-
-  // Log the data
-  console.log("Bid data received:", { amount, proposal, bidderName, userRole, userName, userId, projectId: id });
-
-  // If userName is not provided, set it to bidderName
-  const finalUserName = userName || bidderName;
-
-  // Validate required fields
-  if (!amount || !proposal || !userRole || !finalUserName || !bidderName || !userId || !id) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-
   try {
+    const { amount, proposal } = req.body;
+    const { id: projectId } = req.params;
+    const user = req.user;
+    const userRole = req.userRole;
+
+    // Validate required fields
+    if (!amount || !proposal || !projectId) {
+      return res.status(400).json({ message: "Amount and proposal are required" });
+    }
+
+    // Get user's name based on role
+    let userName = '';
+    if (userRole === 'developer') {
+      userName = `${user.firstName} ${user.lastName}`;
+    } else if (userRole === 'organization') {
+      userName = user.companyName;
+    } else {
+      userName = `${user.firstName} ${user.lastName}`;
+    }
+
     // Create a new Bid document
     const newBid = new Bid({
       amount,
       proposal,
-      bidderName: finalUserName,  // Use finalUserName which is either userName or bidderName
+      bidderName: userName,
       userRole,
-      userName: finalUserName,    // Ensure userName is set
-      bidderId: userId,
-      projectId: id,
+      userName,
+      bidderId: user._id,
+      projectId
     });
 
     await newBid.save();
 
-    const project = await Project.findById(id);
-    if (project) {
-      project.bids.push(newBid._id);
-      await project.save();
+    // Add bid to project
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
     }
 
-    res.status(201).json({ message: "Bid submitted successfully", bid: newBid });
+    project.bids.push(newBid._id);
+    await project.save();
+
+    res.status(201).json({ 
+      message: "Bid submitted successfully", 
+      bid: {
+        _id: newBid._id,
+        amount: newBid.amount,
+        proposal: newBid.proposal,
+        userName: newBid.userName,
+        userRole: newBid.userRole,
+        createdAt: newBid.createdAt
+      }
+    });
   } catch (error) {
     console.error("Error submitting bid:", error);
     res.status(500).json({ message: "Error submitting bid", error: error.message });
@@ -360,59 +517,113 @@ const submitBid = async (req, res) => {
 };
 
 // Get project bids
+// Get project bids
+// Get project bids
 const getProjectBids = async (req, res) => {
   try {
-    const projectId = req.params.id;
+    const { id: projectId } = req.params;
+    const userId = req.user._id;
+    const userRole = req.userRole || req.user.role;
 
-    // Fetch the project and populate the bids array
-    const project = await Project.findById(projectId)
-      .populate({
-        path: 'bids',
-        select: 'amount proposal userName userRole bidderId createdAt'  // Added bidderId to selected fields
-      });
-
+    // Fetch the project first
+    const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // Enrich the bids with all necessary information
-    const enrichedBids = project.bids.map(bid => ({
+    // Check authorization based on user role and project ownership
+    let hasAccess = false;
+
+    if (userRole === 'organization' && project.companyId) {
+      hasAccess = project.companyId.toString() === userId.toString();
+    } else if (userRole === 'developer' && project.developerId) {
+      hasAccess = project.developerId.toString() === userId.toString();
+    } else if (userRole === 'student' && project.userId) {
+      hasAccess = project.userId.toString() === userId.toString();
+    }
+
+    // Also allow access if the user is assigned to the project
+    if (!hasAccess && project.assignedDeveloper) {
+      hasAccess = project.assignedDeveloper.toString() === userId.toString();
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: "Access denied - you can only view bids for your own projects" });
+    }
+
+    // Populate the bids
+    await project.populate({
+      path: 'bids',
+      model: 'Bid',
+      select: 'amount proposal userName userRole bidderId createdAt status'
+    });
+
+    // Format the bids data to match the expected frontend format
+    const formattedBids = project.bids.map(bid => ({
       _id: bid._id,
-      userName: bid.userName,
-      userRole: bid.userRole,
+      userName: bid.userName || "Anonymous Developer",
+      userRole: bid.userRole || "Developer", 
       amount: bid.amount,
       proposal: bid.proposal,
-      bidderId: bid.bidderId,  // Include bidderId in the response
-      createdAt: bid.createdAt
+      bidderId: bid.bidderId,
+      userId: bid.bidderId, // Also add userId for consistency
+      createdAt: bid.createdAt,
+      submittedAt: bid.createdAt, // Add submittedAt for compatibility
+      status: bid.status || 'pending'
     }));
 
     res.status(200).json({
       projectId: project._id,
-      bids: enrichedBids,
+      projectTitle: project.title,
+      bids: formattedBids
     });
 
   } catch (error) {
     console.error("Error fetching project bids:", error);
-    res.status(500).json({ message: "Error fetching project bids" });
+    res.status(500).json({ message: "Error fetching project bids", error: error.message });
   }
 };
 
 // Get active projects
 const getActiveProjects = async (req, res) => {
   try {
-    const companyId = req.user.id;
-    const projects = await Project.find({
-      companyId,
-      status: { $in: ['assigned', 'in-progress'] },
-      paymentStatus: { $in: ['paid', 'released'] }
-    })
-    .select('title description status progress assignedDeveloperName assignedDeveloperRole assignedDate deadline budget')
-    .sort({ assignedDate: -1 });
+    const userId = req.user._id || req.user.id;
+    const userRole = req.userRole || req.user.role;
+    
+    console.log("Fetching active projects for user:", userId, "with role:", userRole);
+    
+    // Find projects that are assigned or in-progress and belong to the current user
+    let query = {
+      $and: [
+        {
+          status: { $in: ['assigned', 'in-progress'] }, // Both assigned and in-progress
+          assignedDeveloper: { $exists: true } // Must have an assigned developer
+        },
+        {
+          $or: [
+            { userId: userId },         // Projects created by user
+            { companyId: userId },      // Projects created by company  
+            { developerId: userId }     // Projects created by developer
+          ]
+        }
+      ]
+    };
 
-    res.status(200).json(projects);
+    console.log("Active projects query:", JSON.stringify(query, null, 2));
+
+    const activeProjects = await Project.find(query)
+      .populate('assignedDeveloper', 'firstName lastName email')
+      .sort({ assignedDate: -1 });
+
+    console.log("Found active projects:", activeProjects.length);
+
+    res.status(200).json(activeProjects);
   } catch (error) {
     console.error("Error fetching active projects:", error);
-    res.status(500).json({ message: "Error fetching active projects" });
+    res.status(500).json({ 
+      message: "Error fetching active projects", 
+      error: error.message 
+    });
   }
 };
 
@@ -421,9 +632,20 @@ const updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { paymentStatus } = req.body;
-    const companyId = req.user.id;
+    const userId = req.user._id;
+    const userRole = req.userRole || req.user.role;
 
-    const project = await Project.findOne({ _id: id, companyId });
+    // Build query based on user role
+    let query = { _id: id };
+    if (userRole === 'organization') {
+      query.companyId = userId;
+    } else if (userRole === 'developer') {
+      query.developerId = userId;
+    } else if (userRole === 'student') {
+      query.userId = userId;
+    }
+
+    const project = await Project.findOne(query);
     if (!project) {
       return res.status(404).json({ message: "Project not found or unauthorized" });
     }
@@ -450,9 +672,20 @@ const updateProgress = async (req, res) => {
   try {
     const { id } = req.params;
     const { progress } = req.body;
-    const companyId = req.user.id;
+    const userId = req.user._id;
+    const userRole = req.userRole || req.user.role;
 
-    const project = await Project.findOne({ _id: id, companyId });
+    // Build query based on user role
+    let query = { _id: id };
+    if (userRole === 'organization') {
+      query.companyId = userId;
+    } else if (userRole === 'developer') {
+      query.developerId = userId;
+    } else if (userRole === 'student') {
+      query.userId = userId;
+    }
+
+    const project = await Project.findOne(query);
     if (!project) {
       return res.status(404).json({ message: "Project not found or unauthorized" });
     }
@@ -468,18 +701,29 @@ const updateProgress = async (req, res) => {
 };
 
 // Get all available projects for bidding
+// Get all available projects for bidding
 const getAvailableProjects = async (req, res) => {
   try {
-    const currentUserId = req.user.id;
+    const currentUserId = req.user._id;
+    const userRole = req.userRole || req.user.role;
     
-    // Find all projects that are open and not created by the current user
-    const projects = await Project.find({ 
-      companyId: { $ne: currentUserId }, // Exclude projects created by current user
-      status: 'open' // Only show open projects
-    }).populate({
-      path: 'bids.bidderId',
-      select: 'name email profilePicture rating experience skills'
-    }).sort({ createdAt: -1 });
+    // Build query to exclude user's own projects based on their role
+    let query = {
+      status: 'open', // Only show open projects
+      $and: [
+        // Exclude projects created by the current user based on their role
+        { companyId: { $ne: currentUserId } },
+        { developerId: { $ne: currentUserId } },
+        { userId: { $ne: currentUserId } }
+      ]
+    };
+
+    const projects = await Project.find(query)
+      .populate({
+        path: 'bids',
+        select: 'amount proposal userName userRole bidderId createdAt status'
+      })
+      .sort({ createdAt: -1 });
 
     res.status(200).json(projects);
   } catch (error) {
@@ -508,14 +752,28 @@ const getAssignedProjects = async (req, res) => {
 // Get invoice projects
 const getInvoiceProjects = async (req, res) => {
   try {
-    const companyId = req.user.id;
-    const projects = await Project.find({
-      companyId,
-      status: 'assigned',
+    const userId = req.user._id;
+    const userRole = req.userRole || req.user.role;
+    
+    // Build query based on user role
+    let query = {
+      status: { $in: ['in-progress', 'assigned'] },
       paymentStatus: { $in: ['pending', 'paid'] }
-    })
-    .populate('assignedDeveloper', 'userName email')
-    .sort({ assignedDate: -1 });
+    };
+
+    // Add role-specific filters
+    if (userRole === 'organization') {
+      query.companyId = userId;
+    } else if (userRole === 'developer') {
+      query.developerId = userId;
+    } else if (userRole === 'student') {
+      query.userId = userId;
+    }
+
+    const projects = await Project.find(query)
+      .populate('assignedDeveloper', 'firstName lastName email')
+      .populate('acceptedBid', 'amount proposal userName')
+      .sort({ assignedDate: -1 });
 
     res.status(200).json(projects);
   } catch (error) {

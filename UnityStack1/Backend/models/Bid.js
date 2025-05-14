@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
-const Organization = require('./Organization'); // Correct import for Organization model
-const Developer = require('./Develpor'); // Correct import for Developer model
+const Organization = require('./Organization');
+const Developer = require('./Develpor'); // This is correct as the file is named Develpor.js
 
 // Define the Bid Schema
 const bidSchema = new mongoose.Schema({
@@ -40,7 +40,7 @@ const bidSchema = new mongoose.Schema({
   userRole: {
     type: String,
     required: true,
-    enum: ['Developer', 'Organization'],  // This ensures the value is either 'developer' or 'organization'
+    enum: ['developer', 'Organization'],  // Changed 'developer' to 'Developer' and 'organization' to 'Organization'
   },
   // Reference to the project that the bid is associated with
   projectId: {
