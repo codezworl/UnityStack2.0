@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { FaEdit, FaPlus, FaCamera, FaLinkedin, FaGithub } from "react-icons/fa";
 import ReactQuill from "react-quill";
@@ -10,6 +10,7 @@ const expertiseOptions = ["JavaScript", "Python", "React", "Node.js", "Django", 
 
 const Profile = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [developer, setDeveloper] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
@@ -26,6 +27,7 @@ const Profile = () => {
 const [editExpertise, setEditExpertise] = useState({});
 const [showEditJobPopup, setShowEditJobPopup] = useState(false);
 const [editJob, setEditJob] = useState({});
+const [showLoginModal, setShowLoginModal] = useState(false);
 
 // ✅ Open Edit Expertise Modal
 const handleEditExpertise = (expertise) => {
@@ -278,6 +280,15 @@ const convertTo12Hour = (time24) => {
   };
   
 
+  const handleMessageClick = () => {
+    if (!loggedInUser) {
+      setShowLoginModal(true);
+    } else {
+      // Store the developer ID in localStorage and navigate to chat
+      localStorage.setItem('selectedChatDeveloper', developer._id);
+      navigate('/chat');
+    }
+  };
 
   return (
     <>
@@ -311,18 +322,9 @@ const convertTo12Hour = (time24) => {
     <h2>{developer?.firstName || "No Name"}</h2>
     <p>Developer</p>
     <button
-        className="btn"
-        style={{
-            border: '2px solid blue',
-            color: 'blue',
-            backgroundColor: 'white',
-            width: '90%', // Ensures full width
-            padding: '8px',
-            borderRadius: '5px',
-            marginTop: '10px',
-            marginRight: '27px'
-        }}
-        onClick={() => console.log('Message button clicked')}
+        className="btn btn-primary"
+        onClick={handleMessageClick}
+        style={{ marginRight: '10px' }}
     >
         Message
     </button>

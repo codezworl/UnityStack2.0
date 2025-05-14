@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   FaMapMarkerAlt,
   FaGlobe,
@@ -9,11 +10,63 @@ import {
   FaLinkedin,
 } from "react-icons/fa";
 
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import Header from "../components/header";
+import Footer from "../components/footer";
 
 const CompanyProfile = () => {
+  const navigate = useNavigate();
+  const { id } = useParams();
   const [activeTab, setActiveTab] = useState("blogs");
+  const [company, setCompany] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loggedInUser, setLoggedInUser] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Fetch company data
+  useEffect(() => {
+    const fetchCompany = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/organizations/${id}`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch company');
+        const data = await response.json();
+        setCompany(data);
+      } catch (error) {
+        console.error('Error fetching company:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/user", {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch user');
+        const userData = await response.json();
+        setLoggedInUser(userData);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+
+    fetchCompany();
+    fetchUser();
+  }, [id]);
+
+  const handleMessageClick = () => {
+    if (!loggedInUser) {
+      setShowLoginModal(true);
+    } else {
+      localStorage.setItem('selectedChatDeveloper', company._id);
+      navigate('/chat');
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (!company) return <div>Company not found</div>;
 
   const styles = {
     container: {
@@ -113,24 +166,39 @@ const CompanyProfile = () => {
       overflow: "hidden",
       backgroundColor: "#fff",
       marginBottom: "20px",
+      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     },
     blogHeader: {
       display: "flex",
       justifyContent: "flex-end",
-      padding: "10px",
-      fontSize: "12px",
+      padding: "10px 15px",
+      backgroundColor: "#f8f9fa",
+      borderBottom: "1px solid #eee",
+    },
+    blogDate: {
+      fontSize: "14px",
       color: "#666",
+      fontWeight: "500",
     },
     blogImage: {
       width: "100%",
-      height: "200px",
+      height: "300px",
       objectFit: "cover",
     },
-    blogCaption: {
-      padding: "10px",
-      fontSize: "16px",
+    blogContent: {
+      padding: "20px",
+    },
+    blogTitle: {
+      fontSize: "20px",
       fontWeight: "600",
-      textAlign: "center",
+      marginBottom: "10px",
+      color: "#333",
+    },
+    blogDescription: {
+      fontSize: "16px",
+      lineHeight: "1.6",
+      color: "#666",
+      marginBottom: "15px",
     },
     servicesSection: {
       display: "flex",
@@ -188,43 +256,6 @@ const CompanyProfile = () => {
     },
   };
 
-  const companyDetails = {
-    name: "Systems Limited",
-    address: "Lahore, Pakistan",
-    operatingCities: "Lahore, Karachi, Islamabad",
-    website: "https://www.systemsltd.com",
-    socialLinks: {
-      youtube: "https://www.youtube.com",
-      twitter: "https://www.twitter.com",
-      facebook: "https://www.facebook.com",
-      linkedin: "https://www.linkedin.com",
-    },
-  };
-
-  const blogPosts = [
-    { img: "/path/to/image1.jpg", caption: "Product Launch Event", date: "Jan 10, 2025" },
-    { img: "/path/to/image2.jpg", caption: "Annual General Meeting", date: "Dec 20, 2024" },
-    { img: "/path/to/image3.jpg", caption: "Community Meetup", date: "Nov 15, 2024" },
-    { img: "/path/to/image4.jpg", caption: "Tech Innovation Day", date: "Oct 10, 2024" },
-    { img: "/path/to/image5.jpg", caption: "Employee Appreciation Day", date: "Sep 5, 2024" },
-    { img: "/path/to/image6.jpg", caption: "Hackathon 2024", date: "Aug 20, 2024" },
-  ];
-
-  const services = [
-    { name: "Web Development", logo: "🌐" },
-    { name: "App Development", logo: "📱" },
-    { name: "Cloud Solutions", logo: "☁️" },
-    { name: "AI Integration", logo: "🤖" },
-    { name: "Data Analytics", logo: "📊" },
-    { name: "Cybersecurity", logo: "🔒" },
-    { name: "Blockchain", logo: "⛓️" },
-    { name: "E-commerce", logo: "🛒" },
-    { name: "IoT Solutions", logo: "🌐" },
-    { name: "DevOps", logo: "⚙️" },
-    { name: "AR/VR", logo: "🕶️" },
-    { name: "UI/UX Design", logo: "🎨" },
-  ];
-
   return (
     <>
       <Header />
@@ -232,43 +263,57 @@ const CompanyProfile = () => {
         {/* Sidebar */}
         <div style={styles.sidebar}>
           <img
-            src="/path/to/company-logo.jpg" // Replace with actual company logo path
+            src={company.profileImage || "/default-company.png"}
             alt="Company Logo"
             style={styles.profileImage}
           />
-          <h3 style={styles.companyName}>{companyDetails.name}</h3>
+          <h3 style={styles.companyName}>{company.companyName}</h3>
           <p style={styles.address}>
-            <FaMapMarkerAlt /> {companyDetails.address}
+            <FaMapMarkerAlt /> {company.location}
           </p>
           <p style={styles.address}>
-            Operating Cities: {companyDetails.operatingCities}
+            Operating Cities: {company.operatingCities?.join(', ')}
           </p>
           <p style={styles.address}>
             <FaGlobe />{" "}
-            <a
-              href={companyDetails.website}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: "#007bff", textDecoration: "none" }}
-            >
+            <a href={company.website} target="_blank" rel="noopener noreferrer">
               Visit Website
             </a>
           </p>
+
+          {/* Message Button */}
+          <button
+            className="btn btn-primary mt-3"
+            onClick={handleMessageClick}
+            style={{ width: '100%' }}
+          >
+            Message
+          </button>
+
+          {/* Social Accounts */}
           <div style={styles.socialAccounts}>
-            <h5 style={styles.socialHeading}>Social Accounts</h5>
+            <h4 style={styles.socialHeading}>Social Accounts</h4>
             <div style={styles.socialIcons}>
-              <a href={companyDetails.socialLinks.youtube} target="_blank" rel="noreferrer" style={styles.socialIcon}>
-                <FaYoutube />
-              </a>
-              <a href={companyDetails.socialLinks.twitter} target="_blank" rel="noreferrer" style={styles.socialIcon}>
-                <FaTwitter />
-              </a>
-              <a href={companyDetails.socialLinks.facebook} target="_blank" rel="noreferrer" style={styles.socialIcon}>
-                <FaFacebookF />
-              </a>
-              <a href={companyDetails.socialLinks.linkedin} target="_blank" rel="noreferrer" style={styles.socialIcon}>
-                <FaLinkedin />
-              </a>
+              {company.socialLinks?.youtube && (
+                <a href={company.socialLinks.youtube} target="_blank" rel="noopener noreferrer">
+                  <FaYoutube style={styles.socialIcon} />
+                </a>
+              )}
+              {company.socialLinks?.twitter && (
+                <a href={company.socialLinks.twitter} target="_blank" rel="noopener noreferrer">
+                  <FaTwitter style={styles.socialIcon} />
+                </a>
+              )}
+              {company.socialLinks?.facebook && (
+                <a href={company.socialLinks.facebook} target="_blank" rel="noopener noreferrer">
+                  <FaFacebookF style={styles.socialIcon} />
+                </a>
+              )}
+              {company.socialLinks?.linkedin && (
+                <a href={company.socialLinks.linkedin} target="_blank" rel="noopener noreferrer">
+                  <FaLinkedin style={styles.socialIcon} />
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -277,19 +322,28 @@ const CompanyProfile = () => {
         <div style={styles.mainContent}>
           <div style={styles.tabHeader}>
             <button
-              style={{ ...styles.tabButton, ...(activeTab === "blogs" ? styles.activeTab : {}) }}
+              style={{
+                ...styles.tabButton,
+                ...(activeTab === "blogs" && styles.activeTab),
+              }}
               onClick={() => setActiveTab("blogs")}
             >
-              Blogs & Events
+              Blogs
             </button>
             <button
-              style={{ ...styles.tabButton, ...(activeTab === "services" ? styles.activeTab : {}) }}
+              style={{
+                ...styles.tabButton,
+                ...(activeTab === "services" && styles.activeTab),
+              }}
               onClick={() => setActiveTab("services")}
             >
               Services
             </button>
             <button
-              style={{ ...styles.tabButton, ...(activeTab === "about" ? styles.activeTab : {}) }}
+              style={{
+                ...styles.tabButton,
+                ...(activeTab === "about" && styles.activeTab),
+              }}
               onClick={() => setActiveTab("about")}
             >
               About Us
@@ -298,11 +352,27 @@ const CompanyProfile = () => {
 
           {activeTab === "blogs" && (
             <div style={styles.blogsSection}>
-              {blogPosts.map((post, index) => (
+              {company.blogs?.map((blog, index) => (
                 <div key={index} style={styles.blogCard}>
-                  <div style={styles.blogHeader}>{post.date}</div>
-                  <img src={post.img} alt="Blog Post" style={styles.blogImage} />
-                  <div style={styles.blogCaption}>{post.caption}</div>
+                  <div style={styles.blogHeader}>
+                    <span style={styles.blogDate}>{blog.date}</span>
+                  </div>
+                  <img 
+                    src={blog.image} 
+                    alt={blog.caption} 
+                    style={styles.blogImage} 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '/default-blog.png';
+                    }}
+                  />
+                  <div style={styles.blogContent}>
+                    <h3 style={styles.blogTitle}>{blog.caption}</h3>
+                    <div
+                      style={styles.blogDescription}
+                      dangerouslySetInnerHTML={{ __html: blog.description }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -310,7 +380,7 @@ const CompanyProfile = () => {
 
           {activeTab === "services" && (
             <div style={styles.servicesSection}>
-              {services.map((service, index) => (
+              {company.services?.map((service, index) => (
                 <div key={index} style={styles.serviceCard}>
                   <div style={styles.serviceLogo}>{service.logo}</div>
                   <div style={styles.serviceName}>{service.name}</div>
@@ -321,31 +391,33 @@ const CompanyProfile = () => {
 
           {activeTab === "about" && (
             <div style={styles.aboutUsSection}>
-              <div style={styles.aboutUsText}>
-                <p>
-                  Systems Limited is a leading technology services company with decades of
-                  experience in providing innovative solutions to a global clientele. Our mission is
-                  to deliver cutting-edge services that help businesses grow and excel in the
-                  digital age.
-                </p>
-                <p>
-                  At Systems Limited, we believe in empowering our clients by offering tailored
-                  solutions that meet their unique needs and objectives.
-                </p>
-              </div>
-              <div>
-                <img
-                  src="/path/to/ceo-image.jpg" // Replace with the CEO's image path
-                  alt="CEO"
-                  style={styles.ceoImage}
-                />
-                <h5 style={styles.ceoName}>John Smith</h5>
-                <p style={styles.ceoTitle}>CEO of Systems Limited</p>
-              </div>
+              <div style={styles.aboutUsText}>{company.about}</div>
             </div>
           )}
         </div>
       </div>
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1">
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Login Required</h5>
+                <button type="button" className="btn-close" onClick={() => setShowLoginModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p>Please login to message this company.</p>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowLoginModal(false)}>Close</button>
+                <button type="button" className="btn btn-primary" onClick={() => navigate('/login')}>Login Now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showLoginModal && <div className="modal-backdrop fade show"></div>}
+
       <Footer />
     </>
   );

@@ -91,11 +91,16 @@ const CompanyDashboard = () => {
       }}>
         <h3 style={{ fontSize: "18px", margin: 0, color: "#1a1a1a" }}>{companyName || "Company Dashboard"}</h3>
         <div style={{ display: "flex", gap: "20px" }}>
-          {[{ icon: <FiHome />, label: "Home" }, { icon: <FiBell />, label: "Notifications" }, { icon: <FiSettings />, label: "Settings" }].map((btn, i) => (
+          {[
+            { icon: <FiHome />, label: "Home", path: "/" },
+            { icon: <FiBell />, label: "Notifications", path: "/companydashboard/notifications" },
+            { icon: <FiSettings />, label: "Settings", page: "profile" }
+          ].map((btn, i) => (
             <button key={i} style={{
               background: "transparent", border: "none", display: "flex", alignItems: "center",
               gap: "8px", color: "#4B5563", cursor: "pointer", padding: "8px 12px", borderRadius: "4px"
             }}
+              onClick={() => btn.page ? setSelectedPage(btn.page) : navigate(btn.path)}
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
               {btn.icon} {btn.label}

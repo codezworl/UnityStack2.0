@@ -3,11 +3,10 @@ import axios from "axios";
 import { FiDollarSign, FiFileText, FiUser, FiClock } from "react-icons/fi";
 //import { toast } from "react-toastify";
 import { loadStripe } from '@stripe/stripe-js';
+import noProjects from "../assets/freelance-job.png";  // Changed to use an existing image
 
-// Initialize Stripe outside of component
 
 
-// Add this new BidModal component before the FindDeveloper component
 const BidModal = ({ isOpen, onClose, project, bids, onAssignProject }) => {
   if (!isOpen) return null;
 
@@ -2729,7 +2728,7 @@ const FindDeveloper = () => {
                     style={{ backgroundColor: "#f8f9fa", borderRadius: "8px" }}
                   >
                     <img
-                      src="https://via.placeholder.com/150" // Replace with your empty state illustration
+                      src={noProjects}
                       alt="No projects"
                       style={{ width: "150px", marginBottom: "20px" }}
                     />

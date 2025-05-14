@@ -18,6 +18,7 @@ function Chat() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,10 +47,29 @@ function Chat() {
 
     setSocket(newSocket);
 
+    // Check for selected developer ID on component mount
+    const storedDeveloperId = localStorage.getItem('selectedChatDeveloper');
+    if (storedDeveloperId) {
+      setSelectedDeveloperId(storedDeveloperId);
+      localStorage.removeItem('selectedChatDeveloper');
+    }
+
     return () => {
       newSocket.close();
     };
   }, []); // Remove socket dependency
+
+  // Add new useEffect to handle automatic chat opening
+  useEffect(() => {
+    if (selectedDeveloperId && users.length > 0) {
+      const developer = users.find(user => user._id === selectedDeveloperId);
+      if (developer) {
+        console.log("Opening chat with developer:", developer);
+        handleUserClick(developer);
+        setSelectedDeveloperId(null); // Clear the ID after opening chat
+      }
+    }
+  }, [selectedDeveloperId, users]);
 
   // Fetch logged-in user and all users
   const fetchUser = async (socketInstance) => {
@@ -86,7 +106,7 @@ function Chat() {
       socketInstance.emit('joinRoom', res.data._id, res.data.role, displayName);
 
       // Fetch users excluding the current logged-in user
-      fetchAllUsers(res.data._id);
+      await fetchAllUsers(res.data._id);
     } catch (err) {
       console.error("Error fetching user:", err);
       setCurrentUser(null);
@@ -234,6 +254,12 @@ function Chat() {
       const roomId = [currentUser._id, user._id].sort().join('_');
       socket.emit('joinPrivateChat', roomId);
       setCurrentRoom(roomId);
+  
+      // Mark messages as seen
+      socket.emit('markMessagesAsSeen', { roomId, userId: currentUser._id });
+  
+      // Immediately fetch updated unread counts so the badge disappears
+      fetchUnreadCounts(currentUser._id);
     }
   };
   
@@ -272,6 +298,44 @@ function Chat() {
     }
   };
 
+  // Fetch per-user unread counts from backend
+  const fetchUnreadCounts = async (userId) => {
+    if (!userId) return;
+    try {
+      const res = await axios.get(`http://localhost:5000/api/unread-counts/${userId}`);
+      setUnreadCounts(res.data);
+    } catch (error) {
+      console.error("Failed to fetch per-user unread counts", error);
+    }
+  };
+
+  // Fetch unread counts after users are loaded
+  useEffect(() => {
+    if (currentUser && users.length > 0) {
+      fetchUnreadCounts(currentUser._id);
+    }
+  }, [currentUser, users]);
+
+  // Update unread counts when a new message is received
+  useEffect(() => {
+    if (!socket || !currentUser) return;
+    const handleReceiveMessage = (messageData) => {
+      fetchUnreadCounts(currentUser._id);
+    };
+    socket.on('receiveMessage', handleReceiveMessage);
+
+    // Listen for real-time updateUnreadCounts event
+    const handleUpdateUnreadCounts = () => {
+      fetchUnreadCounts(currentUser._id);
+    };
+    socket.on('updateUnreadCounts', handleUpdateUnreadCounts);
+
+    return () => {
+      socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('updateUnreadCounts', handleUpdateUnreadCounts);
+    };
+  }, [socket, currentUser]);
+
   return (
     <div className="d-flex flex-column" style={{ height: '100vh' }}>
       <Header />
@@ -301,11 +365,17 @@ function Chat() {
                         style={{ width: '10px', height: '10px', border: '2px solid white' }}
                       />
                     )}
+                    {/* Unread badge for this user */}
+                    {unreadCounts[user._id] > 0 && selectedUser?._id !== user._id && (
+                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>
+                        {unreadCounts[user._id]}
+                      </span>
+                    )}
                   </div>
                   <div className="flex-grow-1">
                     <div className="d-flex justify-content-between align-items-center">
                       <div>{user.displayName}</div>
-                      {unreadCounts[user._id] > 0 && (
+                      {unreadCounts[user._id] > 0 && selectedUser?._id !== user._id && (
                         <span className="badge bg-primary rounded-pill">
                           {unreadCounts[user._id]}
                         </span>

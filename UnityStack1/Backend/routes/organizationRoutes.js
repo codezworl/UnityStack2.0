@@ -22,6 +22,7 @@ const {
 
 const authenticateToken = require("../middleware/auth");
 const Organization = require("../models/Organization");
+const post = require("../models/post");
 
 const router = express.Router();
 
@@ -142,5 +143,55 @@ router.post("/upload-logo", authenticateToken, upload.single("logo"), async (req
   }
 });
 
+// ✅ Get specific organization by ID with all details
+router.get("/:id", async (req, res) => {
+  try {
+    const organization = await Organization.findById(req.params.id)
+      .select('companyName logo location operatingCities website socialMedia selectedServices aboutUs');
+
+    if (!organization) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
+    // Get all posts (blogs) for this organization with complete information
+    const posts = await post.find({ organization: req.params.id })
+      .select('image caption description createdAt')
+      .sort({ createdAt: -1 });
+
+    // Format the response
+    const formattedResponse = {
+      _id: organization._id,
+      companyName: organization.companyName,
+      profileImage: organization.logo ? `http://localhost:5000/uploads/${organization.logo}` : null,
+      location: organization.location,
+      operatingCities: organization.operatingCities,
+      website: organization.website,
+      socialLinks: organization.socialMedia.reduce((acc, social) => {
+        acc[social.platform.toLowerCase()] = social.link;
+        return acc;
+      }, {}),
+      blogs: posts.map(post => ({
+        image: post.image ? `http://localhost:5000/uploads/${post.image}` : null,
+        caption: post.caption,
+        description: post.description,
+        date: new Date(post.createdAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      })),
+      services: organization.selectedServices.map(service => ({
+        name: service,
+        logo: `/service-logos/${service.toLowerCase()}.png`
+      })),
+      about: organization.aboutUs
+    };
+
+    res.status(200).json(formattedResponse);
+  } catch (error) {
+    console.error("Error fetching organization:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 module.exports = router;

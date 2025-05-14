@@ -250,27 +250,31 @@ useEffect(() => {
             <div key={index} style={styles.companyCard}>
               <div style={styles.companyInfo}>
                 <div style={styles.companyHeader}>
-                  <div style={styles.companyLogo}></div>
+                  <img
+                    src={company.profileImage || "/default-company.png"}
+                    alt={company.companyName}
+                    style={styles.companyLogo}
+                  />
                   <div>
-                    <h5 style={styles.companyTitle}>{company.companyName}</h5>
+                    <h3 style={styles.companyTitle}>{company.companyName}</h3>
                     <p style={styles.companySubTitle}>
-                    <FaMapMarkerAlt /> {company.operatingCities?.join(", ") || "N/A"} &nbsp;|&nbsp;
-<FaBuilding /> {company.address}
-
+                      <FaMapMarkerAlt /> {company.location}
                     </p>
                   </div>
                 </div>
-                <p style={styles.companyDescription}>{company.aboutUs}</p>
+                <p style={styles.companyDescription}>{company.about?.substring(0, 150)}...</p>
                 <div style={styles.tagsContainer}>
-                {company.selectedServices?.map((service, i) => (
-  <span key={i} style={styles.tag}>
-    {service}
-  </span>
-))}
-
+                  {company.services?.map((service, idx) => (
+                    <span key={idx} style={styles.tag}>
+                      {service.name}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <Link to="/companiesprofile" style={styles.viewProfileButton}>
+              <Link
+                to={`/companiesprofile/${company._id}`}
+                style={styles.viewProfileButton}
+              >
                 View Profile
               </Link>
             </div>

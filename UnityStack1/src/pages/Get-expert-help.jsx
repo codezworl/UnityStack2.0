@@ -1,9 +1,69 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Footer from "../components/footer";
 import { motion } from "framer-motion";
 import { Search, LayoutGrid, List, Star, Clock, MessageSquare, Code, Bookmark, X, Calendar } from "lucide-react"
+import axios from "axios";
+
+// Login Modal Component
+const LoginModal = ({ isOpen, onClose, onLogin }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '2rem',
+        borderRadius: '8px',
+        maxWidth: '400px',
+        width: '90%',
+        textAlign: 'center'
+      }}>
+        <h2 style={{ marginBottom: '1rem' }}>Login Required</h2>
+        <p style={{ marginBottom: '1.5rem' }}>Please login to start chatting with developers.</p>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              background: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onLogin}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              borderRadius: '4px',
+              background: '#1d4ed8',
+              color: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            Login Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const GetHelp = () => {
   const [developers, setDevelopers] = useState([]); 
@@ -12,6 +72,9 @@ const GetHelp = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [selectedDeveloper, setSelectedDeveloper] = useState(null);
+  const navigate = useNavigate();
 
   // Popup messages
   const [popup, setPopup] = useState(null);
@@ -206,6 +269,46 @@ const GetHelp = () => {
   // Toggle between grid or list view
   const toggleViewMode = (mode) => {
     setViewMode(mode);
+  };
+
+  // Add new function to handle chat button click
+  const handleChatClick = async (developer) => {
+    try {
+      // Check if user is logged in
+      const response = await axios.get("http://localhost:5000/api/user", {
+        withCredentials: true
+      });
+
+      if (response.data) {
+        // Store the selected developer ID in localStorage
+        localStorage.setItem('selectedChatDeveloper', developer._id);
+        // Navigate to chat page
+        navigate('/chat');
+      } else {
+        // Store the selected developer ID in localStorage before showing login modal
+        localStorage.setItem('selectedChatDeveloper', developer._id);
+        // User is not logged in, show login modal
+        setSelectedDeveloper(developer);
+        setShowLoginModal(true);
+      }
+    } catch (error) {
+      // Store the selected developer ID in localStorage before showing login modal
+      localStorage.setItem('selectedChatDeveloper', developer._id);
+      // If error, user is not logged in
+      setSelectedDeveloper(developer);
+      setShowLoginModal(true);
+    }
+  };
+
+  // Add function to handle login modal actions
+  const handleLoginModalClose = () => {
+    setShowLoginModal(false);
+    setSelectedDeveloper(null);
+  };
+
+  const handleLoginModalLogin = () => {
+    setShowLoginModal(false);
+    navigate('/login');
   };
 
   return (
@@ -609,6 +712,7 @@ const GetHelp = () => {
                     {/* Action Buttons */}
                     <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                       <button
+                        onClick={() => handleChatClick(dev)}
                         style={{
                           backgroundColor: "#2563EB",
                           color: "white",
@@ -676,6 +780,13 @@ const GetHelp = () => {
             )}
           </div>
         </div>
+
+        {/* Add Login Modal */}
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={handleLoginModalClose}
+          onLogin={handleLoginModalLogin}
+        />
 
         <Footer />
       </div>

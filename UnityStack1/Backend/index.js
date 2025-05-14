@@ -66,7 +66,8 @@ const messageSchema = new mongoose.Schema({
   toUserId: String,
   message: String,
   timestamp: Date,
-  roomId: String // Add roomId to track private conversations
+  roomId: String, // Add roomId to track private conversations
+  seen: { type: Boolean, default: false }
 });
 
 const Message = mongoose.model('Message', messageSchema);
@@ -186,6 +187,21 @@ socket.on("sendMessage", async (message, toUserId, fromUserId, fromUserName, roo
       delete users[socket.id];
     }
   });
+
+  // Mark messages as seen when a user opens a chat
+  socket.on("markMessagesAsSeen", async ({ roomId, userId }) => {
+    try {
+      await Message.updateMany(
+        { roomId, toUserId: userId, seen: false },
+        { $set: { seen: true } }
+      );
+      socket.emit("messagesMarkedAsSeen", { roomId });
+      // Notify the other user in the room to update their unread counts
+      socket.to(roomId).emit("updateUnreadCounts");
+    } catch (error) {
+      console.error("Error marking messages as seen:", error);
+    }
+  });
 });
 
 // Update the users endpoint to exclude current user
@@ -263,11 +279,34 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
+// Add an API endpoint to get unread message count for a user
+app.get("/api/unread-count/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const count = await Message.countDocuments({ toUserId: userId, seen: false });
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch unread count" });
+  }
+});
 
-
-
-
-
+// Get per-user unread counts for the current user
+app.get("/api/unread-counts/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // Aggregate unread counts grouped by fromUserId
+    const counts = await Message.aggregate([
+      { $match: { toUserId: userId, seen: false } },
+      { $group: { _id: "$fromUserId", count: { $sum: 1 } } }
+    ]);
+    // Convert to { userId: count, ... }
+    const result = {};
+    counts.forEach(c => { result[c._id] = c.count; });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch unread counts" });
+  }
+});
 
 app.use("/api/students", StudentRoutes);
 app.use("/api/organizations", OrganizationRoutes);
