@@ -163,19 +163,77 @@ const Header = () => {
                 >
                   {/* Show Profile Option Based on Role */}
                   {user?.role === "student" ? (
-                    <Link
-                      to="/studentprofile"
-                      style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}
-                    >
-                      My Profile
-                    </Link>
+                    <>
+                      <Link
+                        to="/studentprofile"
+                        style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/studentdashboard"
+                        style={{ 
+                          display: "block", 
+                          textDecoration: "none", 
+                          color: "#2563EB", 
+                          padding: "8px 10px",
+                          fontWeight: "500",
+                          borderBottom: "1px solid #E5E7EB",
+                          marginBottom: "8px"
+                        }}
+                      >
+                        <i className="fas fa-tachometer-alt" style={{ marginRight: "8px" }}></i>
+                        My Dashboard
+                      </Link>
+                    </>
                   ) : user?.role === "developer" ? (
-                    <Link
-                      to="/profile"
-                      style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}
-                    >
-                      My Profile
-                    </Link>
+                    <>
+                      <Link
+                        to={`/profile/${user._id}`}
+                        style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/developerdashboard"
+                        style={{ 
+                          display: "block", 
+                          textDecoration: "none", 
+                          color: "#2563EB", 
+                          padding: "8px 10px",
+                          fontWeight: "500",
+                          borderBottom: "1px solid #E5E7EB",
+                          marginBottom: "8px"
+                        }}
+                      >
+                        <i className="fas fa-tachometer-alt" style={{ marginRight: "8px" }}></i>
+                        My Dashboard
+                      </Link>
+                    </>
+                  ) : user?.role === "organization" ? (
+                    <>
+                      <Link
+                        to={`/companiesprofile/${user._id}`}
+                        style={{ display: "block", textDecoration: "none", color: "#64748b", padding: "8px 10px" }}
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/companydashboard"
+                        style={{ 
+                          display: "block", 
+                          textDecoration: "none", 
+                          color: "#2563EB", 
+                          padding: "8px 10px",
+                          fontWeight: "500",
+                          borderBottom: "1px solid #E5E7EB",
+                          marginBottom: "8px"
+                        }}
+                      >
+                        <i className="fas fa-tachometer-alt" style={{ marginRight: "8px" }}></i>
+                        My Dashboard
+                      </Link>
+                    </>
                   ) : null}
 
                   {/* Logout Button */}

@@ -33,6 +33,12 @@ const questionSchema = new mongoose.Schema(
       required: true 
     },
 
+    // Add tried field
+    tried: {
+      type: String,
+      required: false
+    },
+
     // Tags associated with the question
     tags: [{ 
       type: String 

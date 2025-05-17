@@ -25,7 +25,17 @@ const upload = multer({ storage });
 // ✅ Register Developer
 const registerDeveloper = async (req, res) => {
   try {
-    const { firstName, lastName, email, phoneNumber, password, confirmPassword, domainTags } = req.body;
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      phoneNumber, 
+      homeNumber,
+      password, 
+      confirmPassword, 
+      domainTags,
+      verified // Check if developer is pre-verified by OTP
+    } = req.body;
 
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required." });
@@ -41,23 +51,44 @@ const registerDeveloper = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Only generate verification code if not pre-verified
+    let verificationCode;
+    let isVerified = false;
+    
+    if (!verified) {
+      verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      isVerified = false;
+    } else {
+      verificationCode = undefined;
+      isVerified = true;
+    }
 
     const developer = new Developer({
       firstName,
       lastName,
       email,
       phoneNumber,
+      homeNumber: homeNumber || "", // Provide empty string default if not provided
       password: hashedPassword,
       domainTags,
       verificationCode,
+      isVerified, // Set verified status
       isOnline: false,
     });
 
     await developer.save();
-    await SendVerificationCode(developer.email, developer.verificationCode);
+    
+    // Only send verification email if not pre-verified
+    if (!verified) {
+      await SendVerificationCode(developer.email, developer.verificationCode);
+    }
 
-    res.status(201).json({ message: "Developer registered successfully. Verification email sent." });
+    res.status(201).json({ 
+      message: verified 
+        ? "Developer registered successfully." 
+        : "Developer registered successfully. Verification email sent." 
+    });
   } catch (error) {
     console.error("Error registering developer:", error.message);
     res.status(500).json({ message: "Server error. Please try again later." });
@@ -122,9 +153,35 @@ const logoutDeveloper = async (req, res) => {
 // ✅ Verify Email
 const VerifyEmail = async (req, res) => {
   try {
-    const { code } = req.body;
+    const { email, code } = req.body;
 
-    const developer = await Developer.findOne({ verificationCode: code });
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email and verification code are required." });
+    }
+
+    // Get TempVerification model
+    const TempVerification = mongoose.model('TempVerification');
+
+    // First check TempVerification collection (for pre-registration OTP)
+    const tempVerification = await TempVerification.findOne({ 
+      email, 
+      verificationCode: code 
+    });
+
+    // If found in temp verification
+    if (tempVerification) {
+      // Check if the code has expired
+      if (tempVerification.expiresAt < new Date()) {
+        await TempVerification.deleteOne({ email });
+        return res.status(400).json({ message: "Verification code has expired. Please request a new one." });
+      }
+
+      // Code is valid
+      return res.status(200).json({ message: "Email verified successfully." });
+    }
+
+    // If not found in TempVerification, check Developer collection (for existing users)
+    const developer = await Developer.findOne({ email, verificationCode: code });
     if (!developer) {
       return res.status(404).json({ message: "Invalid verification code." });
     }
@@ -207,13 +264,6 @@ const updateProfile = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
 // ✅ Middleware to Handle File Upload
 const uploadProfileImage = upload.single("profileImage");
 
@@ -238,7 +288,6 @@ const removeExpertise = async (req, res) => {
       res.status(500).json({ message: "Server error." });
   }
 };
-
 
 // ✅ Update Expertise
 // ✅ Update Expertise Function (Backend)
@@ -270,8 +319,6 @@ const updateExpertise = async (req, res) => {
   }
 };
 
-
-
 // ✅ Remove a Specific Job Experience
 const removeJobExperience = async (req, res) => {
   try {
@@ -293,7 +340,6 @@ const removeJobExperience = async (req, res) => {
       res.status(500).json({ message: "Server error." });
   }
 };
-
 
 // ✅ Update Job Experience
 const updateJobExperience = async (req, res) => {
@@ -325,9 +371,6 @@ const updateJobExperience = async (req, res) => {
   }
 };
 
-
-
-
 // ✅ Delete Account (Only for Logged-In User)
 const deleteAccount = async (req, res) => {
   try {
@@ -344,7 +387,65 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+// ✅ Request OTP before registration
+const requestOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
 
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Check if email exists in any of the databases
+    const existingDeveloper = await Developer.findOne({ email });
+    const existingStudent = await Student.findOne({ email });
+    const existingOrganization = await Organization.findOne({ companyEmail: email });
+
+    // If email exists in any database, return error
+    if (existingDeveloper) {
+      return res.status(400).json({ message: "Email already registered as a Developer" });
+    }
+    
+    if (existingStudent) {
+      return res.status(400).json({ message: "Email already registered as a Student" });
+    }
+    
+    if (existingOrganization) {
+      return res.status(400).json({ message: "Email already registered as an Organization" });
+    }
+
+    // Generate a verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store the verification code temporarily
+    const expiryTime = new Date();
+    expiryTime.setMinutes(expiryTime.getMinutes() + 10);
+
+    // Use the TempVerification model
+    const TempVerification = mongoose.model('TempVerification');
+    
+    // Store in temporary collection or update if exists
+    await TempVerification.findOneAndUpdate(
+      { email },
+      { 
+        email,
+        verificationCode, 
+        expiresAt: expiryTime 
+      },
+      { upsert: true, new: true }
+    );
+
+    // Send verification code to the provided email
+    await SendVerificationCode(email, verificationCode);
+
+    res.status(200).json({
+      message: "Verification code sent to email",
+    });
+  } catch (error) {
+    console.error("Error requesting OTP:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 // ✅ Export New Functions
 module.exports = {
@@ -360,5 +461,5 @@ module.exports = {
   deleteAccount,
   updateExpertise, // ✅ Import update expertise function
   updateJobExperience,
-   
+  requestOtp, // ✅ Add the OTP request handler
 };

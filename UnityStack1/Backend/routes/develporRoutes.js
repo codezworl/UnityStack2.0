@@ -11,6 +11,7 @@ const {
   deleteAccount,
   updateExpertise, // ✅ Import update expertise function
   updateJobExperience, // ✅ Import update job experience function // ✅ Ensure updateProfile is imported
+  requestOtp, // Add the request OTP function
 } = require("../Controllers/developerController");
 
 const authenticateToken = require("../middleware/auth"); // ✅ Correct way to import
@@ -18,6 +19,9 @@ const authenticateToken = require("../middleware/auth"); // ✅ Correct way to i
 const Developer = require("../models/Develpor"); // ✅ Ensure model import
 
 const router = express.Router();
+
+// ✅ Request OTP before registration
+router.post("/request-otp", requestOtp);
 
 // ✅ Register a New Developer
 router.post("/register", registerDeveloper);

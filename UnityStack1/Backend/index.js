@@ -12,6 +12,9 @@ const projectRoutes = require("./routes/projectRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const http = require("http"); // Import the http module
 const socketIo = require("socket.io"); // Import socket.io
+const adminRoutes = require('./routes/adminroutes');
+const adminController = require('./Controllers/admincontroller');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 dotenv.config();
 
@@ -315,6 +318,8 @@ app.use("/api", UnifiedLoginRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/projects", projectRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Security Headers
 app.use(
@@ -322,7 +327,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "https://api.emailjs.com"], // Add this line
+        connectSrc: ["'self'", "https://api.stripe.com", "https://api.emailjs.com", "http://localhost:*"],
         imgSrc: ["'self'", "data:", "blob:", "https://via.placeholder.com"],
         // Include other directives as needed
       },
@@ -338,7 +343,7 @@ app.use((req, res, next) => {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://js.stripe.com/basil/; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.stripe.com http://localhost:*; " +
+    "connect-src 'self' https://api.stripe.com https://api.emailjs.com http://localhost:*; " +
     "frame-src 'self' https://js.stripe.com; " +
     "frame-ancestors 'self'; " +
     "form-action 'self' https://api.stripe.com;"
@@ -389,8 +394,10 @@ app.use((err, req, res, next) => {
 // ✅ Connect to MongoDB and Start Server
 mongoose
   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => {
+  .then(async () => {
     console.log("✅ MongoDB connected successfully.");
+    // Seed admin users
+    await adminController.seedAdmins();
     const PORT = process.env.PORT || 5000;
 
     // Start the server with Socket.io

@@ -29,15 +29,24 @@ const AskQuestion = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.error("No token found in localStorage");
+          return;
+        }
+        
         const res = await fetch("http://localhost:5000/api/user", {
-          credentials: "include"
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         });
+        
         if (!res.ok) throw new Error("User fetch failed");
 
         const data = await res.json();
-        setUserName(data.name);
+        setUserName(data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim());
         setUserRole(data.role);
-        console.log("✅ Logged in as:", data.name, data.role);
+        console.log("✅ Logged in as:", data.name || data.firstName, data.role);
       } catch (err) {
         console.warn("❌ User not logged in:", err.message);
       }
@@ -55,29 +64,34 @@ const AskQuestion = () => {
     sessionStorage.setItem("tags", JSON.stringify(tags));
   }, [title, details, tried, tags]);
 
-  const handlePreview = () => {
-    if (!title || !details || !tried || tags.length === 0 || !userRole || !userName) {
+  const handlePreview = (e) => {
+    // Prevent the default form submission behavior
+    e.preventDefault();
+    
+    if (!title || !details || !tried || tags.length === 0) {
       setError("Please fill in all fields before previewing.");
       return;
     }
   
     setError("");  // Clear error if validation passes
   
-    // Save data and navigate
+    // Save data to sessionStorage
     sessionStorage.setItem("title", title);
     sessionStorage.setItem("details", details);
     sessionStorage.setItem("tried", tried);
     sessionStorage.setItem("tags", JSON.stringify(tags)); // Save tags entered by the user
   
-    // Ensure proper navigation to preview page, passing userRole and userName
+    console.log("Navigating to preview with:", { title, details, tried, tags, userRole, userName });
+    
+    // Ensure proper navigation to preview page, passing all required data
     navigate("/previewquestion", {
       state: {
         title,
         details,
         tried,
         tags,
-        userRole, // Pass userRole here
-        userName, // Pass userName here
+        userName, 
+        userRole
       },
     });
   };
@@ -388,6 +402,7 @@ const AskQuestion = () => {
               {/* Submit Button */}
               <button
                 type="submit"
+                onClick={handlePreview}
                 style={{
                   width: "50%",
                   marginLeft: "200px",

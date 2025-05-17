@@ -14,18 +14,52 @@ const StudentProfile = () => {
     const fetchStudentData = async () => {
       try {
         const token = localStorage.getItem("token");
+        
+        if (!token) {
+          console.error("No token found in localStorage");
+          alert("You are not logged in. Please login.");
+          navigate("/login");
+          return;
+        }
+        
+        console.log("Fetching student profile with token:", token.substring(0, 10) + "...");
+        
         const response = await axios.get("http://localhost:5000/api/students/profile", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { 
+            Authorization: `Bearer ${token}`
+          },
         });
+        
+        console.log("Profile data received:", response.data);
         setStudent(response.data);
         setUpdatedData(response.data);
       } catch (error) {
         console.error("❌ Error fetching student data:", error);
-        alert("Failed to fetch student profile. Please try again.");
+        
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error("Server responded with error:", error.response.status, error.response.data);
+          alert(`Failed to fetch profile: ${error.response.data.message || error.response.statusText}`);
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error("No response received:", error.request);
+          alert("Server not responding. Please try again later.");
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          alert("Failed to fetch student profile. Please try again.");
+        }
+        
+        // If we got a 401 or 403, redirect to login
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          localStorage.removeItem("token");
+          navigate("/login");
+        }
       }
     };
+    
     fetchStudentData();
-  }, []);
+  }, [navigate]);
 
   const handleEdit = () => {
     setIsEditing(true);

@@ -42,11 +42,19 @@ const handleUpdateExpertise = async () => {
         return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("You must be logged in to update expertise.");
+        return;
+    }
+
     try {
         const response = await fetch(`http://localhost:5000/api/developers/expertise/${editExpertise._id}`, {
             method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
             body: JSON.stringify({
                 domain: editExpertise.domain,
                 experienceYears: editExpertise.experienceYears,
@@ -61,8 +69,10 @@ const handleUpdateExpertise = async () => {
         const updatedData = await response.json();
         setExpertise(updatedData.expertise);
         setShowEditExpertisePopup(false);
+        alert("Expertise updated successfully!");
     } catch (error) {
         console.error("❌ Error updating expertise:", error);
+        alert("Failed to update expertise. Please try again.");
     }
 };
 
@@ -78,18 +88,26 @@ const handleEditJobExperience = (job) => {
 
 // ✅ Save Edited Job Experience
 const handleUpdateJobExperience = async () => {
-    console.log("Editing Job:", editJob); // ✅ Log job data before request
+    console.log("Editing Job:", editJob);
 
     if (!editJob._id) {
         console.error("❌ Job ID is missing.");
         return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("You must be logged in to update job experience.");
+        return;
+    }
+
     try {
         const response = await fetch(`http://localhost:5000/api/developers/job/${editJob._id}`, {
             method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
             body: JSON.stringify({
                 companyName: editJob.companyName,
                 position: editJob.position,
@@ -105,8 +123,10 @@ const handleUpdateJobExperience = async () => {
         const updatedData = await response.json();
         setJobExperience(updatedData.employment);
         setShowEditJobPopup(false);
+        alert("Job experience updated successfully!");
     } catch (error) {
         console.error("❌ Error updating job experience:", error);
+        alert("Failed to update job experience. Please try again.");
     }
 };
 
@@ -117,9 +137,23 @@ const handleUpdateJobExperience = async () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/user", { method: "GET", credentials: "include" });
+        // First try to get user from localStorage token
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.log("No token found in localStorage");
+          return;
+        }
+
+        const response = await fetch("http://localhost:5000/api/user", { 
+          method: "GET", 
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
         if (!response.ok) throw new Error("Error fetching logged-in user");
         const userData = await response.json();
+        console.log("Logged-in user data:", userData);
         setLoggedInUser(userData);
       } catch (error) {
         console.error("❌ Error fetching user:", error);
@@ -131,9 +165,10 @@ const handleUpdateJobExperience = async () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/developers/${id}`, { method: "GET", credentials: "include" });
+        const response = await fetch(`http://localhost:5000/api/developers/${id}`);
         if (!response.ok) throw new Error("Error fetching profile");
         const data = await response.json();
+        console.log("Developer profile data:", data);
         setDeveloper(data);
         setFormData({
           about: data.about || "",
@@ -155,7 +190,16 @@ const handleUpdateJobExperience = async () => {
 
   if (loading) return <div>Loading...</div>;
 
-  const isOwner = loggedInUser && developer && String(loggedInUser.id) === String(developer._id);
+  // Check if the current user is the owner of this profile
+  const isOwner = loggedInUser && developer && 
+                 (String(loggedInUser.id) === String(developer._id) || 
+                  String(loggedInUser._id) === String(developer._id));
+
+  console.log("isOwner check:", {
+    loggedInUserId: loggedInUser?.id || loggedInUser?._id,
+    developerId: developer?._id,
+    isOwner: isOwner
+  });
 
   const handleDeleteAccount = async () => {
     if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone!")) {
@@ -163,23 +207,41 @@ const handleUpdateJobExperience = async () => {
     }
 
     try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("You must be logged in to delete your account.");
+            return;
+        }
+
         const response = await fetch("http://localhost:5000/api/developers/delete-account", {
             method: "DELETE",
-            credentials: "include",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
         });
 
         if (!response.ok) throw new Error("Failed to delete account.");
 
-        alert("Your account has been deleted.");
-        window.location.href = "/"; // Redirect to homepage after deletion
+        // Clear token and redirect
+        localStorage.removeItem("token");
+        alert("Your account has been deleted successfully.");
+        navigate("/"); // Use navigate instead of window.location for React Router
     } catch (error) {
         console.error("❌ Error deleting account:", error);
+        alert("Failed to delete account. Please try again.");
     }
 };
 
 
   const handleProfileUpdate = async () => {
     console.log("Saving Changes...");
+    
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("You must be logged in to update your profile.");
+        return;
+    }
+    
     const formDataToSend = new FormData();
     formDataToSend.append("about", formData.about);
     formDataToSend.append("hourlyRate", formData.hourlyRate);
@@ -195,7 +257,10 @@ const handleUpdateJobExperience = async () => {
     try {
         const response = await fetch("http://localhost:5000/api/developers/profile", {
             method: "PUT",
-            credentials: "include",
+            headers: {
+                "Authorization": `Bearer ${token}`
+                // Note: Don't set Content-Type for FormData
+            },
             body: formDataToSend,
         });
 
@@ -205,15 +270,18 @@ const handleUpdateJobExperience = async () => {
 
         const updatedData = await response.json();
 
+        // Show success message
+        alert("Profile updated successfully!");
+        
         // Update the local state to reflect the new changes
         setDeveloper(prevDeveloper => ({
             ...prevDeveloper,
             ...updatedData
         }));
         setEditMode(false); // Exit edit mode on successful update
-        // Optionally refresh other related states if needed, e.g., expertise or job experience
     } catch (error) {
         console.error("❌ Error updating profile:", error);
+        alert("Failed to update profile. Please try again.");
     }
 };
 
@@ -236,34 +304,54 @@ const handleUpdateJobExperience = async () => {
   };
   // ✅ Remove an Expertise
   const handleDeleteExpertise = async (expertiseId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("You must be logged in to delete expertise.");
+        return;
+    }
+
     try {
         const response = await fetch(`http://localhost:5000/api/developers/expertise/${expertiseId}`, {
             method: "DELETE",
-            credentials: "include",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
         });
 
         if (!response.ok) throw new Error("Failed to delete expertise.");
 
         setExpertise(prevExpertise => prevExpertise.filter(exp => exp._id !== expertiseId));
+        alert("Expertise deleted successfully!");
     } catch (error) {
         console.error("❌ Error removing expertise:", error);
+        alert("Failed to delete expertise. Please try again.");
     }
 };
 
 
 // ✅ Remove a Job Experience
 const handleDeleteJobExperience = async (jobId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("You must be logged in to delete job experience.");
+        return;
+    }
+
     try {
         const response = await fetch(`http://localhost:5000/api/developers/job/${jobId}`, {
             method: "DELETE",
-            credentials: "include",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
         });
 
         if (!response.ok) throw new Error("Failed to delete job experience.");
 
         setJobExperience(prevJobs => prevJobs.filter(job => job._id !== jobId));
+        alert("Job experience deleted successfully!");
     } catch (error) {
         console.error("❌ Error removing job experience:", error);
+        alert("Failed to delete job experience. Please try again.");
     }
 };
 const convertTo12Hour = (time24) => {

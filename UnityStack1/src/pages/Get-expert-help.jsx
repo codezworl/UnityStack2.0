@@ -85,7 +85,39 @@ const GetHelp = () => {
   // NEW: Sorting & View Mode
   const [sortOption, setSortOption] = useState("Relevancy");
   const [viewMode, setViewMode] = useState("grid"); // or "list"
+  
+  // Filter states
+  const [priceFilter, setPriceFilter] = useState(null);
+  const [domainFilter, setDomainFilter] = useState(null);
+  
+  // Define domain options to match the expertise options from the profile page
+  const domainOptions = ["JavaScript", "Python", "React", "Node.js", "Django", "Java", "SQL", "C++", "Swift", "Go", "MERN","Django","Flutter","Ruby","Ruby on Rails","PHP","Laravel","C#","ASP.NET","SQL Server","MySQL","MongoDB","PostgreSQL","Oracle","AWS","Azure","Docker","Kubernetes","Linux","Windows","MacOS","iOS","Android","Web Development","Mobile Development","AI/ML","React","Node.js","UI/UX","Database","DevOps"];
+  
+  // Define price range options
+  const priceRanges = [
+    { label: "Under 2,000 PKR/hr", min: 0, max: 2000 },
+    { label: "2,000 - 4,000 PKR/hr", min: 2000, max: 4000 },
+    { label: "4,000 - 6,000 PKR/hr", min: 4000, max: 6000 },
+    { label: "Above 6,000 PKR/hr", min: 6000, max: Infinity }
+  ];
+  
+  // Function to clear all filters
+  const clearFilters = () => {
+    setPriceFilter(null);
+    setDomainFilter(null);
+  };
+  
+  // Function to clear search
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+  
+  // Function to check if any filter is applied
+  const isFilterApplied = priceFilter !== null || domainFilter !== null;
 
+  // Check if search is active
+  const isSearchActive = searchQuery.trim() !== "";
+  
   // Auto-dismiss popup after 3 seconds
   useEffect(() => {
     if (popup) {
@@ -95,6 +127,68 @@ const GetHelp = () => {
       return () => clearTimeout(timer);
     }
   }, [popup]);
+  
+  // Apply filters to developers
+  useEffect(() => {
+    let result = [...developers];
+    
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      result = result.filter((dev) => {
+        const searchFields = {
+          tags: dev.domainTags?.join(' ').toLowerCase() || '',
+          name: `${dev.firstName} ${dev.lastName}`.toLowerCase(),
+          bio: dev.bio?.toLowerCase() || '',
+          expertise: dev.expertiseLevel?.toLowerCase() || ''
+        };
+
+        return (
+          searchFields.tags.includes(query) ||
+          searchFields.name.includes(query) ||
+          searchFields.bio.includes(query) ||
+          searchFields.expertise.includes(query)
+        );
+      });
+    } else {
+      // Apply price filter only if search is not active
+      if (priceFilter !== null) {
+        const { min, max } = priceRanges[priceFilter];
+        result = result.filter(dev => {
+          const rate = parseInt(dev.hourlyRate || "0", 10);
+          return rate >= min && rate < max;
+        });
+      }
+      
+      // Apply domain filter to check for expertise only if search is not active
+      if (domainFilter !== null) {
+        const selectedDomain = domainOptions[domainFilter].toLowerCase();
+        result = result.filter(dev => {
+          // Check in domainTags
+          if (dev.domainTags && Array.isArray(dev.domainTags)) {
+            for (const tag of dev.domainTags) {
+              if (tag.toLowerCase() === selectedDomain) {
+                return true;
+              }
+            }
+          }
+          
+          // Check in expertise array
+          if (dev.expertise && Array.isArray(dev.expertise)) {
+            for (const exp of dev.expertise) {
+              if (exp.domain && exp.domain.toLowerCase() === selectedDomain) {
+                return true;
+              }
+            }
+          }
+          
+          return false;
+        });
+      }
+    }
+    
+    setFilteredDevelopers(result);
+  }, [developers, searchQuery, priceFilter, domainFilter]);
 
   // Fetch developers on mount
   useEffect(() => {
@@ -113,9 +207,51 @@ const GetHelp = () => {
         if (!Array.isArray(data)) {
           throw new Error("Invalid response format. Expected an array.");
         }
+        
+        // Process developer data to include expertise domains in domainTags
+        const processedData = data.map(dev => {
+          // If developer already has expertiseLevel, use that
+          let expertiseLevel = dev.expertiseLevel;
+          
+          // Create a copy of domainTags or initialize an empty array
+          let domainTags = [...(dev.domainTags || [])];
+          
+          // Process expertise array if available
+          if (dev.expertise && Array.isArray(dev.expertise) && dev.expertise.length > 0) {
+            // Find the maximum years of experience across domains
+            const maxYears = Math.max(...dev.expertise.map(exp => exp.experienceYears || 0));
+            
+            // Add expertise domains to domainTags if not already included
+            dev.expertise.forEach(exp => {
+              if (exp.domain && !domainTags.includes(exp.domain)) {
+                domainTags.push(exp.domain);
+              }
+            });
+            
+            // Map years to expertise level if not already set
+            if (!expertiseLevel) {
+              if (maxYears >= 10) {
+                expertiseLevel = "Expert";
+              } else if (maxYears >= 6) {
+                expertiseLevel = "Senior";
+              } else if (maxYears >= 3) {
+                expertiseLevel = "Mid-Level";
+              } else {
+                expertiseLevel = "Junior";
+              }
+            }
+          }
+          
+          // Default to Junior if no expertise info
+          if (!expertiseLevel) {
+            expertiseLevel = "Junior";
+          }
+          
+          return { ...dev, expertiseLevel, domainTags };
+        });
 
-        setDevelopers(data);
-        setFilteredDevelopers(data); // Initialize filtered list with all developers
+        setDevelopers(processedData);
+        setFilteredDevelopers(processedData); // Initialize filtered list with all developers
 
         // Optional: success popup
         setPopup({ message: "Developers fetched successfully", type: "success" });
@@ -244,8 +380,20 @@ const GetHelp = () => {
         break;
 
       case "Most Experienced":
-        // Sort descending by experience (assuming dev.experience is a number)
-        devs.sort((a, b) => (b.experience || 0) - (a.experience || 0));
+        // Sort by maximum experience years from expertise array
+        devs.sort((a, b) => {
+          // Get max experience years from a's expertise array
+          const aMaxExp = a.expertise && Array.isArray(a.expertise) 
+            ? Math.max(...a.expertise.map(exp => parseInt(exp.experienceYears || 0, 10)), 0)
+            : 0;
+            
+          // Get max experience years from b's expertise array  
+          const bMaxExp = b.expertise && Array.isArray(b.expertise)
+            ? Math.max(...b.expertise.map(exp => parseInt(exp.experienceYears || 0, 10)), 0)
+            : 0;
+            
+          return bMaxExp - aMaxExp;
+        });
         break;
 
       // "Relevancy" or default -> no sorting
@@ -314,6 +462,27 @@ const GetHelp = () => {
     navigate('/login');
   };
 
+  // Update the developer cards to display expertise from both domainTags and expertise arrays
+  const getExpertiseTags = (developer) => {
+    const tags = [];
+    
+    // Add domain tags if available
+    if (developer.domainTags && Array.isArray(developer.domainTags)) {
+      tags.push(...developer.domainTags);
+    }
+    
+    // Add expertise domains if available and not already included
+    if (developer.expertise && Array.isArray(developer.expertise)) {
+      developer.expertise.forEach(exp => {
+        if (exp.domain && !tags.includes(exp.domain)) {
+          tags.push(exp.domain);
+        }
+      });
+    }
+    
+    return tags;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -50 }}
@@ -376,36 +545,88 @@ const GetHelp = () => {
                   padding: "0.75rem 1rem 0.75rem 2.5rem",
                   fontSize: "16px",
                   borderRadius: "8px",
-                  border: "1px solid #E2E8F0",
+                  border: isSearchActive ? "1px solid #2563EB" : "1px solid #E2E8F0",
                   fontFamily: "Poppins, sans-serif",
                   transition: "all 0.2s ease",
-                  backgroundColor: "white"
+                  backgroundColor: "white",
+                  boxShadow: isSearchActive ? "0 0 0 3px rgba(37, 99, 235, 0.1)" : "none"
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = "#2563EB";
                   e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.1)";
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = "#E2E8F0";
-                  e.target.style.boxShadow = "none";
+                  if (!isSearchActive) {
+                    e.target.style.borderColor = "#E2E8F0";
+                    e.target.style.boxShadow = "none";
+                  }
                 }}
               />
+              {isSearchActive && (
+                <button
+                  onClick={clearSearch}
+                  style={{
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "#EFF6FF",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "24px",
+                    height: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: "#2563EB"
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Show search results count */}
-        {searchQuery && (
-          <div style={{ 
-            textAlign: "center", 
-            color: "#64748B",
-            marginTop: "0.5rem",
-            fontSize: "0.875rem"
-          }}>
-            Found {filteredDevelopers.length} developer{filteredDevelopers.length !== 1 ? 's' : ''} 
-            {searchQuery ? ` for "${searchQuery}"` : ''}
-          </div>
-        )}
+        {/* Show search results count with filter information */}
+        <div style={{ 
+          textAlign: "center", 
+          color: "#64748B",
+          marginTop: "0.5rem",
+          fontSize: "0.875rem"
+        }}>
+          {isSearchActive && (
+            <div>
+              <span>
+                Found {filteredDevelopers.length} developer{filteredDevelopers.length !== 1 ? 's' : ''} 
+                for "{searchQuery}"
+              </span>
+              <button
+                onClick={clearSearch}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#2563EB",
+                  marginLeft: "10px",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  fontSize: "0.875rem",
+                  padding: "0"
+                }}
+              >
+                Clear search
+              </button>
+            </div>
+          )}
+          
+          {!isSearchActive && isFilterApplied && (
+            <span>
+              Found {filteredDevelopers.length} developer{filteredDevelopers.length !== 1 ? 's' : ''} 
+              with current filters
+            </span>
+          )}
+        </div>
 
         {/* SORT & VIEW OPTIONS */}
         <div style={{ display: "flex", justifyContent: "center" }}>
@@ -428,7 +649,8 @@ const GetHelp = () => {
                 fontSize: "0.875rem"
               }}
             >
-              Showing {sortedDevelopers.length} experts
+              Showing {filteredDevelopers.length} expert{filteredDevelopers.length !== 1 ? 's' : ''}
+              {isSearchActive ? ' (search results)' : isFilterApplied ? ' (filtered)' : ''}
             </p>
 
             {/* Dropdown & View Buttons */}
@@ -498,8 +720,51 @@ const GetHelp = () => {
               border: "1px solid #E2E8F0",
               marginRight: "2rem",
               marginTop: "-70px",
+              opacity: isSearchActive ? 0.7 : 1,
+              position: "relative"
             }}
           >
+            {isSearchActive && (
+              <div style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(255, 255, 255, 0.5)",
+                zIndex: 10,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "1rem",
+                borderRadius: "8px"
+              }}>
+                <p style={{ 
+                  textAlign: "center", 
+                  color: "#2563EB", 
+                  fontWeight: "500",
+                  marginBottom: "10px"
+                }}>
+                  Filters are disabled during search
+                </p>
+                <button
+                  onClick={clearSearch}
+                  style={{
+                    backgroundColor: "#2563EB",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontSize: "0.9rem"
+                  }}
+                >
+                  Clear Search to Use Filters
+                </button>
+              </div>
+            )}
+            
             <h2
               style={{
                 fontSize: "1.25rem",
@@ -509,6 +774,30 @@ const GetHelp = () => {
             >
               Filters
             </h2>
+            
+            {/* Clear Filters Button - only show when filters are applied and search is not active */}
+            {isFilterApplied && !isSearchActive && (
+              <button
+                onClick={clearFilters}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  backgroundColor: "#EFF6FF",
+                  color: "#2563EB",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "8px 12px",
+                  marginBottom: "1rem",
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                  width: "100%",
+                  justifyContent: "center"
+                }}
+              >
+                <X size={16} style={{ marginRight: "8px" }} />
+                Clear All Filters
+              </button>
+            )}
 
             {/* Price Range */}
             <div>
@@ -516,40 +805,89 @@ const GetHelp = () => {
                 style={{
                   fontSize: "1rem",
                   fontWeight: "600",
-                  marginBottom: "1rem"
+                  marginBottom: "1rem",
+                  opacity: isSearchActive ? 0.5 : 1
                 }}
               >
                 Price Range
               </h3>
-              {[
-                "Under 2,000 PKR/hr",
-                "2,000 - 4,000 PKR/hr",
-                "4,000 - 6,000 PKR/hr",
-                "Above 6,000 PKR/hr",
-              ].map((range) => (
-                <label key={range} style={{ display: "block", marginBottom: "0.8rem" }}>
-                  <input type="checkbox" />
-                  <span style={{ marginLeft: "0.5rem" }}>{range}</span>
+              {priceRanges.map((range, index) => (
+                <label 
+                  key={range.label} 
+                  style={{ 
+                    display: "block", 
+                    marginBottom: "0.8rem",
+                    padding: "8px 10px",
+                    borderRadius: "6px",
+                    backgroundColor: priceFilter === index ? "#EFF6FF" : "transparent",
+                    cursor: isSearchActive ? "not-allowed" : "pointer",
+                    opacity: isSearchActive ? 0.5 : 1
+                  }}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={priceFilter === index}
+                    onChange={() => {
+                      if (!isSearchActive) {
+                        if (priceFilter === index) {
+                          setPriceFilter(null);
+                        } else {
+                          setPriceFilter(index);
+                          setDomainFilter(null); // Clear other filters when this one is applied
+                        }
+                      }
+                    }}
+                    style={{ marginRight: "8px" }}
+                    disabled={isSearchActive}
+                  />
+                  <span>{range.label}</span>
                 </label>
               ))}
             </div>
 
-            {/* Expertise Level */}
+            {/* Domain Filter */}
             <div>
               <h3
                 style={{
                   fontSize: "1rem",
                   fontWeight: "600",
                   marginBottom: "1rem",
-                  marginTop: "1rem"
+                  marginTop: "1rem",
+                  opacity: isSearchActive ? 0.5 : 1
                 }}
               >
-                Expertise Level
+                Skills / Expertise
               </h3>
-              {["Junior", "Mid-Level", "Senior", "Expert"].map((level) => (
-                <label key={level} style={{ display: "block", marginBottom: "0.5rem" }}>
-                  <input type="checkbox" />
-                  <span style={{ marginLeft: "0.5rem" }}>{level}</span>
+              {domainOptions.map((domain, index) => (
+                <label 
+                  key={domain} 
+                  style={{ 
+                    display: "block", 
+                    marginBottom: "0.8rem",
+                    padding: "8px 10px",
+                    borderRadius: "6px",
+                    backgroundColor: domainFilter === index ? "#EFF6FF" : "transparent",
+                    cursor: isSearchActive ? "not-allowed" : "pointer",
+                    opacity: isSearchActive ? 0.5 : 1
+                  }}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={domainFilter === index}
+                    onChange={() => {
+                      if (!isSearchActive) {
+                        if (domainFilter === index) {
+                          setDomainFilter(null);
+                        } else {
+                          setDomainFilter(index);
+                          setPriceFilter(null); // Clear other filters when this one is applied
+                        }
+                      }
+                    }}
+                    style={{ marginRight: "8px" }}
+                    disabled={isSearchActive}
+                  />
+                  <span>{domain}</span>
                 </label>
               ))}
             </div>
@@ -562,7 +900,49 @@ const GetHelp = () => {
             ) : error ? (
               <p style={{ color: "red" }}>Error: {error}</p>
             ) : sortedDevelopers.length === 0 ? (
-              <p>No developers available for this search.</p>
+              <div style={{ textAlign: "center", padding: "2rem" }}>
+                <p style={{ color: "#64748B", fontSize: "16px", marginBottom: "1rem" }}>
+                  {isSearchActive 
+                    ? `No developers found for "${searchQuery}".` 
+                    : isFilterApplied 
+                      ? "No developers match your current filters."
+                      : "No developers available."}
+                </p>
+                
+                {isSearchActive ? (
+                  <button
+                    onClick={clearSearch}
+                    style={{
+                      backgroundColor: "#2563EB",
+                      color: "white",
+                      padding: "10px 16px",
+                      borderRadius: "6px",
+                      border: "none",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Clear Search
+                  </button>
+                ) : isFilterApplied && (
+                  <button
+                    onClick={clearFilters}
+                    style={{
+                      backgroundColor: "#2563EB",
+                      color: "white",
+                      padding: "10px 16px",
+                      borderRadius: "6px",
+                      border: "none",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             ) : (
               <div
                 style={{
@@ -646,29 +1026,23 @@ const GetHelp = () => {
 
                     {/* Display Skill Tags */}
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "0.5rem" }}>
-                      {dev.domainTags && dev.domainTags.length > 0 ? (
-                        dev.domainTags.map((tag, idx) => (
-                          <span
-                            key={idx}
-                            style={{
-                              backgroundColor: "#F3F4F6",
-                              padding: "6px 10px",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              color: "#374151",
-                              fontWeight: "500"
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))
-                      ) : (
-                        <span style={{ color: "#64748B", fontSize: "14px" }}>
-                          No domain tags
+                      {getExpertiseTags(dev).map((tag, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            backgroundColor: "#F3F4F6",
+                            padding: "6px 10px",
+                            borderRadius: "6px",
+                            fontSize: "14px",
+                            color: "#374151",
+                            fontWeight: "500"
+                          }}
+                        >
+                          {tag}
                         </span>
-                      )}
+                      ))}
                     </div>
-
+                    
                     {/* Availability and Hourly Rate */}
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "0.5rem" }}>
                       <span

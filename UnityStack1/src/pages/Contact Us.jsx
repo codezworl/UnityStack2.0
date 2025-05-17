@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import emailjs from "emailjs-com"; // Import EmailJS
+import emailjs from "@emailjs/browser"; // Updated import
 import Header from "../components/header";
 import Footer from "../components/footer";
 import img3 from "../assets/linkedin.png";
@@ -11,24 +11,35 @@ import img4 from "../assets/instagram.png";
 const ContactPage = () => {
   const form = useRef(); // Ref for the form
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const sendEmail = async (e) => {
     e.preventDefault(); // Prevent default form submission
+    setLoading(true);
+    setError(null);
 
     try {
-      await emailjs.sendForm(
-        "service_26xgh75", // Replace with your EmailJS service ID
-        "template_beulgz4", // Replace with your EmailJS template ID
+      console.log("Sending email with EmailJS...");
+      
+      // Using the new EmailJS browser package
+      const result = await emailjs.sendForm(
+        "service_26xgh75", // Your EmailJS service ID
+        "template_beulgz4", // Your EmailJS template ID
         form.current,
-        "GAc_xsQJLuiZY_ZpD" // Replace with your EmailJS user ID
+        "GAc_xsQJLuiZY_ZpD" // Your EmailJS public key
       );
+      
+      console.log("Email sent successfully:", result.text);
       setSubmitted(true); // Show success message
-      setTimeout(() => setSubmitted(false), 3000);
+      setTimeout(() => setSubmitted(false), 5000);
+      e.target.reset(); // Reset the form after submission
     } catch (error) {
-      alert("Message failed to send. Please try again later.");
+      console.error("EmailJS Error:", error);
+      setError(error.text || "Failed to send message. Please try again later.");
+    } finally {
+      setLoading(false);
     }
-
-    e.target.reset(); // Reset the form after submission
   };
 
   const containerStyles = {
@@ -77,13 +88,13 @@ const ContactPage = () => {
   };
 
   const buttonStyles = {
-    backgroundColor: "#007BFF",
+    backgroundColor: loading ? "#cccccc" : "#007BFF",
     color: "white",
     padding: "10px 20px",
     fontSize: "1rem",
     border: "none",
     borderRadius: "5px",
-    cursor: "pointer",
+    cursor: loading ? "not-allowed" : "pointer",
   };
 
   const successStyles = {
@@ -94,6 +105,15 @@ const ContactPage = () => {
     color: "#28a745",
     fontWeight: "bold",
     marginTop: "20px",
+  };
+
+  const errorStyles = {
+    backgroundColor: "#f8d4d4",
+    padding: "15px",
+    borderRadius: "8px",
+    textAlign: "center",
+    color: "#dc3545",
+    marginBottom: "20px",
   };
 
   const infoStyles = {
@@ -126,7 +146,7 @@ const ContactPage = () => {
           <>
             <h1 style={headingStyles}>Get in Touch</h1>
             <p style={subheadingStyles}>
-              We’re excited to hear from you! Fill out the form or reach us
+              We're excited to hear from you! Fill out the form or reach us
               directly below.
             </p>
             <div style={formContainer}>
@@ -138,6 +158,8 @@ const ContactPage = () => {
                 transition={{ duration: 0.5 }}
                 onSubmit={sendEmail} // Attach the sendEmail function
               >
+                {error && <div style={errorStyles}>{error}</div>}
+                
                 <input
                   type="text"
                   name="user_name"
@@ -171,8 +193,12 @@ const ContactPage = () => {
                   style={{ ...inputStyles, resize: "none" }}
                   required
                 ></textarea>
-                <button style={buttonStyles} type="submit">
-                  Send Message
+                <button 
+                  style={buttonStyles} 
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? "Sending..." : "Send Message"}
                 </button>
               </motion.form>
 

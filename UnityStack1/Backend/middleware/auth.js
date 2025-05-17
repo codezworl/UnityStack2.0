@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const Student = require("../models/Student");
 const Developer = require("../models/Develpor");
 const Organization = require("../models/Organization");
+const Admin = require("../models/admin");
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -38,6 +39,12 @@ const authenticateToken = async (req, res, next) => {
       }
     }
 
+    // ✅ Check if the user is an Admin
+    if (!user) {
+      user = await Admin.findById(decoded.id).select("-password");
+      if (user) role = "admin";
+    }
+
     if (!user) {
       console.warn("❌ Unauthorized Access: User not found.");
       return res.status(401).json({ message: "Unauthorized: Invalid user." });
@@ -46,7 +53,7 @@ const authenticateToken = async (req, res, next) => {
     req.user = user; // Attach user object to request
     req.userRole = role; // Attach role to request object
 
-    console.log(`✅ Authenticated as ${role}:`, user.email);
+    console.log(`✅ Authenticated as ${role}:`, user.email || user.name);
     next();
   } catch (error) {
     console.error("❌ Token verification failed:", error.message);

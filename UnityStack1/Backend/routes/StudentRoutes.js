@@ -7,10 +7,21 @@ const {
   updateStudentProfile,
   deleteStudentAccount,
   updateProfileImage, upload, // Import the email verification handler
+  requestOtp, // Add the new OTP handler
 } = require("../Controllers/studentController");
 const authenticateToken = require("../middleware/auth");
 
 const router = express.Router();
+
+// Route for requesting OTP (before signup)
+router.post(
+  "/request-otp",
+  (req, res, next) => {
+    console.log("OTP request received", req.body); // Log request for debugging
+    next();
+  },
+  requestOtp
+);
 
 // Route for student signup
 router.post(

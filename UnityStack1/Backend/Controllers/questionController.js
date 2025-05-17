@@ -8,7 +8,7 @@ const Answer = require("../models/answer");
 const postQuestion = async (req, res) => {
   try {
     const { userRole, user } = req;  // Extract userRole and user from the request
-    const { title, details, tags } = req.body;
+    const { title, details, tags, tried } = req.body;
 
     if (!title || !details || !tags || tags.length === 0) {
       return res.status(400).json({ message: "All fields are required." });
@@ -34,6 +34,7 @@ const postQuestion = async (req, res) => {
       title: title,       // Question title
       details: details,   // Question details
       tags: tags,         // Tags for the question
+      tried: tried || ""
     });
 
     await newQuestion.save();
@@ -246,7 +247,7 @@ const getQuestionById = async (req, res) => {
 const updateQuestion = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, details, tags } = req.body;
+    const { title, details, tags, tried } = req.body;
 
     const question = await Question.findById(id);
     if (!question) {
@@ -260,6 +261,7 @@ const updateQuestion = async (req, res) => {
     question.title = title || question.title;
     question.details = details || question.details;
     question.tags = tags || question.tags;
+    if (typeof tried !== 'undefined') question.tried = tried;
 
     await question.save();
 

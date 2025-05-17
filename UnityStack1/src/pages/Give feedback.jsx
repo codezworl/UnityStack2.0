@@ -1,21 +1,21 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { FaStar } from "react-icons/fa";
 import Header from "../components/header";
 import Footer from "../components/footer";
+import { toast } from "react-toastify";
 
 const FeedbackPage = () => {
   const [submitted, setSubmitted] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     role: "",
-    overall_experience: "",
-    ease_of_use: "",
-    feature_completeness: "",
-    design_appeal: "",
-    recommendation: "",
-    comments: ""
+    description: ""
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,41 +24,49 @@ const FeedbackPage = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Create feedback object matching the structure in UsersPage
-    const newFeedback = {
-      id: Date.now(), // Temporary ID
-      name: formData.name,
-      role: formData.role,
-      overall_experience: parseInt(formData.overall_experience),
-      ease_of_use: parseInt(formData.ease_of_use),
-      feature_completeness: parseInt(formData.feature_completeness),
-      design_appeal: parseInt(formData.design_appeal),
-      recommendation: parseInt(formData.recommendation),
-      comments: formData.comments,
-      date: new Date().toISOString().split('T')[0] // Format: YYYY-MM-DD
-    };
+    if (rating === 0) {
+      toast.error("Please select a rating");
+      return;
+    }
 
-    // Here you would typically send this to your backend
-    console.log('New Feedback:', newFeedback);
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/feedback/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          rating
+        })
+      });
 
-    // Reset form and show success message
-    setSubmitted(true);
-    setFormData({
-      name: "",
-      email: "",
-      role: "",
-      overall_experience: "",
-      ease_of_use: "",
-      feature_completeness: "",
-      design_appeal: "",
-      recommendation: "",
-      comments: ""
-    });
-    
-    setTimeout(() => setSubmitted(false), 3000);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to submit feedback');
+      }
+
+      toast.success('Feedback submitted successfully!');
+      setSubmitted(true);
+      setFormData({
+        name: "",
+        email: "",
+        role: "",
+        description: ""
+      });
+      setRating(0);
+      
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const containerStyles = {
@@ -71,37 +79,65 @@ const FeedbackPage = () => {
 
   const formStyles = {
     background: "#f9f9f9",
-    padding: "20px",
-    borderRadius: "8px",
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+    padding: "30px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
     marginTop: "20px",
   };
 
   const inputStyles = {
     width: "100%",
-    padding: "10px",
-    marginBottom: "15px",
-    border: "1px solid #ccc",
-    borderRadius: "5px",
+    padding: "12px",
+    marginBottom: "20px",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
     fontSize: "1rem",
+    transition: "border-color 0.3s ease",
+    ":focus": {
+      borderColor: "#007BFF",
+      outline: "none",
+    }
   };
 
   const labelStyles = {
-    fontWeight: "bold",
+    fontWeight: "600",
     textAlign: "left",
     display: "block",
-    marginBottom: "5px",
+    marginBottom: "8px",
+    color: "#333",
   };
 
   const buttonStyles = {
     backgroundColor: "#007BFF",
     color: "white",
-    padding: "10px 20px",
+    padding: "12px 24px",
     fontSize: "1rem",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "8px",
     cursor: "pointer",
-    marginTop: "10px",
+    marginTop: "20px",
+    transition: "background-color 0.3s ease",
+    ":hover": {
+      backgroundColor: "#0056b3",
+    },
+    ":disabled": {
+      backgroundColor: "#ccc",
+      cursor: "not-allowed",
+    }
+  };
+
+  const starContainerStyle = {
+    display: "flex",
+    justifyContent: "center",
+    gap: "10px",
+    marginBottom: "20px",
+  };
+
+  const starStyle = {
+    cursor: "pointer",
+    fontSize: "2rem",
+    color: "#ddd",
+    transition: "color 0.2s ease",
   };
 
   const successStyles = {
@@ -117,8 +153,10 @@ const FeedbackPage = () => {
     <>
       <Header />
       <div style={containerStyles}>
-        <h1 style={{ fontFamily: "Poppins, sans-serif" }}>We Value Your Feedback</h1>
-        <p style={{ fontFamily: "Poppins, sans-serif" }}>
+        <h1 style={{ fontFamily: "Poppins, sans-serif", color: "#333" }}>
+          We Value Your Feedback
+        </h1>
+        <p style={{ fontFamily: "Poppins, sans-serif", color: "#666" }}>
           Your input helps us improve UnityStack and better serve our community.
         </p>
 
@@ -176,91 +214,49 @@ const FeedbackPage = () => {
               required
             >
               <option value="">Select your role</option>
-              <option value="Software Developer">Software Developer</option>
-              <option value="UI/UX Designer">UI/UX Designer</option>
-              <option value="Full Stack Developer">Full Stack Developer</option>
-              <option value="Project Manager">Project Manager</option>
-              <option value="DevOps Engineer">DevOps Engineer</option>
-              <option value="Mobile Developer">Mobile Developer</option>
+              <option value="student">Student</option>
+              <option value="developer">Developer</option>
+              <option value="organization">Organization</option>
             </select>
 
-            <label style={labelStyles}>Overall Experience</label>
-            <input
-              type="number"
-              name="overall_experience"
-              value={formData.overall_experience}
-              onChange={handleChange}
-              style={inputStyles}
-              min="1"
-              max="10"
-              placeholder="Rate 1-10"
-              required
-            />
+            <label style={labelStyles}>Rate Your Experience</label>
+            <div style={starContainerStyle}>
+              {[...Array(5)].map((_, index) => {
+                const ratingValue = index + 1;
+                return (
+                  <FaStar
+                    key={index}
+                    style={{
+                      ...starStyle,
+                      color: ratingValue <= (hover || rating) ? "#FFD700" : "#ddd"
+                    }}
+                    onClick={() => setRating(ratingValue)}
+                    onMouseEnter={() => setHover(ratingValue)}
+                    onMouseLeave={() => setHover(0)}
+                  />
+                );
+              })}
+            </div>
 
-            <label style={labelStyles}>Ease of Use</label>
-            <input
-              type="number"
-              name="ease_of_use"
-              value={formData.ease_of_use}
-              onChange={handleChange}
-              style={inputStyles}
-              min="1"
-              max="10"
-              placeholder="Rate 1-10"
-              required
-            />
-
-            <label style={labelStyles}>Feature Completeness</label>
-            <input
-              type="number"
-              name="feature_completeness"
-              value={formData.feature_completeness}
-              onChange={handleChange}
-              style={inputStyles}
-              min="1"
-              max="10"
-              placeholder="Rate 1-10"
-              required
-            />
-
-            <label style={labelStyles}>Design Appeal</label>
-            <input
-              type="number"
-              name="design_appeal"
-              value={formData.design_appeal}
-              onChange={handleChange}
-              style={inputStyles}
-              min="1"
-              max="10"
-              placeholder="Rate 1-10"
-              required
-            />
-
-            <label style={labelStyles}>How likely are you to recommend UnityStack?</label>
-            <input
-              type="number"
-              name="recommendation"
-              value={formData.recommendation}
-              onChange={handleChange}
-              style={inputStyles}
-              min="1"
-              max="10"
-              placeholder="Rate 1-10"
-              required
-            />
-
-            <label style={labelStyles} htmlFor="comments">Any additional comments or suggestions?</label>
+            <label style={labelStyles} htmlFor="description">Your Feedback</label>
             <textarea
-              id="comments"
-              name="comments"
-              value={formData.comments}
+              id="description"
+              name="description"
+              value={formData.description}
               onChange={handleChange}
               rows="4"
               style={{ ...inputStyles, resize: "none" }}
-              placeholder="Your comments here..."
+              placeholder="Share your thoughts about UnityStack..."
+              required
             />
 
-            <button type="submit" style={buttonStyles}>Submit Feedback</button>
+            <button 
+              type="submit" 
+              style={buttonStyles}
+              disabled={loading}
+            >
+              {loading ? "Submitting..." : "Submit Feedback"}
+            </button>
           </motion.form>
         )}
       </div>

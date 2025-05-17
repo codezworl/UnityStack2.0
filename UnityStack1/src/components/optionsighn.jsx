@@ -47,6 +47,7 @@ const SignUp = () => {
           boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
         }}
       >
+        
         <div
           style={{
             maxWidth: "1200px",

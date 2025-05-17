@@ -10,6 +10,7 @@ const Student = require("../models/Student");
 const Organization = require("../models/Organization");
 const Answer = require("../models/answer");
 const { SendVerificationCode } = require("../middleware/Email"); // Ensure this is the correct path
+const TempVerification = require("../models/TempVerification"); // Implied import for TempVerification model
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/"); // Store images in the `uploads/` directory
@@ -51,6 +52,7 @@ const signupStudent = async (req, res) => {
       domain,
       linkedIn,
       github,
+      verified // Check if user is pre-verified
     } = req.body;
 
     // Validate input fields
@@ -67,8 +69,19 @@ const signupStudent = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate a verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // If user is not pre-verified, generate a verification code
+    let verificationCode;
+    let isVerified = false;
+    
+    if (!verified) {
+      // Generate a verification code if not pre-verified
+      verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      isVerified = false;
+    } else {
+      // User is pre-verified from OTP process
+      verificationCode = undefined;
+      isVerified = true;
+    }
 
     // Create new student
     const newStudent = new Student({
@@ -82,17 +95,21 @@ const signupStudent = async (req, res) => {
       domain,
       linkedIn,
       github,
-      verificationCode, // Store the verification code
-      isVerified: false, // Default to not verified
+      verificationCode, // Store the verification code if not verified
+      isVerified, // Set verified status
     });
 
     await newStudent.save();
 
-    // Send verification code to the student's email
-    await SendVerificationCode(email, verificationCode);
+    // Send verification code if not pre-verified
+    if (!verified) {
+      await SendVerificationCode(email, verificationCode);
+    }
 
     res.status(201).json({
-      message: "Student registered successfully. Verification email sent.",
+      message: verified 
+        ? "Student registered successfully." 
+        : "Student registered successfully. Verification email sent.",
     });
   } catch (error) {
     console.error("Error in signup:", error.message);
@@ -105,7 +122,25 @@ const verifyStudentEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
 
-    // Find student by email and verification code
+    // Try to find the code in TempVerification collection first
+    const tempVerification = await TempVerification.findOne({ 
+      email, 
+      verificationCode: code 
+    });
+
+    // If found in temp verification, it means this is a pre-signup verification
+    if (tempVerification) {
+      // Check if the verification code has expired
+      if (tempVerification.expiresAt < new Date()) {
+        await TempVerification.deleteOne({ email });
+        return res.status(400).json({ message: "Verification code has expired. Please request a new one." });
+      }
+
+      // Code is valid, return success
+      return res.status(200).json({ message: "Email verified successfully." });
+    }
+
+    // If not found in temp verification, check existing student (for cases like password reset)
     const student = await Student.findOne({ email, verificationCode: code });
     if (!student) {
       return res.status(404).json({ message: "Invalid verification code or email." });
@@ -176,7 +211,10 @@ const loginStudent = async (req, res) => {
 // In studentController.js
 const getStudentProfile = async (req, res) => {
   try {
-    const studentId = req.params.id;  // Get student ID from URL parameters
+    // Use req.user.id from authentication instead of params
+    const studentId = req.user.id;
+    console.log("Fetching profile for student ID:", studentId);
+    
     const student = await Student.findById(studentId).select("-password");
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
@@ -244,9 +282,63 @@ const updateProfileImage = async (req, res) => {
   }
 };
 
+// Request OTP handler
+const requestOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
 
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
 
+    // Check if email exists in any of the databases
+    const existingStudent = await Student.findOne({ email });
+    const existingDeveloper = await Developer.findOne({ email });
+    const existingOrganization = await Organization.findOne({ companyEmail: email });
 
+    // If email exists in any database, return error
+    if (existingStudent) {
+      return res.status(400).json({ message: "Email already registered as a Student" });
+    }
+    
+    if (existingDeveloper) {
+      return res.status(400).json({ message: "Email already registered as a Developer" });
+    }
+    
+    if (existingOrganization) {
+      return res.status(400).json({ message: "Email already registered as an Organization" });
+    }
+
+    // Generate a verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store the verification code temporarily (not creating a student record yet)
+    // Use an expiration of 10 minutes
+    const expiryTime = new Date();
+    expiryTime.setMinutes(expiryTime.getMinutes() + 10);
+
+    // Store in temporary collection or update if exists
+    const tempVerification = await TempVerification.findOneAndUpdate(
+      { email },
+      { 
+        email,
+        verificationCode, 
+        expiresAt: expiryTime 
+      },
+      { upsert: true, new: true }
+    );
+
+    // Send verification code to the provided email
+    await SendVerificationCode(email, verificationCode);
+
+    res.status(200).json({
+      message: "Verification code sent to email",
+    });
+  } catch (error) {
+    console.error("Error requesting OTP:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 module.exports = {
   signupStudent,
@@ -257,5 +349,6 @@ module.exports = {
   deleteStudentAccount,
   updateProfileImage,
   upload,
+  requestOtp, // Add the new OTP request handler
    // Export `multer` for route usage
 };

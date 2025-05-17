@@ -18,8 +18,29 @@ const developerSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid email!`,
       },
     },
-    phoneNumber: { type: String, trim: true },
-    homeNumber: { type: String, trim: true },
+    phoneNumber: { 
+      type: String, 
+      trim: true,
+      required: true,
+      validate: {
+        validator: function(v) {
+          // Format XXXX-XXXXXXX
+          return /^\d{4}-\d{7}$/.test(v);
+        },
+        message: props => `${props.value} is not a valid phone number format! Use XXXX-XXXXXXX`
+      }
+    },
+    homeNumber: { 
+      type: String, 
+      trim: true,
+      validate: {
+        validator: function(v) {
+          // Format XXXX-XXXXXXX (if provided)
+          return v ? /^\d{4}-\d{7}$/.test(v) : true;
+        },
+        message: props => `${props.value} is not a valid home number format! Use XXXX-XXXXXXX`
+      }
+    },
     dateOfBirth: { type: Date },
     address: { type: String, trim: true },
     city: { type: String, trim: true },
@@ -54,6 +75,13 @@ const developerSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: [6, "Password must be at least 6 characters long"],
+      validate: {
+        validator: function(v) {
+          // At least 8 characters, containing both letters and numbers
+          return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(v);
+        },
+        message: "Password must be at least 8 characters long and contain both letters and numbers"
+      }
     },
 
     isVerified: { type: Boolean, default: false },

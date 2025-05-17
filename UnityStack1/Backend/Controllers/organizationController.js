@@ -20,6 +20,7 @@ const Notification = require("../models/notification");
 // Signup handler with verification
 const signupOrganization = async (req, res) => {
   try {
+    console.log("Organization signup - Request body:", req.body);
     const {
       companyName,
       address,
@@ -47,6 +48,7 @@ const signupOrganization = async (req, res) => {
 
     // Generate a verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log("Generated verification code:", verificationCode, "for email:", companyEmail);
 
     // Create new organization
     const newOrganization = new Organization({
@@ -62,10 +64,17 @@ const signupOrganization = async (req, res) => {
       isVerified: false, // Default to not verified
     });
 
-    await newOrganization.save();
+    const savedOrg = await newOrganization.save();
+    console.log("Organization created with ID:", savedOrg._id);
 
     // Send verification code to the organization's email
-    await SendVerificationCode(companyEmail, verificationCode);
+    try {
+      await SendVerificationCode(companyEmail, verificationCode);
+      console.log("Verification email sent successfully to:", companyEmail);
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      // Still continue with registration even if email fails
+    }
 
     res.status(201).json({
       message: "Organization registered successfully. Verification email sent.",
@@ -86,10 +95,19 @@ const upload = multer({ storage });
 // Verify email handler
 const verifyOrganizationEmail = async (req, res) => {
   try {
+    console.log("Verify organization email - Request body:", req.body);
     const { companyEmail, code } = req.body;
+
+    if (!companyEmail || !code) {
+      console.log("Missing required fields:", { companyEmail, code });
+      return res.status(400).json({ message: "Email and verification code are required." });
+    }
 
     // Find organization by email and verification code
     const organization = await Organization.findOne({ companyEmail, verificationCode: code });
+    
+    console.log("Organization found:", organization ? "Yes" : "No");
+    
     if (!organization) {
       return res.status(404).json({ message: "Invalid verification code or email." });
     }
@@ -98,6 +116,8 @@ const verifyOrganizationEmail = async (req, res) => {
     organization.isVerified = true;
     organization.verificationCode = undefined;
     await organization.save();
+    
+    console.log("Organization verified successfully");
 
     res.status(200).json({ message: "Email verified successfully." });
   } catch (error) {

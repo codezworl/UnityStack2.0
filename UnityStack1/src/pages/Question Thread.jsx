@@ -53,17 +53,38 @@ export default function QuestionDetailsPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        // Fetch the current user data from localStorage or your API
-        const res = await fetch("http://localhost:5000/api/user", { credentials: "include" });
+        // Get token from localStorage
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.warn("No token found, user not logged in");
+          setIsLoggedIn(false);
+          return;
+        }
+        
+        // Fetch user data with the token in Authorization header
+        const res = await fetch("http://localhost:5000/api/user", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
         if (!res.ok) throw new Error("User fetch failed");
   
         const data = await res.json();
-        setUserName(data.name);  // Set userName
-        setUserRole(data.role);  // Set userRole
-        setUserId(data.id);  // Set currentUserId from fetched data (assuming 'id' is the user ID)
-        console.log("✅ Logged in as:", data.name, data.role, data.id);
+        // Handle different user data formats
+        setUserName(data.firstName || data.displayName || data.name || "");
+        setUserRole(data.role || "");
+        setUserId(data._id || data.id || "");
+        setIsLoggedIn(true);
+        
+        console.log("✅ User data loaded:", { 
+          name: data.firstName || data.displayName || data.name, 
+          role: data.role, 
+          id: data._id || data.id 
+        });
       } catch (err) {
         console.warn("❌ User not logged in:", err.message);
+        setIsLoggedIn(false);
       }
     };
   
@@ -74,44 +95,72 @@ export default function QuestionDetailsPage() {
 
   const handleAnswerSubmit = async (e) => {
     e.preventDefault();
-  
-    // Ensure all required fields are included
-    if (!answerText.trim() || !userName || !userRole || !userId) {
-      alert("Please fill in all fields before submitting.");
-      return;
-    }
-  
-    // Prepare the data to send to the backend
-    const newAnswer = {
-      text: answerText,  // The answer text
-      userRole: userRole, // User role (student, developer, organization)
-      userName: userName, // User's name
-      userId: userId,  // The logged-in user ID
-    };
+    setIsSubmitting(true);
   
     try {
+      // Check if user is logged in
+      if (!isLoggedIn) {
+        alert("You must be logged in to submit an answer");
+        navigate("/login");
+        return;
+      }
+
+      // Validate the form data
+      if (!answerText.trim()) {
+        alert("Please enter your answer");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Log the user data for debugging
+      console.log("Submitting answer with user data:", { userName, userRole, userId });
+      
+      if (!userName || !userRole || !userId) {
+        console.error("Missing user data:", { userName, userRole, userId });
+        alert("User data is missing. Please try logging in again.");
+        setIsSubmitting(false);
+        return;
+      }
+    
+      // Prepare the data to send to the backend
+      const newAnswer = {
+        text: answerText,
+        userRole,
+        userName,
+        userId,
+      };
+    
       // Send the answer to the backend
       const response = await fetch(`http://localhost:5000/api/questions/${id}/answers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,  // Ensure the token is set correctly
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify(newAnswer),
       });
-  
+    
       const result = await response.json();
+      
       if (!response.ok) {
         throw new Error(result.message || "Error posting answer");
       }
-  
+    
+      // On success, update the UI
       alert("Answer submitted successfully!");
-      setAnswerText("");  // Clear the answer text after submission
-      // Optionally, navigate to a different page or update the UI
-      // navigate(`/questions/${id}`);  // If you want to show the updated question page
+      setAnswerText("");  // Clear the answer text
+      
+      // Refresh the question and answers to show the new answer
+      const updatedQuestion = await fetch(`/api/questions/${id}`);
+      const updatedData = await updatedQuestion.json();
+      setAnswers(Array.isArray(updatedData.answers) ? updatedData.answers : []);
+      setQuestion(updatedData);
+      
     } catch (err) {
       console.error("Error posting answer:", err);
       alert(err.message || "An error occurred while posting your answer");
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -284,6 +333,12 @@ export default function QuestionDetailsPage() {
     }
   }, [filterOption, answers, userId]);  // Dependencies include filterOption, answers, and userId
   
+  // Utility function to strip HTML tags
+  const stripHtml = (html) => {
+    const doc = new window.DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || "";
+  };
+
   if (!question) {
     return <div>Loading...</div>; // Show loading if question is still being fetched
   }
@@ -389,235 +444,261 @@ export default function QuestionDetailsPage() {
         {/* Question Details */}
         <div
           style={{
-            display: "flex",
-            gap: "1rem",
             backgroundColor: "white",
-            padding: "1.5rem",
-            borderRadius: "8px",
+            padding: "2rem 2.5rem",
+            borderRadius: "12px",
             border: "1px solid #E2E8F0",
-            boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
             marginBottom: "2rem",
+            maxWidth: "900px",
+            marginLeft: "auto",
+            marginRight: "auto",
           }}
         >
-          <div style={{ flex: "1" }}>
-            {/* Title */}
-            <h1
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                marginBottom: "0.5rem",
-                color: "#1E293B",
-              }}
-            >
-              {question.title}
-            </h1>
-  
-            {/* Question Metadata (Asked time, views, etc.) */}
-            <p
-              style={{
-                color: "#64748B",
-                fontSize: "0.875rem",
-                marginBottom: "1rem",
-              }}
-            >
-              Asked{" "}
-              {new Date(question.createdAt).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })}{" "}
-              • Viewed {question.views} times
-            </p>
-  
-            {/* Question Description */}
-            <p
-              style={{
-                fontSize: "1rem",
-                marginBottom: "1rem",
-                lineHeight: "1.6",
-              }}
-              
-              dangerouslySetInnerHTML={{ __html: question.details }}
-            />
-           
-            {/* Tried Information */}
-            <p
-              style={{
-                fontSize: "1rem",
-                marginBottom: "1rem",
-                fontStyle: "italic",
-                color: "#1E293B",
-              }}
-            >
-              Tried:{" "}
+          {/* Title */}
+          <h1
+            style={{
+              fontSize: "2rem",
+              fontWeight: "bold",
+              marginBottom: "0.5rem",
+              color: "#1E293B",
+              letterSpacing: "-1px",
+              lineHeight: 1.2,
+            }}
+          >
+            {stripHtml(question.title)}
+          </h1>
+          {/* Metadata */}
+          <div style={{ color: "#64748B", fontSize: "0.95rem", marginBottom: "1.2rem" }}>
+            Asked {new Date(question.createdAt).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })} • Viewed {question.views} times
+          </div>
+          {/* Description/Details */}
+          <div
+            style={{
+              fontSize: "1.1rem",
+              marginBottom: "1.5rem",
+              color: "#334155",
+              lineHeight: 1.7,
+            }}
+            dangerouslySetInnerHTML={{ __html: question.details }}
+          />
+          {/* Tried Solution Heading */}
+          <h3 style={{
+            fontSize: "1.1rem",
+            fontWeight: 600,
+            color: "#2563EB",
+            marginBottom: "0.5rem",
+            marginTop: "1.5rem",
+            letterSpacing: "0.5px"
+          }}>
+            Tried Solution
+          </h3>
+          {/* Tried Content */}
+          <div
+            style={{
+              fontSize: "1rem",
+              marginBottom: "1.5rem",
+              color: "#475569",
+              background: "#F1F5F9",
+              borderRadius: "6px",
+              padding: "1rem 1.2rem",
+              fontStyle: "italic"
+            }}
+            dangerouslySetInnerHTML={{ __html: question.tried }}
+          />
+          {/* Tags */}
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
+            {question.tags.map((tag) => (
               <span
-                dangerouslySetInnerHTML={{
-                  __html: question.tried,
+                key={tag}
+                style={{
+                  backgroundColor: "#E0E7FF",
+                  color: "#3730A3",
+                  padding: "0.3rem 0.8rem",
+                  borderRadius: "999px",
+                  fontSize: "0.95rem",
+                  fontWeight: 500,
+                  letterSpacing: "0.5px",
                 }}
-              />
-            </p>
-  
-            {/* Tags */}
-            <div
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                flexWrap: "wrap",
-                marginBottom: "1rem",
-              }}
-            >
-              {question.tags.map((tag) => (
-                <span
-                  key={tag}
-                  style={{
-                    backgroundColor: "#E5E7EB",
-                    padding: "0.25rem 0.5rem",
-                    borderRadius: "4px",
-                    fontSize: "0.875rem",
-                    color: "#1E293B",
-                    cursor: "pointer",
-                  }}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+          {/* User Info */}
+          <div style={{ fontSize: "0.98rem", color: "#64748B", marginBottom: "0.5rem" }}>
+            <span style={{ fontWeight: 600, color: "#1E293B" }}>
+              {question.userName} ({question.userRole})
+            </span>
           </div>
         </div>
   
         {/* Answers Section */}
-        <div>
-  <h2
-    style={{
-      marginBottom: "1.5rem",
-      color: "#1E293B",
-      fontSize: "1.25rem",
-    }}
-  >
-    {filteredAnswers && Array.isArray(filteredAnswers) && filteredAnswers.length > 0
-      ? `${filteredAnswers.length} Answer(s)`
-      : "No answers yet"}
-  </h2>
-
-  {/* Render answers after applying filter */}
-  {filteredAnswers && Array.isArray(filteredAnswers) && filteredAnswers.length > 0 ? (
-    filteredAnswers.map((answer) => (
-      <div
-        key={answer._id}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          backgroundColor: "#F9FAFB",
-          padding: "1.5rem",
-          borderRadius: "8px",
-          border: "1px solid #E5E7EB",
-          marginBottom: "1.5rem",
-          boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        {/* User Info */}
-        <div
-          style={{
-            fontSize: "1rem",
-            marginBottom: "1rem",
-            fontWeight: "bold",
-            color: "#1E293B",
-          }}
-        >
-          {answer.userName} ({answer.userRole}) -{" "}
-          {new Date(answer.time).toLocaleString("en-GB", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
-          })}
-        </div>
-
-        {/* Answer Description */}
-        <div
-          style={{
-            fontSize: "1rem",
-            marginBottom: "1rem",
-            lineHeight: "1.6",
-            color: "#64748B",
-          }}
-          dangerouslySetInnerHTML={{ __html: answer.text }}
-        />
-
-        {/* Like/Dislike Buttons */}
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            alignItems: "center",
-            marginTop: "1rem",
-          }}
-        >
-          <div
+        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+          <h2
             style={{
-              fontSize: "1rem",
-              color: "#2563EB",
-              cursor: "pointer",
+              marginBottom: "1.5rem",
+              color: "#1E293B",
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              letterSpacing: "-0.5px"
             }}
-            onClick={() => handleLike(answer._id)}
           >
-            Like {answer.likes}
-          </div>
-          <div
-            style={{
-              fontSize: "1rem",
-              color: "#FF4B4B",
-              cursor: "pointer",
-            }}
-            onClick={() => handleDislike(answer._id)}
-          >
-            Dislike {answer.dislikes}
-          </div>
-        </div>
+            {filteredAnswers && Array.isArray(filteredAnswers) && filteredAnswers.length > 0
+              ? `${filteredAnswers.length} Answer(s)`
+              : "No answers yet"}
+          </h2>
 
-        {/* Edit and Delete buttons */}
-        {answer.user === userId && (  // Only show Edit and Delete for the answer posted by the logged-in user
-          <div
-            style={{
-              display: "flex",
-              gap: "1rem",
+          {/* Render answers after applying filter */}
+          {filteredAnswers && Array.isArray(filteredAnswers) && filteredAnswers.length > 0 ? (
+            filteredAnswers.map((answer) => (
+              <div
+                key={answer._id}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  backgroundColor: "#F9FAFB",
+                  padding: "1.5rem 2rem",
+                  borderRadius: "10px",
+                  border: "1px solid #E5E7EB",
+                  marginBottom: "1.5rem",
+                  boxShadow: "0 4px 10px rgba(0, 0, 0, 0.07)",
+                  transition: "box-shadow 0.2s",
+                }}
+              >
+                {/* User Info */}
+                <div
+                  style={{
+                    fontSize: "1rem",
+                    marginBottom: "1rem",
+                    fontWeight: "bold",
+                    color: "#1E293B",
+                  }}
+                >
+                  {answer.userName} ({answer.userRole}) -{" "}
+                  {new Date(answer.time).toLocaleString("en-GB", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </div>
+
+                {/* Answer Description */}
+                <div
+                  style={{
+                    fontSize: "1.05rem",
+                    marginBottom: "1rem",
+                    lineHeight: "1.7",
+                    color: "#64748B",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: answer.text }}
+                />
+
+                {/* Like/Dislike Buttons */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "1.2rem",
+                    alignItems: "center",
+                    marginTop: "1rem",
+                  }}
+                >
+                  <button
+                    style={{
+                      fontSize: "1rem",
+                      color: "#2563EB",
+                      background: "#EFF6FF",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "8px 18px",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      transition: "background 0.2s, color 0.2s",
+                    }}
+                    onClick={() => handleLike(answer._id)}
+                  >
+                    👍 Like {answer.likes}
+                  </button>
+                  <button
+                    style={{
+                      fontSize: "1rem",
+                      color: "#FF4B4B",
+                      background: "#FFF1F2",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "8px 18px",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      transition: "background 0.2s, color 0.2s",
+                    }}
+                    onClick={() => handleDislike(answer._id)}
+                  >
+                    👎 Dislike {answer.dislikes}
+                  </button>
+                </div>
+
+                {/* Edit and Delete buttons */}
+                {answer.user === userId && (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "1rem",
+                      marginTop: "1.2rem",
+                    }}
+                  >
+                    <button
+                      onClick={() => handleEditAnswer(answer._id)}
+                      style={{
+                        padding: "0.5rem 1.2rem",
+                        backgroundColor: "#4CAF50",
+                        color: "#fff",
+                        borderRadius: "6px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                      }}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAnswer(answer._id)}
+                      style={{
+                        padding: "0.5rem 1.2rem",
+                        backgroundColor: "#FF4B4B",
+                        color: "#fff",
+                        borderRadius: "6px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div style={{
+              backgroundColor: "#FFFFFF",
+              padding: "2rem",
+              borderRadius: "8px",
+              textAlign: "center",
               marginTop: "1rem",
-            }}
-          >
-            <button
-              onClick={() => handleEditAnswer(answer._id)}
-              style={{
-                padding: "0.5rem 1rem",
-                backgroundColor: "#4CAF50",
-                color: "#fff",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => handleDeleteAnswer(answer._id)}
-              style={{
-                padding: "0.5rem 1rem",
-                backgroundColor: "#FF4B4B",
-                color: "#fff",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Delete
-            </button>
-          </div>
-        )}
-      </div>
-    ))
-  ) : (
-    <div>No answers yet</div> // Display a fallback message if no answers are available
-  )}
-</div>
-
-
-
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
+            }}>
+              <h3 style={{ fontSize: "1.25rem", color: "#4B5563", marginBottom: "1rem" }}>
+                No answers yet
+              </h3>
+            </div>
+          )}
+        </div>
 
         {/* Submit Answer Section */}  
         <div

@@ -27,6 +27,7 @@ const StudentSignUp = () => {
   const [otp, setOtp] = useState("");
   const [isOtpVerified, setIsOtpVerified] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [tempFormData, setTempFormData] = useState(null);
   const navigate = useNavigate(); // ✅ Hook for navigation
 
 
@@ -47,9 +48,12 @@ const StudentSignUp = () => {
       }
     });
   
-    // ✅ Ensure password is at least 8 characters
-    if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+    // ✅ Enhanced password validation - at least 8 chars, must contain letters and numbers
+    if (formData.password) {
+      const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+      if (!passwordRegex.test(formData.password)) {
+        newErrors.password = "Password must be at least 8 characters and contain both letters and numbers";
+      }
     }
   
     // ✅ Ensure passwords match
@@ -66,20 +70,23 @@ const StudentSignUp = () => {
     return Object.keys(newErrors).length === 0;
   };
   
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
+  // Request OTP - doesn't submit data to backend yet
+  const handleRequestOtp = async (e) => {
     e.preventDefault();
     if (validateForm()) {
       try {
+        // Store form data temporarily without submitting to backend
+        setTempFormData({...formData});
+        
+        // Request OTP
         const response = await fetch(
-          "http://localhost:5000/api/students/signup",
+          "http://localhost:5000/api/students/request-otp",
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(formData),
+            body: JSON.stringify({ email: formData.email }),
           }
         );
 
@@ -88,16 +95,27 @@ const StudentSignUp = () => {
         if (response.ok) {
           setShowOtpModal(true); // Show OTP modal
         } else {
-          alert(data.message || "An error occurred during signup.");
+          // Display server error in the form
+          setErrors(prev => ({
+            ...prev,
+            email: data.message || "Error sending OTP."
+          }));
+          
+          // Also show an alert for visibility
+          alert(data.message || "Error sending OTP.");
         }
       } catch (error) {
-        console.error("Error during signup:", error.message);
+        console.error("Error requesting OTP:", error.message);
+        setErrors(prev => ({
+          ...prev,
+          email: "Network error. Please try again later."
+        }));
         alert("Something went wrong. Please try again later.");
       }
     }
   };
 
-  // Verify OTP
+  // Verify OTP and submit user data
   const handleVerifyOtp = async () => {
     try {
       const response = await fetch(
@@ -117,14 +135,59 @@ const StudentSignUp = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setIsOtpVerified(true);
-        setShowOtpModal(false);
-        setShowModal(true); // Show success modal
+        // OTP verified successfully, now register the user
+        await registerUser();
       } else {
         alert(data.message || "Invalid OTP. Please try again.");
       }
     } catch (error) {
       console.error("Error during OTP verification:", error.message);
+      alert("Something went wrong. Please try again later.");
+    }
+  };
+
+  // Register user after OTP verification
+  const registerUser = async () => {
+    try {
+      // Format LinkedIn and GitHub URLs properly if they don't have https:// prefix
+      let formattedData = {...formData};
+      
+      // Add https:// prefix to LinkedIn if it's missing
+      if (formattedData.linkedIn && !formattedData.linkedIn.startsWith('http')) {
+        formattedData.linkedIn = `https://${formattedData.linkedIn}`;
+      }
+      
+      // Add https:// prefix to GitHub if it's missing
+      if (formattedData.github && !formattedData.github.startsWith('http')) {
+        formattedData.github = `https://${formattedData.github}`;
+      }
+      
+      // The user has been verified, now we can register them
+      const response = await fetch(
+        "http://localhost:5000/api/students/signup",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formattedData,
+            verified: true  // Indicate this user has been pre-verified
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsOtpVerified(true);
+        setShowOtpModal(false);
+        setShowModal(true); // Show success modal
+      } else {
+        alert(data.message || "An error occurred during signup.");
+      }
+    } catch (error) {
+      console.error("Error during signup:", error.message);
       alert("Something went wrong. Please try again later.");
     }
   };
@@ -194,7 +257,7 @@ const StudentSignUp = () => {
 
         <form
           style={{ width: "100%", maxWidth: "350px" }}
-          onSubmit={handleSubmit}
+          onSubmit={handleRequestOtp}
         >
           {/* First Name and Last Name */}
           <div className="d-flex gap-3 mb-3">
@@ -326,6 +389,9 @@ const StudentSignUp = () => {
               onBlur={blurStyle}
               style={inputStyle}
             />
+            <small className="text-muted">
+              Example: www.linkedin.com/in/username
+            </small>
           </div>
 
           {/* GitHub Profile */}
@@ -341,6 +407,9 @@ const StudentSignUp = () => {
               onBlur={blurStyle}
               style={inputStyle}
             />
+            <small className="text-muted">
+              Example: www.github.com/username
+            </small>
           </div>
 
           
@@ -349,7 +418,7 @@ const StudentSignUp = () => {
   <input
     type={showPassword ? "text" : "password"}
     className={`form-control ${errors.password ? "is-invalid" : ""}`}
-    placeholder="Password (Min 8 characters)"
+    placeholder="Password (Min 8 characters with letters and numbers)"
     name="password"
     value={formData.password}
     onChange={handleChange}
@@ -431,6 +500,7 @@ const StudentSignUp = () => {
           <Modal.Title>Verify OTP</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          <p>A verification code has been sent to your email address. Please enter it below.</p>
           <input
             type="text"
             className="form-control mb-3"

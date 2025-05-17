@@ -18,6 +18,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -25,7 +26,10 @@ const Login = () => {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/login", {
+      const url = isAdmin
+        ? "http://localhost:5000/api/admin/login"
+        : "http://localhost:5000/api/login";
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -45,7 +49,20 @@ const Login = () => {
   
       // ✅ Store token and role
       localStorage.setItem("token", token);
-      localStorage.setItem("role", role);
+      localStorage.setItem("role", isAdmin ? "admin" : role);
+
+      if (isAdmin) {
+        // Store admin name and email for dashboard display
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', 'admin');
+        if (data.admin) {
+          localStorage.setItem('adminName', data.admin.name);
+          localStorage.setItem('adminEmail', data.admin.email);
+        }
+        toast.success("Admin login successful");
+        navigate("/dashboard");
+        return;
+      }
 
       // Check for return URL
       const returnTo = localStorage.getItem('returnTo');
@@ -272,6 +289,19 @@ const Login = () => {
               <a href="/forgotpassword" className="text-primary">
                 Forgot Password?
               </a>
+            </div>
+
+            <div className="mb-3">
+              <input
+                type="checkbox"
+                id="adminLogin"
+                checked={isAdmin}
+                onChange={() => setIsAdmin((prev) => !prev)}
+                style={{ marginRight: "8px" }}
+              />
+              <label htmlFor="adminLogin" style={{ fontWeight: 500 }}>
+                Admin Login
+              </label>
             </div>
 
             <button

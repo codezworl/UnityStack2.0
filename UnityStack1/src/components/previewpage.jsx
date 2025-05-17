@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Footer from "./footer";
@@ -8,36 +8,19 @@ const PreviewQuestion = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Destructure incoming props from location.state and provide fallback values
-  const { 
-    title: initialTitle, 
-    details: initialDetails, 
-    tried: initialTried, 
-    tags: initialTags, 
-    userName: initialUserName,   // Add userName
-    userRole: initialUserRole    // Add userRole
-  } = location.state || { title: "", details: "", tried: "", tags: [], userName: "", userRole: "" };  // Fallback to empty string if not available
-
-  // Define states for form fields
-  const [userName, setUserName] = useState(initialUserName); 
-  const [userRole, setUserRole] = useState(initialUserRole); 
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const [title, setTitle] = useState(initialTitle); 
-  const [details, setDetails] = useState(initialDetails);
-  const [tried, setTried] = useState(initialTried);
-  const [tags, setTags] = useState(initialTags);
-
-  // Validation: Ensure all required data exists
-  if (!title || !details || !tried || !tags.length || !userRole || !userName) {
-    return <div>Error: Missing data!</div>;  // Handle missing data case
-  }
-
-  const [error, setError] = useState("");
+  // Use state to handle the data from location
+  const [questionData, setQuestionData] = useState({
+    title: "",
+    details: "",
+    tried: "",
+    tags: [],
+    userName: "",
+    userRole: "",
+    currentUserId: null
+  });
   
-  // Handle form state (edit mode or new question)
-  const editData = JSON.parse(sessionStorage.getItem("editQuestion"));
-  const isEditMode = !!editData;  // true if editData exists, otherwise false
-  
+  // State for user status
+  const [isUserFetched, setIsUserFetched] = useState(false);
   // State for checklist (validation before submission)
   const [checklist, setChecklist] = useState({
     title: false,
@@ -50,6 +33,96 @@ const PreviewQuestion = () => {
   // Expand details and attempted solutions
   const [expandedDetails, setExpandedDetails] = useState(false);
   const [expandedTried, setExpandedTried] = useState(false);
+  const [error, setError] = useState("");
+
+  // Extract data from location state - only run this once
+  useEffect(() => {
+    // Check if location state exists
+    if (location.state) {
+      // Destructure the data with fallback values
+      const { 
+        title = "", 
+        details = "", 
+        tried = "", 
+        tags = [], 
+        userName = "",
+        userRole = ""
+      } = location.state;
+
+      // Set the data to state
+      setQuestionData({
+        title,
+        details,
+        tried,
+        tags,
+        userName,
+        userRole,
+        currentUserId: null
+      });
+    } else {
+      // If no location state, try to get data from sessionStorage
+      try {
+        const storedTags = JSON.parse(sessionStorage.getItem("tags") || "[]");
+        
+        setQuestionData({
+          title: sessionStorage.getItem("title") || "",
+          details: sessionStorage.getItem("details") || "",
+          tried: sessionStorage.getItem("tried") || "",
+          tags: Array.isArray(storedTags) ? storedTags : [],
+          userName: "",
+          userRole: "",
+          currentUserId: null
+        });
+      } catch (e) {
+        console.error("Error parsing data from sessionStorage:", e);
+      }
+    }
+  }, [location.state]); // Only re-run if location.state changes
+
+  // Fetch user data in a separate effect to avoid loops
+  useEffect(() => {
+    // Only fetch user data once and if we need it
+    if (!isUserFetched && (!questionData.userName || !questionData.userRole)) {
+      const fetchUser = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) {
+            console.warn("No token found in localStorage");
+            setIsUserFetched(true); // Mark as fetched even if failed
+            return;
+          }
+
+          const res = await fetch("http://localhost:5000/api/user", {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          });
+          
+          if (!res.ok) throw new Error("User fetch failed");
+
+          const data = await res.json();
+          
+          setQuestionData(prev => ({
+            ...prev,
+            currentUserId: data.id || data._id,
+            userName: prev.userName || data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim(),
+            userRole: prev.userRole || data.role
+          }));
+          
+          console.log("✅ Logged in as:", data.name || data.firstName, data.role);
+        } catch (err) {
+          console.warn("❌ User not logged in:", err.message);
+        } finally {
+          setIsUserFetched(true);
+        }
+      };
+      
+      fetchUser();
+    }
+  }, [isUserFetched, questionData.userName, questionData.userRole]);
+
+  // Pull out the data from state
+  const { title, details, tried, tags, userName, userRole } = questionData;
   
   // Check if all checklist items are checked
   const allChecked = Object.values(checklist).every(Boolean);
@@ -57,73 +130,81 @@ const PreviewQuestion = () => {
   const handleCheckboxChange = (name) => {
     setChecklist((prev) => ({ ...prev, [name]: !prev[name] }));
   };
-   useEffect(() => {
-      const fetchUser = async () => {
-        try {
-          const res = await fetch("http://localhost:5000/api/user", {
-            credentials: "include"
-          });
-          if (!res.ok) throw new Error("User fetch failed");
-  
-          const data = await res.json();
-          setCurrentUserId(data.id);
-          setUserName(data.name);
-          setUserRole(data.role);
-          console.log("✅ Logged in as:", data.name, data.role);
-        } catch (err) {
-          console.warn("❌ User not logged in:", err.message);
-        }
-      };
-      fetchUser();
-    }, []);
-  
 
-    const handleSubmit = async (e) => {
-      e.preventDefault();
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-      // Ensure all required fields are included
-      if (!title || !details || !tried || tags.length === 0 || !userName || !userRole || !currentUserId) {
-        setError("Please fill in all fields before submitting.");
-        return;
-      }
+    // Ensure all required fields are included
+    if (!title || !details || !tried || !tags.length) {
+      setError("Please fill in all fields before submitting.");
+      return;
+    }
     
-      setError("");  // Clear any previous errors
+    setError("");  // Clear any previous errors
+  
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("You must be logged in to post a question.");
+      return;
+    }
     
-      // Prepare the data to send to the backend
-      const newQuestion = {
-        title,
-        details,
-        tried,
-        tags,
-        userRole,  // Pass userRole
-        userName,  // Pass userName
-        userId: currentUserId,  // Add currentUserId
-      };
-    
-      try {
-        const response = await fetch("http://localhost:5000/api/questions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newQuestion),
-        });
-    
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.message || "Error creating question");
-        }
-    
-        alert("Question posted successfully!");
-        navigate("/questions");  // Redirect to the questions page
-      } catch (err) {
-        console.error("Error creating question:", err);
-        setError(err.message || "An error occurred while posting your question");
-      }
+    // Prepare the data to send to the backend
+    const newQuestion = {
+      title,
+      details,
+      tried,
+      tags
     };
     
-  
-  
+    try {
+      const response = await fetch("http://localhost:5000/api/questions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(newQuestion),
+      });
+    
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Error creating question");
+      }
+
+      // Clear the session storage
+      sessionStorage.removeItem("title");
+      sessionStorage.removeItem("details");
+      sessionStorage.removeItem("tried");
+      sessionStorage.removeItem("tags");
+    
+      alert("Question posted successfully!");
+      navigate("/question");  // Redirect to the questions page
+    } catch (err) {
+      console.error("Error creating question:", err);
+      setError(err.message || "An error occurred while posting your question");
+    }
+  };
+
+  // Render a fallback UI if required data is missing
+  if (!title || !details || !tried) {
+    return (
+      <div className="container mt-5 text-center">
+        <Header />
+        <div className="alert alert-warning mt-5">
+          <h4>Missing required data!</h4>
+          <p>We couldn't find all the necessary information to preview your question.</p>
+          <button 
+            className="btn btn-primary mt-3"
+            onClick={() => navigate("/askquestion")}
+          >
+            Go back to Ask Question
+          </button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -183,7 +264,7 @@ const PreviewQuestion = () => {
               __html: details || "<p>No details provided</p>",
             }}
           />
-          {details.length > 150 && (
+          {details && details.length > 150 && (
             <button
               onClick={() => setExpandedDetails(!expandedDetails)}
               style={{
@@ -224,7 +305,7 @@ const PreviewQuestion = () => {
               __html: tried || "<p>No attempted solution provided</p>",
             }}
           />
-          {tried.length > 150 && (
+          {tried && tried.length > 150 && (
             <button
               onClick={() => setExpandedTried(!expandedTried)}
               style={{
@@ -246,7 +327,7 @@ const PreviewQuestion = () => {
             Tags:
           </p>
           <div>
-            {tags?.length > 0 ? (
+            {tags && tags.length > 0 ? (
               tags.map((tag, index) => (
                 <span
                   key={index}
@@ -269,6 +350,7 @@ const PreviewQuestion = () => {
           </div>
   
           {/* User Info (UserName and Role) */}
+          {userName && userRole && (
           <div
             style={{
               fontSize: "16px",
@@ -279,6 +361,7 @@ const PreviewQuestion = () => {
           >
             <span style={{ color: "#2563EB" }}>{userName}</span> ({userRole})
           </div>
+          )}
   
           {/* Checklist */}
           <h3 style={{ marginTop: "25px", fontSize: "20px", color: "#222" }}>
@@ -306,6 +389,7 @@ const PreviewQuestion = () => {
               disabled={!allChecked}
               style={{
                 padding: "12px 20px",
+                margin: "0 10px",
                 borderRadius: "5px",
                 border: "none",
                 background: allChecked ? "#28a745" : "#ccc",
@@ -318,9 +402,10 @@ const PreviewQuestion = () => {
             </button>
   
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/askquestion")}
               style={{
                 padding: "12px 20px",
+                margin: "0 10px",
                 borderRadius: "5px",
                 border: "none",
                 background: "#007BFF",

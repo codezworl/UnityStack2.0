@@ -7,9 +7,11 @@ import ComSidebar from '../components/sidebar';
 import FindDeveloper from '../pages/finddevelpor';
 import FindWork from '../pages/findwork';
 import { FaEdit, FaTrash, FaEye, FaCalendarAlt, FaVideo, FaComments, FaSyncAlt, FaPrint, FaChevronDown, FaSearch, FaDownload, FaFilter } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 const DeveloperDashboard = () => {
   const [selectedPage, setSelectedPage] = useState('dashboard'); // Default page
+  const navigate = useNavigate();
 
   // Weekly schedule state
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -91,7 +93,8 @@ const DeveloperDashboard = () => {
       title: 'Answer the Questions',
       subtitle: 'Respond to queries and help other developers',
       color: 'linear-gradient(135deg, #FFA726 0%, #C4711A 100%)',
-      page: 'answerquestions',
+      page: 'question',
+      onClick: () => navigate('/question')
     },
     {
       title: 'Get Some Work Done',
@@ -172,7 +175,7 @@ const DeveloperDashboard = () => {
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                   }}
-                  onClick={() => setSelectedPage(action.page)}
+                  onClick={() => action.onClick ? action.onClick() : setSelectedPage(action.page)}
                   onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px) scale(1.03)'}
                   onMouseOut={e => e.currentTarget.style.transform = 'none'}
                 >

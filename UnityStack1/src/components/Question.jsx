@@ -167,16 +167,34 @@ function Question() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        // Get the token from localStorage
+        const token = localStorage.getItem("token");
+        
+        if (!token) {
+          console.warn("❌ No token found in localStorage");
+          return; // Exit if no token is found
+        }
+        
+        // Send token in Authorization header
         const res = await fetch("http://localhost:5000/api/user", {
-          credentials: "include"
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         });
+        
         if (!res.ok) throw new Error("User fetch failed");
 
         const data = await res.json();
-        setCurrentUserId(data.id);
-        setUserName(data.name);
+        
+        // Use the _id from the response directly
+        const userId = data._id || data.id;
+        
+        console.log("✅ Logged in as:", data.firstName || data.displayName, data.role);
+        console.log("✅ User ID:", userId);
+        
+        setCurrentUserId(userId);
+        setUserName(data.firstName || data.displayName || data.name);
         setUserRole(data.role);
-        console.log("✅ Logged in as:", data.name, data.role);
       } catch (err) {
         console.warn("❌ User not logged in:", err.message);
       }
@@ -188,7 +206,7 @@ function Question() {
 
   const toggleMyQuestions = () => {
     setShowMyQuestions(prev => !prev);
-    setCurrentPage(1); // reset paginator
+    setCurrentPage(1); // Reset to first page when toggling between My Questions and All Questions
   };
   const handleTagClick = async (tag) => {
     setSelectedTag(tag); // Set the selected tag for filtering questions
@@ -283,7 +301,19 @@ function Question() {
 
     // 👇 If "My Questions" is toggled
     if (showMyQuestions && currentUserId) {
-      filteredQuestions = filteredQuestions.filter(q => q.user === currentUserId);
+      console.log("Filtering My Questions. Current User ID:", currentUserId);
+      
+      filteredQuestions = filteredQuestions.filter(q => {
+        // Handle different formats of IDs by converting both to strings
+        const questionUserId = q.user?.toString();
+        const userIdStr = currentUserId?.toString();
+        
+        console.log("Question user ID:", questionUserId, "Current user ID:", userIdStr);
+        
+        return questionUserId === userIdStr;
+      });
+      
+      console.log("Filtered questions count:", filteredQuestions.length);
     }
 
     const indexOfLastQuestion = currentPage * questionsPerPage;
@@ -291,7 +321,11 @@ function Question() {
     const currentQuestions = filteredQuestions.slice(indexOfFirstQuestion, indexOfLastQuestion);
     const totalPages = Math.ceil(filteredQuestions.length / questionsPerPage);
 
-    return { currentQuestions, totalPages };
+    return { 
+      currentQuestions, 
+      totalPages, 
+      totalFiltered: filteredQuestions.length 
+    };
   }, [currentPage, questionsPerPage, questions, currentUserId, showMyQuestions]);
 
 
@@ -474,9 +508,36 @@ const clearSearch = () => {
 const highlightText = (text, query) => {
   if (!query) return text;
 
-  const regex = new RegExp(`(${query})`, "gi"); // Case-insensitive search
-  return text.replace(regex, `<span style="background-color: yellow;">$1</span>`);
+  // Strip HTML tags for search purposes but preserve the content
+  const stripHtml = (html) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || "";
+  };
+
+  try {
+    // For highlighting, we need to work with plain text
+    const plainText = stripHtml(text);
+    
+    // Only highlight if we have a query and text to search in
+    if (query && plainText) {
+      const regex = new RegExp(`(${query})`, "gi"); // Case-insensitive search
+      // Return the original HTML but with highlighted text where matches occur
+      return text.replace(regex, `<span style="background-color: yellow;">$1</span>`);
+    }
+    
+    return text;
+  } catch (error) {
+    console.error("Error in highlightText:", error);
+    return text; // Return original text if any error occurs
+  }
 };
+
+// Utility function to strip HTML tags
+const stripHtml = (html) => {
+  const doc = new window.DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || "";
+};
+
   return (
     <div style={{ backgroundColor: "#F8FAFC", minHeight: "100vh" }}>
       <motion.div
@@ -511,45 +572,57 @@ const highlightText = (text, query) => {
                 <h1
                   style={{ fontSize: "1.5rem", fontWeight: "600", margin: 0 }}
                 >
-                  All Questions
+                  {showMyQuestions ? "My Questions" : "All Questions"}
                 </h1>
 
-                {/* Right: Ask Question Button */}
-                <button
-                  onClick={() => navigate("/askquestion")}
-                  style={{
-                    backgroundColor: "#2563EB",
-                    color: "#FFFFFF",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "8px",
-                    fontSize: "0.875rem",
-                    fontWeight: "600",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  Ask Question
-                </button>
+                {/* Right: Section with authentication-based display */}
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                  {currentUserId && (
+                    <motion.button
+                      onClick={toggleMyQuestions}
+                      initial={{ opacity: 0.9 }}
+                      animate={{ opacity: 1 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.98 }}
+                      style={{
+                        backgroundColor: showMyQuestions ? "#F59E0B" : "#2563EB",
+                        color: "#FFFFFF",
+                        padding: "0.5rem 1rem",
+                        borderRadius: "8px",
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        transition: "background-color 0.3s ease"
+                      }}
+                    >
+                      <span role="img" aria-label="filter" style={{ fontSize: "1rem" }}>
+                        {showMyQuestions ? "🔍" : "👤"}
+                      </span>
+                      {showMyQuestions ? "All Questions" : "My Questions"}
+                    </motion.button>
+                  )}
+                  
+                  <button
+                    onClick={() => navigate("/askquestion")}
+                    style={{
+                      backgroundColor: "#2563EB",
+                      color: "#FFFFFF",
+                      padding: "0.75rem 1.5rem",
+                      borderRadius: "8px",
+                      fontSize: "0.875rem",
+                      fontWeight: "600",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Ask Question
+                  </button>
+                </div>
               </div>
-              {currentUserId && (
-                <button
-                  onClick={toggleMyQuestions}
-                  style={{
-                    marginRight: "10px",
-                    backgroundColor: showMyQuestions ? "#F59E0B" : "#2563EB",
-                    color: "#FFFFFF",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "8px",
-                    fontSize: "0.875rem",
-                    fontWeight: "600",
-                    border: "none",
-                    cursor: "pointer",
-                    marginBottom: "10px",
-                  }}
-                >
-                  {showMyQuestions ? "All Questions" : "My Questions"}
-                </button>
-              )}
 
               {/* Search Bar */}
               <div
@@ -691,9 +764,9 @@ const highlightText = (text, query) => {
                       }}
                     >
                       <span style={{ fontWeight: "600", color: "#1E293B" }}>
-                        {questions.length}
+                        {showMyQuestions ? paginationData.totalFiltered : questions.length}
                       </span>
-                      <span>questions</span>
+                      <span>{showMyQuestions ? "my questions" : "questions"}</span>
                     </div>
 
                     {/* Filter Button */}
@@ -844,127 +917,160 @@ const highlightText = (text, query) => {
               </div>
               {/* Question Cards */}
               <div>
-                {paginationData.currentQuestions.map((question) => (
-                  <motion.div key={question._id} style={questionCardStyle} onClick={() => handleQuestionClick(question._id)}>
-                    {/* Question Title with Dynamic Link */}
-                    <h3 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "0.5rem" }}>
-                      <Link
-                        to={`/questionthread/${question._id}`}
-                        style={{
-                          textDecoration: "none",
-                          color: "#2563EB",
-                          transition: "color 0.3s",
-                        }}
-                        onMouseOver={(e) => (e.target.style.color = "#1D4ED8")}
-                        onMouseOut={(e) => (e.target.style.color = "#2563EB")}
-                      >
-                        {question.title}
-                      </Link>
-                    </h3>
-
-                    {/* Question Description */}
-                    <div
-                       style={{ color: "#64748B", marginBottom: "0.5rem" }}
-                       dangerouslySetInnerHTML={{
-                         __html: highlightText(question.details, searchQuery),
-                       }}
-                    />
-                    <p style={{ color: "#64748B", marginBottom: "0.5rem" }}>
-                      {question.description}
-                    </p>
-
-                    {/* Tags */}
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        marginBottom: "1rem",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      {question.tags.map((tag) => (
-                        <span
-                          key={tag}
+                {paginationData.currentQuestions.length > 0 ? (
+                  paginationData.currentQuestions.map((question) => (
+                    <motion.div key={question._id} style={questionCardStyle} onClick={() => handleQuestionClick(question._id)}>
+                      {/* Question Title with Dynamic Link */}
+                      <h3 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "0.5rem" }}>
+                        <Link
+                          to={`/questionthread/${question._id}`}
                           style={{
-                            backgroundColor: "#E5E7EB",
-                            padding: "0.25rem 0.5rem",
-                            borderRadius: "4px",
-                            fontSize: "0.875rem",
-                            color: "#1E293B",
+                            textDecoration: "none",
+                            color: "#2563EB",
+                            transition: "color 0.3s",
                           }}
+                          onMouseOver={(e) => (e.target.style.color = "#1D4ED8")}
+                          onMouseOut={(e) => (e.target.style.color = "#2563EB")}
                         >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                          {stripHtml(question.title)}
+                        </Link>
+                      </h3>
 
-                    {/* Display User Info (Name and Role) */}
-                    <div style={{ fontSize: "0.875rem", color: "#64748B", marginBottom: "1rem" }}>
-                      <span style={{ fontWeight: "600", color: "#1E293B" }}>
-                        {question.userName} ({question.userRole})
-                      </span>
-                    </div>
-
-                    {/* Question Metadata */}
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: "1rem" }}>
-
-                        <span style={{ color: "#1E293B" }}>
-                          <strong>{Array.isArray(question.answers) ? question.answers.length : 0}</strong> answers
-                        </span>
-                        <span style={{ color: "#1E293B" }}>
-                          <strong>{question.views}</strong> views
-                        </span>
-                      </div>
-                      <div style={{ color: "#64748B", fontSize: "0.875rem" }}>
-                        {question.user === currentUserId && (
-                          <div
+                      {/* Question Description */}
+                      <div
+                         style={{ color: "#64748B", marginBottom: "0.5rem" }}
+                         dangerouslySetInnerHTML={{
+                           __html: highlightText(question.details, searchQuery),
+                         }}
+                      />
+                      
+                      {/* Tags */}
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "0.5rem",
+                          marginBottom: "1rem",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {question.tags.map((tag) => (
+                          <span
+                            key={tag}
                             style={{
-                              marginTop: "0.5rem",
-                              display: "flex",
-                              gap: "10px",
-                              justifyContent: "flex-end",
+                              backgroundColor: "#E5E7EB",
+                              padding: "0.25rem 0.5rem",
+                              borderRadius: "4px",
+                              fontSize: "0.875rem",
+                              color: "#1E293B",
                             }}
                           >
-                            <button
-                              onClick={() => handleEdit(question)}
-                              style={{
-                                padding: "6px 12px",
-                                backgroundColor: "#facc15",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              ✏️ Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(question._id)}
-                              style={{
-                                padding: "6px 12px",
-                                backgroundColor: "#ef4444",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              🗑️ Delete
-                            </button>
-                          </div>
-                        )}
+                            {tag}
+                          </span>
+                        ))}
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+
+                      {/* Display User Info (Name and Role) */}
+                      <div style={{ fontSize: "0.875rem", color: "#64748B", marginBottom: "1rem" }}>
+                        <span style={{ fontWeight: "600", color: "#1E293B" }}>
+                          {question.userName} ({question.userRole})
+                        </span>
+                      </div>
+
+                      {/* Question Metadata */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: "1rem" }}>
+
+                          <span style={{ color: "#1E293B" }}>
+                            <strong>{Array.isArray(question.answers) ? question.answers.length : 0}</strong> answers
+                          </span>
+                          <span style={{ color: "#1E293B" }}>
+                            <strong>{question.views}</strong> views
+                          </span>
+                        </div>
+                        <div style={{ color: "#64748B", fontSize: "0.875rem" }}>
+                          {question.user === currentUserId && (
+                            <div
+                              style={{
+                                marginTop: "0.5rem",
+                                display: "flex",
+                                gap: "10px",
+                                justifyContent: "flex-end",
+                              }}
+                            >
+                              <button
+                                onClick={() => handleEdit(question)}
+                                style={{
+                                  padding: "6px 12px",
+                                  backgroundColor: "#facc15",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(question._id)}
+                                style={{
+                                  padding: "6px 12px",
+                                  backgroundColor: "#ef4444",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div style={{
+                    backgroundColor: "#FFFFFF",
+                    padding: "2rem",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                    marginTop: "1rem",
+                    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
+                  }}>
+                    <h3 style={{ fontSize: "1.25rem", color: "#4B5563", marginBottom: "1rem" }}>
+                      {showMyQuestions 
+                        ? "You haven't asked any questions yet." 
+                        : searchQuery 
+                          ? "No questions found matching your search." 
+                          : "No questions found."}
+                    </h3>
+                    {showMyQuestions && (
+                      <button
+                        onClick={() => navigate("/askquestion")}
+                        style={{
+                          backgroundColor: "#2563EB",
+                          color: "#FFFFFF",
+                          padding: "0.75rem 1.5rem",
+                          borderRadius: "8px",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: "0.875rem",
+                          fontWeight: "600"
+                        }}
+                      >
+                        Ask Your First Question
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
 

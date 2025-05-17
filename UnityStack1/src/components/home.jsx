@@ -16,6 +16,7 @@ const Home = () => {
   const [displayedSubText, setDisplayedSubText] = useState("");
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const phrases = [
     "Real-time collaboration.",
     "Q/A Sessions.",
@@ -23,6 +24,13 @@ const Home = () => {
   ];
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const token = localStorage.getItem("token");
+    setIsAuthenticated(!!token);
+  }, []);
+
   useEffect(() => {
     const typeSubText = () => {
       const currentPhrase = phrases[currentPhraseIndex];
@@ -40,6 +48,30 @@ const Home = () => {
     const subInterval = setTimeout(typeSubText, 100);
     return () => clearTimeout(subInterval);
   }, [charIndex, currentPhraseIndex, phrases]);
+
+  const handleGetStarted = () => {
+    if (isAuthenticated) {
+      navigate("/question");
+    } else {
+      navigate("/login");
+    }
+  };
+
+  const handleBrowseExperts = () => {
+    if (isAuthenticated) {
+      navigate("/Getexperthelp");
+    } else {
+      navigate("/login");
+    }
+  };
+
+  const handleGetExpertHelp = () => {
+    if (isAuthenticated) {
+      navigate("/Getexperthelp");
+    } else {
+      navigate("/login");
+    }
+  };
 
   return (
     <motion.div
@@ -106,6 +138,7 @@ const Home = () => {
               |
             </span>
           </p>
+
           {/* Call-to-Action Buttons */}
           <div
             style={{
@@ -115,134 +148,100 @@ const Home = () => {
               marginTop: "10px",
             }}
           >
-            <Link to="/login" style={{ textDecoration: "none" }}>
-              <button
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "10px 20px",
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  textDecoration: "none",
-                  backgroundColor: "white",
-                  color: "#2563EB",
-                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                  transition: "background-color 0.3s ease, color 0.3s ease",
-                }}
-                onMouseOver={(e) => (
-                  (e.target.style.backgroundColor = "white"),
-                  (e.target.style.color = "#2563EB")
-                )}
-                onMouseOut={(e) => (
-                  (e.target.style.backgroundColor = "#2563EB"),
-                  (e.target.style.color = "white")
-                )}
-              >
-                🚀 Get Started Now
-              </button>
-            </Link>
-            <Link to="/login" style={{ textDecoration: "none" }}>
-              <button
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "10px 20px",
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                  border: "2px solid black",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  textDecoration: "none",
-                  backgroundColor: "transparent",
-                  color: "black",
-                  transition: "background-color 0.3s ease, color 0.3s ease",
-                }}
-                onMouseOver={(e) => (
-                  (e.target.style.backgroundColor = "black"),
-                  (e.target.style.color = "#2563EB")
-                )}
-                onMouseOut={(e) => (
-                  (e.target.style.backgroundColor = "transparent"),
-                  (e.target.style.color = "black")
-                )}
-              >
-                Browse Experts
-              </button>
-            </Link>
-          </div>
-          {/* search bar*/}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "10px",
-              marginTop: "80px",
-            }}
-          >
-            <input
-              style={{
-                padding: "10px 15px",
-                fontSize: "16px",
-                border: "1px solid #d1d5db",
-                borderRadius: "5px",
-                width: "300px",
-              }}
-              type="text"
-              placeholder="Describe your coding challenge or problem..."
-            />
-            <input
-              style={{
-                padding: "10px 15px",
-                fontSize: "16px",
-                border: "1px solid #d1d5db",
-                borderRadius: "5px",
-                width: "300px",
-              }}
-              type="text"
-              placeholder="Technology (e.g., React, Python)"
-            />
             <button
+              onClick={handleGetStarted}
               style={{
-                backgroundColor: "#2563EB",
-                color: "white",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "10px",
                 padding: "10px 20px",
+                fontSize: "16px",
+                fontWeight: "bold",
                 border: "none",
                 borderRadius: "5px",
-                fontSize: "16px",
                 cursor: "pointer",
-                transition: "background-color 0.3s ease",
+                textDecoration: "none",
+                backgroundColor: "white",
+                color: "#2563EB",
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                transition: "background-color 0.3s ease, color 0.3s ease",
               }}
+              onMouseOver={(e) => (
+                (e.target.style.backgroundColor = "white"),
+                (e.target.style.color = "#2563EB")
+              )}
+              onMouseOut={(e) => (
+                (e.target.style.backgroundColor = "#2563EB"),
+                (e.target.style.color = "white")
+              )}
             >
-              Find Help
+              🚀 Get Started Now
+            </button>
+
+            <button
+              onClick={handleBrowseExperts}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 20px",
+                fontSize: "16px",
+                fontWeight: "bold",
+                border: "2px solid black",
+                borderRadius: "5px",
+                cursor: "pointer",
+                textDecoration: "none",
+                backgroundColor: "transparent",
+                color: "black",
+                transition: "background-color 0.3s ease, color 0.3s ease",
+              }}
+              onMouseOver={(e) => (
+                (e.target.style.backgroundColor = "black"),
+                (e.target.style.color = "white")
+              )}
+              onMouseOut={(e) => (
+                (e.target.style.backgroundColor = "transparent"),
+                (e.target.style.color = "black")
+              )}
+            >
+              Browse Experts
             </button>
           </div>
 
-          <a
-            href="/advancesearch"
+          {/* Advanced Search Button */}
+          <button
+            onClick={() => navigate("/advancesearch")}
             style={{
-              display: "block",
-              marginTop: "1rem",
-              color: "#2563EB",
-              textDecoration: "none",
-              letterSpacing: "0.1rem",
-              fontWeight: "normal",
-              fontSize: "1.2rem",
-              transition: "color 0.3s ease",
-              marginLeft: "300px",
+              marginTop: "20px",
+              padding: "10px 20px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              backgroundColor: "#2563EB",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "all 0.3s ease",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
             }}
-            onMouseOver={(e) => (e.target.style.color = "black")}
-            onMouseOut={(e) => (
-              (e.target.style.backgroundColor = "transparent"),
-              (e.target.style.color = "#2563EB")
-            )}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = "#1E40AF";
+              e.target.style.transform = "translateY(-2px)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = "#2563EB";
+              e.target.style.transform = "translateY(0)";
+            }}
           >
-            Advanced search
-          </a>
+            🔍 Advanced Search
+          </button>
+
+          {/* Second Get Started Button */}
+         
+         
         </main>
 
         {/* What We Provide Section */}

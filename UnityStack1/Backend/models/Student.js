@@ -44,7 +44,9 @@ const studentSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/.test(v) : true;
+          if (!v) return true; // Allow empty
+          // More permissive regex that accepts various forms of LinkedIn URLs
+          return /linkedin\.com/i.test(v);
         },
         message: (props) => `${props.value} is not a valid LinkedIn profile URL!`,
       },
@@ -54,7 +56,9 @@ const studentSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return v ? /^(https?:\/\/)?(www\.)?github\.com\/.*$/.test(v) : true;
+          if (!v) return true; // Allow empty
+          // More permissive regex that accepts various forms of GitHub URLs
+          return /github\.com/i.test(v);
         },
         message: (props) => `${props.value} is not a valid GitHub profile URL!`,
       },

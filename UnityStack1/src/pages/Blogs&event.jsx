@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Modal, Button, Form, Spinner, Alert } from "react-bootstrap";
-import { FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
+import { FaEdit, FaTrashAlt, FaPlus, FaCheck, FaTrash } from "react-icons/fa";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -9,6 +9,11 @@ import "bootstrap/dist/css/bootstrap.min.css";
 const BlogsAndEvents = () => {
   const [blogs, setBlogs] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [successIcon, setSuccessIcon] = useState("check");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPost, setCurrentPost] = useState(null);
@@ -110,6 +115,8 @@ const BlogsAndEvents = () => {
                     },
                 }
             );
+            setSuccessMessage("Post updated successfully!");
+            setSuccessIcon("check");
         } else {
             // ✅ Create a new post
             response = await axios.post(
@@ -122,6 +129,8 @@ const BlogsAndEvents = () => {
                     },
                 }
             );
+            setSuccessMessage("Post created successfully!");
+            setSuccessIcon("check");
         }
 
         console.log("✅ Post submitted successfully:", response.data);
@@ -129,8 +138,13 @@ const BlogsAndEvents = () => {
         // Refresh posts
         fetchBlogs();
 
-        // Close the modal and reset form
+        // Close the form modal
         setShowModal(false);
+        
+        // Show success modal
+        setShowSuccessModal(true);
+        
+        // Reset form
         setFormData({ title: "", image: null, description: "" });
         setCurrentPost(null);
         setError(null);
@@ -160,19 +174,34 @@ const BlogsAndEvents = () => {
     setShowModal(true);
   };
 
+  // ✅ Open delete confirmation modal
+  const confirmDelete = (post) => {
+    setPostToDelete(post);
+    setShowDeleteConfirmModal(true);
+  };
+
   // ✅ Delete post
-  const handleDelete = async (postId) => {
-    if (window.confirm("⚠ Are you sure you want to delete this post?")) {
-      try {
-        const token = localStorage.getItem("token");
-        await axios.delete(`http://localhost:5000/api/organizations/posts/${postId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        fetchBlogs();
-      } catch (error) {
-        console.error("❌ Error deleting post:", error);
-        setError("Failed to delete post. Please try again.");
-      }
+  const handleDelete = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/organizations/posts/${postToDelete._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      // Close the delete confirmation modal
+      setShowDeleteConfirmModal(false);
+      
+      // Show success message for deletion
+      setSuccessMessage("Post deleted successfully!");
+      setSuccessIcon("trash");
+      setShowSuccessModal(true);
+      
+      // Refresh blogs
+      fetchBlogs();
+    } catch (error) {
+      console.error("❌ Error deleting post:", error);
+      setError("Failed to delete post. Please try again.");
+      setShowDeleteConfirmModal(false);
     }
   };
 
@@ -211,6 +240,10 @@ const BlogsAndEvents = () => {
                   alt={blog.title}
                   className="card-img-top"
                   style={{ height: "200px", objectFit: "cover" }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                  }}
                 />
                 {/* ✅ Blog Body */}
                 <div className="card-body">
@@ -224,7 +257,7 @@ const BlogsAndEvents = () => {
                     <Button variant="warning" size="sm" onClick={() => handleEdit(blog)}>
                       <FaEdit className="me-1" /> Edit
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(blog._id)}>
+                    <Button variant="danger" size="sm" onClick={() => confirmDelete(blog)}>
                       <FaTrashAlt className="me-1" /> Delete
                     </Button>
                   </div>
@@ -262,6 +295,74 @@ const BlogsAndEvents = () => {
           </Button>
           <Button variant="primary" onClick={handleSubmit}>
             {currentPost ? "Update" : "Post"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      
+      {/* ✅ Delete Confirmation Modal */}
+      <Modal show={showDeleteConfirmModal} onHide={() => setShowDeleteConfirmModal(false)} centered>
+        <Modal.Header closeButton style={{ background: "#f8d7da", borderBottom: "1px solid #f5c6cb" }}>
+          <Modal.Title style={{ color: "#721c24" }}>
+            <FaTrash className="me-2" /> Confirm Delete
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center py-4">
+          <div className="mb-3">
+            <span style={{ fontSize: "3rem", color: "#dc3545" }}>
+              <FaTrash />
+            </span>
+          </div>
+          <h5>Are you sure you want to delete this post?</h5>
+          <p className="text-muted">This action cannot be undone.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDelete}>
+            Delete
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      
+      {/* ✅ Success Modal */}
+      <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)} centered>
+        <Modal.Header closeButton style={{ 
+          background: successIcon === "trash" ? "#f8d7da" : "#d4edda", 
+          borderBottom: successIcon === "trash" ? "1px solid #f5c6cb" : "1px solid #c3e6cb" 
+        }}>
+          <Modal.Title style={{ 
+            color: successIcon === "trash" ? "#721c24" : "#155724" 
+          }}>
+            {successIcon === "trash" ? (
+              <><FaTrash className="me-2" /> Success</>
+            ) : (
+              <><FaCheck className="me-2" /> Success</>
+            )}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center py-4">
+          <div className="mb-3">
+            <span style={{ 
+              fontSize: "3rem", 
+              color: successIcon === "trash" ? "#dc3545" : "#28a745" 
+            }}>
+              {successIcon === "trash" ? <FaTrash /> : <FaCheck />}
+            </span>
+          </div>
+          <h5>{successMessage}</h5>
+          <p className="text-muted">
+            {successIcon === "trash" 
+              ? "The post has been successfully removed." 
+              : "Your content has been published and is now visible."}
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button 
+            variant={successIcon === "trash" ? "danger" : "success"} 
+            onClick={() => setShowSuccessModal(false)}
+          >
+            Done
           </Button>
         </Modal.Footer>
       </Modal>
