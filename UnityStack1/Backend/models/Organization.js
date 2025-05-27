@@ -93,6 +93,9 @@ const organizationSchema = new mongoose.Schema(
         },
       },
     ],
+
+    // ✅ Stripe Account ID for payouts
+    stripeAccountId: { type: String, trim: true },
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt timestamps
 );

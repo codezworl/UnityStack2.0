@@ -4,6 +4,13 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Project = require('../models/Project');
 const Payment = require('../models/Payment');
+const { createPaymentIntent, handleStripePaymentSuccess, handleStripeWebhook } = require('../Controllers/paymentController');
+
+// Stripe payment routes
+router.post('/create-payment-intent', auth, createPaymentIntent);
+router.post('/confirm-payment', auth, handleStripePaymentSuccess);
+router.post('/payment-success', auth, handleStripePaymentSuccess);
+router.post('/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
 
 // Simple payment without Stripe
 router.post('/simple-payment', auth, async (req, res) => {
@@ -19,60 +26,27 @@ router.post('/simple-payment', auth, async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    // Check if payment already completed
-    const existingPayment = await Payment.findOne({ projectId });
-    if (existingPayment && existingPayment.status === 'completed') {
-      return res.status(400).json({ message: 'Payment already completed for this project' });
-    }
-
-    let payment;
-    if (existingPayment) {
-      payment = await Payment.findByIdAndUpdate(
-        existingPayment._id,
-        {
-          status: 'completed',
-          amount: amount,
-          paymentDate: new Date()
-        },
-        { new: true }
-      );
-    } else {
-      payment = new Payment({
-        userId: req.user._id,
-        projectId,
-        developerId,
-        amount,
-        status: 'completed',
-        paymentDate: new Date(),
-        paymentIntentId: `simple_${Date.now()}`
-      });
-      await payment.save();
-    }
-
-    // Update project: set payment status to paid and status to in-progress
-    const updatedProject = await Project.findByIdAndUpdate(
+    // Create payment record
+    const payment = new Payment({
       projectId,
-      {
-        paymentStatus: 'paid',
-        paymentDate: new Date(),
-        status: 'in-progress', // Change from "assigned" to "in-progress" after payment
-        startDate: new Date() // Set start date when payment is made
-      },
-      { new: true }
-    );
+      developerId,
+      amount,
+      status: 'completed',
+      paymentDate: new Date()
+    });
+    await payment.save();
 
-    if (!updatedProject) {
-      await Payment.findByIdAndUpdate(payment._id, { status: 'failed' });
-      return res.status(500).json({ message: 'Failed to update project status' });
-    }
+    // Update project status
+    project.paymentStatus = 'paid';
+    project.status = 'in-progress';
+    project.startDate = new Date();
+    await project.save();
 
-    console.log("Payment completed, project status updated to in-progress");
-
-    res.json({ 
-      success: true, 
-      message: 'Payment completed successfully', 
-      payment, 
-      project: updatedProject 
+    res.json({
+      success: true,
+      message: 'Payment processed successfully',
+      payment,
+      project
     });
   } catch (error) {
     console.error('Error processing payment:', error);

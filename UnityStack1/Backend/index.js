@@ -7,14 +7,17 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
+// there stripe
 const questionRoutes = require("./routes/questionroutes");
 const projectRoutes = require("./routes/projectRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const submissionRoutes = require("./routes/submissionRoutes");
 const http = require("http"); // Import the http module
 const socketIo = require("socket.io"); // Import socket.io
 const adminRoutes = require('./routes/adminroutes');
 const adminController = require('./Controllers/admincontroller');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+const reviewRoutes = require("./routes/reviewRoutes");
 
 dotenv.config();
 
@@ -25,7 +28,9 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.json()); // ✅ Ensure JSON parsing (Fix for API requests)
 app.use(cookieParser()); // ✅ Enable req.cookies
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false // Disable helmet's CSP, use manual CSP below
+}));
 
 // ✅ Improved CORS Configuration
 app.use(cors({
@@ -317,43 +322,25 @@ app.use("/api/developers", DeveloperRoutes);
 app.use("/api", UnifiedLoginRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/reviews", reviewRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use("/api/submissions", submissionRoutes);
 
-// Security Headers
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "https://api.stripe.com", "https://api.emailjs.com", "http://localhost:*"],
-        imgSrc: ["'self'", "data:", "blob:", "https://via.placeholder.com"],
-        // Include other directives as needed
-      },
-    },
-  })
-);
-
-// Update the security headers middleware
+// Set a single, comprehensive CSP header for Stripe
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https: http:; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://js.stripe.com/basil/; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.stripe.com https://api.emailjs.com http://localhost:*; " +
+    "connect-src 'self' https://api.stripe.com https://api.emailjs.com http://localhost:* https://js.stripe.com; " +
     "frame-src 'self' https://js.stripe.com; " +
     "frame-ancestors 'self'; " +
     "form-action 'self' https://api.stripe.com;"
   );
-  
-  // Update COEP and COOP headers
-  res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  
   next();
 });
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FiDollarSign, FiFileText, FiUser, FiClock } from "react-icons/fi";
+import { FiDollarSign, FiFileText, FiUser, FiClock, FiDownload } from "react-icons/fi";
 import { loadStripe } from '@stripe/stripe-js';
 import noProjects from "../assets/freelance-job.png";  // Changed to use an existing image
 import { useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
 
 const BidModal = ({ isOpen, onClose, project, bids, onAssignProject, onChatClick }) => {
   useEffect(() => {
@@ -180,180 +181,20 @@ const BidModal = ({ isOpen, onClose, project, bids, onAssignProject, onChatClick
     </div>
   );
 };
-const PaymentModalNew = ({ isOpen, onClose, project, fetchInvoiceProjects }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const handlePayment = async () => {
-    console.log("handlePayment started");
-  
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert("You must be logged in.");
-      return;
-    }
-  
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch('http://localhost:5000/api/payments/simple-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          projectId: project._id,
-          amount: project.acceptedBidAmount || project.budget,
-          developerId: project.assignedDeveloper._id || project.assignedDeveloper
-        })
-      });
-      console.log("Payment response status:", response.status);
-  
-      if (!response.ok) {
-        const err = await response.json();
-        console.error("Payment error response:", err);
-        throw new Error(err.message || "Payment failed");
-      }
-  
-      const data = await response.json();
-      console.log("Payment success data:", data);
-      
-      // Update project status to in-progress after successful payment
-      const updateResponse = await fetch(`http://localhost:5000/api/projects/${project._id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'in-progress' })
-      });
-      
-      if (updateResponse.ok) {
-        console.log("Project status updated to in-progress");
-      }
-      
-      alert("Payment successful! Project is now in progress.");
-      onClose();
-      if (fetchInvoiceProjects) fetchInvoiceProjects();
-    } catch (err) {
-      console.error("Payment error:", err);
-      setError(err.message || "Payment failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  const amount = project?.acceptedBidAmount || project?.budget || 0;
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: '24px',
-        width: '100%',
-        maxWidth: '500px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-        }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: '20px',
-            fontWeight: '600',
-            color: '#111827',
-          }}>
-            Payment Details
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '20px',
-              cursor: 'pointer',
-              color: '#6B7280',
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <p style={{ margin: '0 0 8px 0', color: '#374151' }}>
-            Project: {project?.title}
-          </p>
-          <p style={{ margin: '0 0 8px 0', color: '#374151' }}>
-            Developer: {project?.assignedDeveloper?.firstName} {project?.assignedDeveloper?.lastName}
-          </p>
-          <p style={{ margin: '0', color: '#374151', fontWeight: '500' }}>
-            Amount: PKR {amount.toLocaleString()}
-          </p>
-        </div>
-
-        {error && (
-          <div style={{
-            color: '#DC2626',
-            fontSize: '14px',
-            marginBottom: '16px',
-            padding: '12px',
-            backgroundColor: '#FEF2F2',
-            border: '1px solid #FCA5A5',
-            borderRadius: '6px',
-          }}>
-            {error}
-          </div>
-        )}
-
-        <button
-          onClick={handlePayment}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: loading ? '#9CA3AF' : '#2563EB',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? 'Processing...' : `Pay PKR ${amount.toLocaleString()}`}
-        </button>
-      </div>
-    </div>
-  );
-};
 const FindDeveloper = () => {
   const [bidsList, setBidsList] = useState([]);
-  const [activeTab, setActiveTab] = useState("post"); // Active tab state
-  const [showForm, setShowForm] = useState(false); // Toggle for create request form
-  const [currentRequests, setCurrentRequests] = useState([]); // Current requests
-  const [selectedBid, setSelectedBid] = useState(null); // Selected bid for viewing details
-  const [showBidModal, setShowBidModal] = useState(false); // Toggle for bid details modal
-  const [selectedProject, setSelectedProject] = useState(null); // Selected project for viewing bids
-  const [projects, setProjects] = useState([]); // Initialize as empty array
+  const [activeTab, setActiveTab] = useState("post");
+  const [showForm, setShowForm] = useState(false);
+  const [currentRequests, setCurrentRequests] = useState([]);
+  const [selectedBid, setSelectedBid] = useState(null);
+  const [showBidModal, setShowBidModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [invoiceProjects, setInvoiceProjects] = useState([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceError, setInvoiceError] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -392,8 +233,6 @@ const FindDeveloper = () => {
 
   const [activeProjects, setActiveProjects] = useState([]);
 
-  const [invoiceProjects, setInvoiceProjects] = useState([]);
-
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedDeveloper, setSelectedDeveloper] = useState(null);
 
@@ -415,8 +254,7 @@ const FindDeveloper = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState(null);
 
-  const [showPaymentModalNew, setShowPaymentModalNew] = useState(false);
-  const [selectedProjectForPayment, setSelectedProjectForPayment] = useState(null);
+  const [showChatLoginModalLogin, setShowChatLoginModalLogin] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -598,28 +436,76 @@ const FindDeveloper = () => {
       const token = localStorage.getItem("token");
       if (!token) {
         console.warn("No token found, user might need to login");
+        toast.error("Please login to view projects");
         return;
       }
 
-      console.log("🔍 Fetching user's own projects for review bids...");
+      // First get current user info to ensure we have the correct user ID
+      const userResponse = await fetch("http://localhost:5000/api/user", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: "include"
+      });
+
+      if (!userResponse.ok) {
+        throw new Error("Failed to get user information");
+      }
+
+      const userData = await userResponse.json();
+      const currentUserId = userData.id;
+      const currentUserRole = userData.role;
+
+      console.log("🔍 Fetching projects for user:", currentUserId, "with role:", currentUserRole);
       
       const response = await fetch("http://localhost:5000/api/projects", {
         headers: {
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch projects");
+        const errorData = await response.json();
+        console.error("Failed to fetch projects:", errorData);
+        throw new Error(errorData.message || "Failed to fetch projects");
       }
 
       const data = await response.json();
-      console.log("📋 User's projects received:", data);
-      setCurrentRequests(data); // Set to currentRequests for post tab
-      setProjects(data); // Also set to projects for bids tab
+      console.log("📋 All projects received:", data);
+      
+      if (!Array.isArray(data)) {
+        console.error("Received non-array data:", data);
+        return;
+      }
+
+      // Filter projects based on user role and ID
+      const filteredProjects = data.filter(project => {
+        // First check if project is not completed
+        if (project.status === 'completed') {
+          return false;
+        }
+
+        // Then check if project belongs to the current user based on role
+        if (currentUserRole === "organization") {
+          return project.companyId?._id === currentUserId;
+        } else if (currentUserRole === "student") {
+          return project.userId?._id === currentUserId;
+        } else if (currentUserRole === "developer") {
+          return project.developerId?._id === currentUserId;
+        }
+        return false;
+      });
+      
+      console.log("📋 Filtered projects for current user:", filteredProjects);
+      
+      setCurrentRequests(filteredProjects); // Set to currentRequests for post tab
+      setProjects(filteredProjects); // Also set to projects for bids tab
     } catch (error) {
       console.error("Error fetching user projects:", error);
+      toast.error(error.message || "Failed to load projects");
     }
   };
 
@@ -920,6 +806,7 @@ const FindDeveloper = () => {
       setSelectedProject(null);
 
       alert("Bid submitted successfully!");
+      fetchUserProjects(); // Refresh the projects list after submitting a bid
     } catch (error) {
       console.error("Error submitting bid:", error);
       alert(error.message || "Failed to submit bid");
@@ -975,7 +862,7 @@ const FindDeveloper = () => {
             },
             body: JSON.stringify({
               developerId: bid.userId,
-              status: "in-progress",
+              
               startDate: new Date().toISOString(),
             }),
           }
@@ -1418,92 +1305,198 @@ const FindDeveloper = () => {
 
   // Project Details Modal Component
   const ProjectDetailsModal = ({ project, onClose }) => {
+    const navigate = useNavigate();
+
     const handleContactClick = () => {
       handleChatWithDeveloper(project.developerId);
     };
 
+    const handleViewSubmission = () => {
+      navigate(`/view-submission/${project._id}`);
+    };
+
     return (
-      <div className="modal-overlay">
-        <div className="modal-content">
-          <div
-            style={{
-              padding: "24px",
-              maxWidth: "600px",
-              backgroundColor: "white",
-              borderRadius: "8px",
-              position: "relative",
-            }}
-          >
-            <button
-              onClick={onClose}
-              style={{
-                position: "absolute",
-                right: "16px",
-                top: "16px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "8px",
-              }}
-            >
-              ×
-            </button>
-
-            <h2 style={{ marginBottom: "16px" }}>{project.title}</h2>
-            <p style={{ marginBottom: "24px", color: "#666" }}>
-              {project.description}
-            </p>
-
-            <div style={{ marginBottom: "24px" }}>
-              <h3 style={{ marginBottom: "8px" }}>Project Details</h3>
-              <p>
-                <strong>Budget:</strong> ${project.budget}
-              </p>
-              <p>
-                <strong>Deadline:</strong>{" "}
-                {new Date(project.deadline).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Status:</strong> {project.status}
-              </p>
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          width: '90%',
+          maxWidth: '800px',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          position: 'relative'
+        }}>
+          {/* Header */}
+          <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>{project.title}</h2>
+              <button
+                onClick={onClose}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  padding: '4px'
+                }}
+              >
+                ×
+              </button>
             </div>
+            <p style={{ margin: '0', color: '#6B7280' }}>{project.description}</p>
+          </div>
 
-            <div style={{ marginBottom: "24px" }}>
-              <h3 style={{ marginBottom: "8px" }}>Required Skills</h3>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {project.skills.map((skill, index) => (
-                  <span
-                    key={index}
+          {/* Content */}
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Project Details Section */}
+              <div style={{ 
+                backgroundColor: '#F9FAFB', 
+                borderRadius: '8px',
+                padding: '24px'
+              }}>
+                <h3 style={{ 
+                  fontSize: '18px', 
+                  fontWeight: '600',
+                  marginBottom: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span style={{ color: '#2563EB' }}>📋</span> Project Details
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', color: '#6B7280' }}>Project Type</p>
+                    <p style={{ margin: 0, fontWeight: '500' }}>{project.type}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', color: '#6B7280' }}>Budget</p>
+                    <p style={{ margin: 0, fontWeight: '500' }}>PKR {project.budget?.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', color: '#6B7280' }}>Skills Required</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                      {project.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          style={{
+                            backgroundColor: '#E5E7EB',
+                            color: '#374151',
+                            padding: '4px 12px',
+                            borderRadius: '9999px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline Section */}
+              <div style={{ 
+                backgroundColor: '#F9FAFB', 
+                borderRadius: '8px',
+                padding: '24px'
+              }}>
+                <h3 style={{ 
+                  fontSize: '18px', 
+                  fontWeight: '600',
+                  marginBottom: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span style={{ color: '#2563EB' }}>📅</span> Timeline
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', color: '#6B7280' }}>Start Date</p>
+                    <p style={{ margin: 0, fontWeight: '500' }}>
+                      {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not started'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', color: '#6B7280' }}>Deadline</p>
+                    <p style={{ margin: 0, fontWeight: '500' }}>
+                      {new Date(project.deadline).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', color: '#6B7280' }}>Status</p>
+                    <span style={{
+                      backgroundColor: project.status === 'in-progress' ? '#DBEAFE' : '#FEF3C7',
+                      color: project.status === 'in-progress' ? '#1E40AF' : '#92400E',
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}>
+                      {project.status === 'in-progress' ? 'In Progress' : 'Assigned'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'center',
+                marginTop: '16px'
+              }}>
+                {project.status === 'submitted' && (
+                  <button
+                    onClick={handleViewSubmission}
                     style={{
-                      padding: "4px 12px",
-                      backgroundColor: "#E5E7EB",
-                      borderRadius: "16px",
-                      fontSize: "14px",
+                      padding: '12px 24px',
+                      backgroundColor: '#2563EB',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px'
                     }}
                   >
-                    {skill}
-                  </span>
-                ))}
+                    <span>📋</span> View Submission
+                  </button>
+                )}
+                <button
+                  onClick={handleContactClick}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <span>💬</span> Contact Developer
+                </button>
               </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "16px" }}>
-            <button
-  onClick={() => handleViewBids(project._id)}
-  style={{
-    padding: "8px 16px",
-    backgroundColor: "#2563EB",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "500",
-  }}
->
-  View Bids
-</button>
-
-
             </div>
           </div>
         </div>
@@ -2042,8 +2035,9 @@ const FindDeveloper = () => {
         return;
       }
 
+      // Use the correct endpoint for projects assigned by me
       const response = await fetch(
-        "http://localhost:5000/api/projects/active",
+        "http://localhost:5000/api/projects/assigned-by-me",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -2142,21 +2136,42 @@ const FindDeveloper = () => {
 
   // Add function to fetch projects pending payment
   const fetchInvoiceProjects = async () => {
+    setLoading(true);
+    setError(null);
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      // Fetch invoices using the correct endpoint
       const response = await fetch("http://localhost:5000/api/projects/invoices", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
+        credentials: "include"
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch invoice projects");
+        throw new Error('Failed to fetch invoices');
       }
 
       const data = await response.json();
-      setInvoiceProjects(data);
-    } catch (error) {
-      console.error("Error fetching invoice projects:", error);
+      console.log("📋 Invoice projects received (raw):", data);
+
+      // Directly set the received data, do not filter again
+      if (Array.isArray(data)) {
+        setInvoiceProjects(data);
+      } else {
+        setInvoiceProjects([]);
+      }
+    } catch (err) {
+      console.error('Error fetching invoice projects:', err);
+      setError(err.message || 'Failed to load invoice projects');
+      setInvoiceProjects([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2419,8 +2434,7 @@ const FindDeveloper = () => {
 
             <button
   onClick={() => {
-    setSelectedProjectForPayment(project);
-    setShowPaymentModalNew(true);
+    navigate(`/payment/${project._id}`);
   }}
 >
   Pay Now
@@ -2443,11 +2457,9 @@ const FindDeveloper = () => {
         return;
       }
 
-      // Get the bidder ID from the bid
-      const bidderId = bid.userId || bid.bidderId;
-      if (!bidderId) {
-        console.error("Bidder ID is missing from bid:", bid);
-        alert("Invalid bid information: Bidder ID is missing");
+      if (!bid.userId) {
+        console.error("Developer information is missing from bid:", bid);
+        alert("Invalid bid information: Developer information is missing");
         return;
       }
 
@@ -2456,7 +2468,7 @@ const FindDeveloper = () => {
         throw new Error("Please login to assign project");
       }
 
-      // Update project status to in-progress
+      // First assign the project
       const response = await fetch(
         `http://localhost:5000/api/projects/${selectedProject._id}/assign`,
         {
@@ -2466,69 +2478,15 @@ const FindDeveloper = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            developerId: bidderId,
-            status: "in-progress",
+            developerId: bid.userId,
+            bidId: bid._id,
             startDate: new Date().toISOString(),
           }),
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to assign project");
-      }
-
-      const updatedProject = await response.json();
-      
-      // Update the projects list by removing the assigned project
-      setProjects(prevProjects => 
-        prevProjects.filter(p => p._id !== selectedProject._id)
-      );
-
-      // Close the bid modal
-      setShowBidModal(false);
-      setSelectedProject(null);
-      setBidsList([]);
-
-      alert("Project assigned successfully!");
-      
-      // Refresh active projects
-      fetchActiveProjects();
-    } catch (error) {
-      console.error("Error in project assignment:", error);
-      alert(error.message || "Failed to process project assignment. Please try again.");
-    }
-  };
-
-  const handlePaymentSubmit = async (paymentInfo) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Please login to make a payment");
-      }
-
-      // Update project status and payment info
-      const response = await fetch(
-        `http://localhost:5000/api/projects/${paymentInfo.projectId}/payment`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            paymentIntentId: paymentInfo.paymentIntentId,
-            amount: paymentInfo.amount,
-            developerId: paymentInfo.developerId,
-            status: "in-progress",
-            startDate: new Date().toISOString(),
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to process payment");
+        throw new Error("Failed to assign project");
       }
 
       const updatedProject = await response.json();
@@ -2536,21 +2494,42 @@ const FindDeveloper = () => {
       // Update the projects list
       setProjects(prevProjects => 
         prevProjects.map(p => 
-          p._id === paymentInfo.projectId ? updatedProject : p
+          p._id === selectedProject._id ? updatedProject : p
         )
       );
 
-      // Close the payment modal
-      setShowPaymentModal(false);
-      setSelectedBid(null);
+      // Close the bid modal
+      setShowBidModal(false);
+      setSelectedProject(null);
+      setBidsList([]);
 
-      alert("Payment successful! Project has been assigned.");
+      // Show success message
+      alert("Project assigned successfully! You can now make the payment.");
       
-      // Refresh active projects
-      fetchActiveProjects();
+      // Refresh invoice projects to show the new payment card
+      fetchInvoiceProjects();
+      
+      // Navigate to the invoice tab
+      setActiveTab("invoice");
     } catch (error) {
-      console.error("Error processing payment:", error);
-      alert(error.message || "Failed to process payment. Please try again.");
+      console.error("Error in project assignment:", error);
+      alert("Failed to process project assignment. Please try again.");
+    }
+  };
+
+  const handlePaymentSubmit = async (paymentInfo) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please login to make payment');
+        return;
+      }
+
+      // Navigate to payment page with project ID
+      navigate(`/payment/${paymentInfo.projectId}`);
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      toast.error('Failed to initiate payment');
     }
   };
 
@@ -2732,6 +2711,43 @@ const FindDeveloper = () => {
     navigate('/login');
   };
 
+  const handleDownloadInvoice = async (projectId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please login to download invoice');
+        return;
+      }
+
+      const response = await axios.get(
+        `http://localhost:5000/api/projects/${projectId}/invoice`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+
+      // Create a blob from the PDF Stream
+      const file = new Blob([response.data], { type: 'application/pdf' });
+      // Create a URL for the blob
+      const fileURL = window.URL.createObjectURL(file);
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = fileURL;
+      link.download = `invoice-${projectId}.pdf`;
+      // Append to html link element page
+      document.body.appendChild(link);
+      // Start download
+      link.click();
+      // Clean up and remove the link
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      toast.error('Failed to download invoice');
+    }
+  };
+
   return (
     <div>
       <h3>Find Developer</h3>
@@ -2801,24 +2817,6 @@ const FindDeveloper = () => {
           }}
         >
           Active Projects
-        </button>
-        <button
-          onClick={() => setActiveTab("past")}
-          style={{
-            background: "none",
-            border: "none",
-            padding: "12px 0",
-            color: activeTab === "past" ? "#111827" : "#6B7280",
-            fontWeight: "500",
-            fontSize: "16px",
-            cursor: "pointer",
-            position: "relative",
-            transition: "color 0.2s ease",
-            borderBottom: activeTab === "past" ? "2px solid #2563EB" : "none",
-            marginBottom: "-1px",
-          }}
-        >
-          Past History
         </button>
         <button
           onClick={() => setActiveTab("invoice")}
@@ -3513,8 +3511,7 @@ const FindDeveloper = () => {
                             <td style={{ padding: "16px 24px", textAlign: "right" }}>
                               <button
                                 onClick={() => {
-                                  setSelectedProject(project);
-                                  setShowProjectDetails(true);
+                                  navigate(`/view-submission/${project._id}`);
                                 }}
                                 style={{
                                   padding: "8px 16px",
@@ -3712,285 +3709,209 @@ const FindDeveloper = () => {
         )}
 
         {/* Invoice Tab */}
-               
         {activeTab === "invoice" && (
           <div className="tab-pane fade show active">
             <div style={{ padding: "24px" }}>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "24px",
-              }}>
-                <div>
-                  <h2 style={{
-                    fontSize: "24px",
-                    fontWeight: "600",
-                    marginBottom: "8px",
-                  }}>
-                    Invoices & Payments
-                  </h2>
-                  <p style={{ color: "#6B7280" }}>
-                    Manage your project payments and view payment history
-                  </p>
-                </div>
-              </div>
-
               {/* Pending Payments Section */}
-              <div style={{ marginBottom: "32px" }}>
-                <h3 style={{
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  marginBottom: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
+              {invoiceProjects.filter(project => project.status === 'assigned' && project.paymentStatus === 'pending').length > 0 && (
+                <div style={{
+                  backgroundColor: "#FEF9C3",
+                  border: "1px solid #FDE68A",
+                  borderRadius: "12px",
+                  padding: "24px",
+                  marginBottom: "32px"
                 }}>
-                  Pending Payments
-                </h3>
-
-                {invoiceProjects.filter(project => project.paymentStatus === 'pending').length === 0 ? (
-                  <div style={{
-                    textAlign: "center",
-                    padding: "32px",
-                    backgroundColor: "#F9FAFB",
-                    borderRadius: "12px",
-                    border: "1px solid #E5E7EB",
-                  }}>
-                    <p style={{ color: "#6B7280" }}>No pending payments</p>
-                  </div>
-                ) : (
-                  <div style={{
-                    display: "grid",
-                    gap: "16px",
-                  }}>
-                    {invoiceProjects.filter(project => project.paymentStatus === 'pending').map(project => {
-                      // Get developer name with better logic
-                      let devName = "Developer";
-                      
-                      // Check if assignedDeveloper is populated
-                      if (project.assignedDeveloper) {
-                        if (typeof project.assignedDeveloper === 'object') {
-                          // If it's populated as an object
-                          const { firstName, lastName, companyName } = project.assignedDeveloper;
-                          if (firstName || lastName) {
-                            devName = `${firstName || ''} ${lastName || ''}`.trim();
-                          } else if (companyName) {
-                            devName = companyName;
-                          }
-                        } else {
-                          // If it's just an ID, we need to handle it differently
-                          devName = "Developer (ID: " + project.assignedDeveloper + ")";
-                        }
-                      }
-                      
-                      // Fallback to other name fields
-                      if (devName === "Developer" && project.developerName) {
-                        devName = project.developerName;
-                      }
-                      
-                      return (
-                        <div key={project._id} style={{
-                          backgroundColor: "white",
-                          borderRadius: "12px",
-                          border: "1px solid #E5E7EB",
-                          padding: "20px",
-                          marginBottom: "12px"
-                        }}>
-                          <h4 style={{
-                            fontSize: "16px",
-                            fontWeight: "600",
-                            marginBottom: "8px",
-                          }}>{project.title}</h4>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
-                            <div><strong>Payment To:</strong> {devName}</div>
-                            <div><strong>Amount:</strong> PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}</div>
-                            <div><strong>Status:</strong> <span style={{ color: '#92400E', background: '#FEF3C7', padding: '2px 10px', borderRadius: '8px', fontWeight: 500 }}>Pending</span></div>
+                  <h3 style={{ fontSize: "20px", fontWeight: 600, marginBottom: "16px", color: "#92400E" }}>
+                    Pending Payments
+                  </h3>
+                  <p style={{ color: "#B45309", marginBottom: "16px" }}>
+                    Please complete payment for the following assigned projects to begin work.
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {invoiceProjects.filter(project => project.status === 'assigned' && project.paymentStatus === 'pending').map(project => (
+                      <div key={project._id} style={{
+                        backgroundColor: "#FFF",
+                        border: "1px solid #FDE68A",
+                        borderRadius: "8px",
+                        padding: "16px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center"
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: "16px" }}>{project.title}</div>
+                          <div style={{ color: "#6B7280", fontSize: "14px" }}>
+                            Assigned to: {project.assignedDeveloper ? `${project.assignedDeveloper.firstName} ${project.assignedDeveloper.lastName}` : project.developerId ? `${project.developerId.firstName} ${project.developerId.lastName}` : "Not assigned"}
                           </div>
-                          <button
-                            onClick={() => {
-                              setSelectedProjectForPayment(project);
-                              setShowPaymentModalNew(true);
-                            }}
-                            style={{
-                              padding: "8px 20px",
-                              backgroundColor: "#2563EB",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              fontWeight: "500",
-                              cursor: "pointer"
-                            }}
-                          >
-                            Pay Now
-                          </button>
+                          <div style={{ color: "#92400E", fontSize: "14px", marginTop: "4px" }}>
+                            Amount Due: PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}
+                          </div>
                         </div>
-                      );
-                    })}
+                        <button
+                          style={{
+                            padding: "10px 20px",
+                            backgroundColor: "#2563EB",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: 500,
+                            fontSize: "15px"
+                          }}
+                          onClick={() => navigate(`/payment/${project._id}`)}
+                        >
+                          Pay Now
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Payment History Section */}
-              <div>
-                <h3 style={{
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  marginBottom: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}>
-                  <FiFileText /> Payment History
+              {/* Invoice History Section */}
+              <div style={{ marginTop: "32px" }}>
+                <h3 style={{ fontSize: "20px", fontWeight: 600, marginBottom: "24px" }}>
+                  Invoice History
                 </h3>
-
-                {invoiceProjects.filter(project => project.paymentStatus === "paid").length === 0 ? (
-                  <div style={{
-                    textAlign: "center",
-                    padding: "32px",
-                    backgroundColor: "#F9FAFB",
-                    borderRadius: "12px",
-                    border: "1px solid #E5E7EB",
-                  }}>
-                    <p style={{ color: "#6B7280" }}>No payment history available</p>
-                  </div>
-                ) : (
-                  <div style={{
-                    backgroundColor: "white",
-                    borderRadius: "12px",
-                    border: "1px solid #E5E7EB",
-                    overflow: "hidden",
-                  }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr>
-                          <th style={{
+                <div style={{
+                  backgroundColor: "#FFF",
+                  borderRadius: "12px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  overflow: "hidden"
+                }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#F9FAFB" }}>
+                        <th style={{
+                          padding: "12px 16px",
+                          textAlign: "left",
+                          borderBottom: "1px solid #E5E7EB",
+                          color: "#6B7280",
+                          fontWeight: 500,
+                          fontSize: "14px"
+                        }}>
+                          Project
+                        </th>
+                        <th style={{
+                          padding: "12px 16px",
+                          textAlign: "left",
+                          borderBottom: "1px solid #E5E7EB",
+                          color: "#6B7280",
+                          fontWeight: 500,
+                          fontSize: "14px"
+                        }}>
+                          Developer
+                        </th>
+                        <th style={{
+                          padding: "12px 16px",
+                          textAlign: "left",
+                          borderBottom: "1px solid #E5E7EB",
+                          color: "#6B7280",
+                          fontWeight: 500,
+                          fontSize: "14px"
+                        }}>
+                          Amount
+                        </th>
+                        <th style={{
+                          padding: "12px 16px",
+                          textAlign: "left",
+                          borderBottom: "1px solid #E5E7EB",
+                          color: "#6B7280",
+                          fontWeight: 500,
+                          fontSize: "14px"
+                        }}>
+                          Status
+                        </th>
+                        <th style={{
+                          padding: "12px 16px",
+                          textAlign: "left",
+                          borderBottom: "1px solid #E5E7EB",
+                          color: "#6B7280",
+                          fontWeight: 500,
+                          fontSize: "14px"
+                        }}>
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoiceProjects.filter(project => 
+                        (project.paymentStatus === 'paid' || project.paymentStatus === 'released') && 
+                        project.status !== 'assigned'
+                      ).map(project => (
+                        <tr key={project._id}>
+                          <td style={{
                             padding: "12px 16px",
-                            textAlign: "left",
                             borderBottom: "1px solid #E5E7EB",
-                            backgroundColor: "#F9FAFB",
                           }}>
-                            Project
-                          </th>
-                          <th style={{
+                            <div>
+                              <p style={{ margin: "0", fontWeight: "500" }}>{project.title}</p>
+                              <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#6B7280" }}>
+                                {new Date(project.updatedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </td>
+                          <td style={{
                             padding: "12px 16px",
-                            textAlign: "left",
                             borderBottom: "1px solid #E5E7EB",
-                            backgroundColor: "#F9FAFB",
                           }}>
-                            Developer
-                          </th>
-                          <th style={{
+                            {project.assignedDeveloper ? 
+                              `${project.assignedDeveloper.firstName} ${project.assignedDeveloper.lastName}` :
+                              project.developerId ? 
+                                `${project.developerId.firstName} ${project.developerId.lastName}` :
+                                "Not assigned"
+                            }
+                          </td>
+                          <td style={{
                             padding: "12px 16px",
-                            textAlign: "right",
                             borderBottom: "1px solid #E5E7EB",
-                            backgroundColor: "#F9FAFB",
                           }}>
-                            Amount
-                          </th>
-                          <th style={{
+                            PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}
+                          </td>
+                          <td style={{
                             padding: "12px 16px",
-                            textAlign: "right",
                             borderBottom: "1px solid #E5E7EB",
-                            backgroundColor: "#F9FAFB",
                           }}>
-                            Payment Date
-                          </th>
-                          <th style={{
+                            <span style={{
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              backgroundColor: project.paymentStatus === 'paid' ? "#DCFCE7" : "#FEF3C7",
+                              color: project.paymentStatus === 'paid' ? "#166534" : "#92400E"
+                            }}>
+                              {project.paymentStatus.charAt(0).toUpperCase() + project.paymentStatus.slice(1)}
+                            </span>
+                          </td>
+                          <td style={{
                             padding: "12px 16px",
-                            textAlign: "right",
                             borderBottom: "1px solid #E5E7EB",
-                            backgroundColor: "#F9FAFB",
                           }}>
-                            Status
-                          </th>
+                            {project.paymentStatus === 'released' && (
+                              <button
+                                onClick={() => handleDownloadInvoice(project._id)}
+                                style={{
+                                  padding: "6px 12px",
+                                  backgroundColor: "#2563EB",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  fontSize: "14px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px"
+                                }}
+                              >
+                                <FiDownload size={16} /> Download Invoice
+                              </button>
+                            )}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {invoiceProjects
-                          .filter(project => project.paymentStatus === "paid")
-                          .map(project => {
-                            // Same developer name logic as above
-                            let devName = "Developer";
-                            
-                            // Check if assignedDeveloper is populated
-                            if (project.assignedDeveloper) {
-                              if (typeof project.assignedDeveloper === 'object') {
-                                // If it's populated as an object
-                                const { firstName, lastName, companyName } = project.assignedDeveloper;
-                                if (firstName || lastName) {
-                                  devName = `${firstName || ''} ${lastName || ''}`.trim();
-                                } else if (companyName) {
-                                  devName = companyName;
-                                }
-                              } else {
-                                // If it's just an ID, we need to handle it differently
-                                devName = "Developer (ID: " + project.assignedDeveloper + ")";
-                              }
-                            }
-                            
-                            // Fallback to other name fields
-                            if (devName === "Developer" && project.developerName) {
-                              devName = project.developerName;
-                            }
-                            
-                            return (
-                              <tr key={project._id}>
-                                <td style={{
-                                  padding: "12px 16px",
-                                  borderBottom: "1px solid #E5E7EB",
-                                }}>
-                                  <div>
-                                    <p style={{ margin: "0", fontWeight: "500" }}>{project.title}</p>
-                                    <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#6B7280" }}>
-                                      Invoice #: {project._id.slice(-6).toUpperCase()}
-                                    </p>
-                                  </div>
-                                </td>
-                                <td style={{
-                                  padding: "12px 16px",
-                                  borderBottom: "1px solid #E5E7EB",
-                                }}>
-                                  {devName}
-                                </td>
-                                <td style={{
-                                  padding: "12px 16px",
-                                  textAlign: "right",
-                                  borderBottom: "1px solid #E5E7EB",
-                                }}>
-                                  PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}
-                                </td>
-                                <td style={{
-                                  padding: "12px 16px",
-                                  textAlign: "right",
-                                  borderBottom: "1px solid #E5E7EB",
-                                }}>
-                                  {project.paymentDate ? new Date(project.paymentDate).toLocaleDateString() : 'N/A'}
-                                </td>
-                                <td style={{
-                                  padding: "12px 16px",
-                                  textAlign: "right",
-                                  borderBottom: "1px solid #E5E7EB",
-                                }}>
-                                  <span style={{
-                                    backgroundColor: "#DCFCE7",
-                                    color: "#166534",
-                                    padding: "4px 8px",
-                                    borderRadius: "12px",
-                                    fontSize: "12px",
-                                    fontWeight: "500",
-                                  }}>
-                                    Paid
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -4086,17 +4007,6 @@ const FindDeveloper = () => {
           </div>
         </div>
       )}
-      {showPaymentModalNew && selectedProjectForPayment && (
-        <PaymentModalNew
-          isOpen={showPaymentModalNew}
-          onClose={() => {
-            setShowPaymentModalNew(false);
-            setSelectedProjectForPayment(null);
-          }}
-          project={selectedProjectForPayment}
-          fetchInvoiceProjects={fetchInvoiceProjects}
-        />
-      )}
     </div>
   );
 };
@@ -4125,9 +4035,9 @@ const ProjectHistory = () => {
       const response = await fetch(
         "http://localhost:5000/api/projects/history",
         {
-          headers: {
+        headers: {
             Authorization: `Bearer ${token}`,
-          },
+        },
           credentials: "include",
         }
       );
@@ -4231,114 +4141,85 @@ const ProjectHistory = () => {
                 <thead className="table-light">
                   <tr>
                     <th>Project Details</th>
-                    <th>Client/Developer</th>
+                    <th>Developer</th>
                     <th>Timeline</th>
                     <th>Status</th>
                     <th>Budget</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {projectHistory.map((project) => {
-                    // Get the other party's name (client or developer)
-                    let otherPartyName = "Unknown";
-                    let otherPartyEmail = "";
-                    
-                    if (project.assignedDeveloper) {
-                      // If current user is the client, show developer info
-                      otherPartyName = `${project.assignedDeveloper.firstName || ''} ${project.assignedDeveloper.lastName || ''}`.trim();
-                      otherPartyEmail = project.assignedDeveloper.email;
-                    } else if (project.companyName) {
-                      // If current user is the developer, show company info
-                      otherPartyName = project.companyName;
-                      otherPartyEmail = project.companyEmail || "";
-                    } else if (project.userName) {
-                      // If current user is the developer, show student/client info
-                      otherPartyName = project.userName;
-                      otherPartyEmail = project.userEmail || "";
-                    }
-
-                    return (
-                      <tr key={project._id}>
-                        <td>
+                  {projectHistory.map((project) => (
+                    <tr key={project._id}>
+                      <td>
+                        <div>
+                          <h6 className="mb-1">{project.title}</h6>
+                          <p className="text-muted small mb-0">
+                            {project.description}
+                          </p>
+                          <div className="mt-1">
+                            {project.skills.map((skill, index) => (
+                              <span
+                                key={index}
+                                className="badge bg-light text-dark me-1"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <img
+                            src={
+                              project.developer.profilePicture ||
+                              `https://ui-avatars.com/api/?name=${project.developer.name}`
+                            }
+                            alt={project.developer.name}
+                            className="rounded-circle me-2"
+                            width="40"
+                            height="40"
+                          />
                           <div>
-                            <h6 className="mb-1">{project.title}</h6>
-                            <p className="text-muted small mb-0">
-                              {project.description}
-                            </p>
-                            <div className="mt-1">
-                              {project.skills?.map((skill, index) => (
-                                <span
-                                  key={index}
-                                  className="badge bg-light text-dark me-1"
-                                >
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
+                            <div>{project.developer.name}</div>
+                            <small className="text-muted">
+                              {project.developer.email}
+                            </small>
                           </div>
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center">
-                            <div
-                              style={{
-                                width: "40px",
-                                height: "40px",
-                                borderRadius: "50%",
-                                backgroundColor: "#2563EB",
-                                color: "white",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "16px",
-                                fontWeight: "500",
-                                marginRight: "8px"
-                              }}
-                            >
-                              {otherPartyName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div>{otherPartyName}</div>
-                              <small className="text-muted">
-                                {otherPartyEmail}
-                              </small>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
+                        </div>
+                      </td>
+                      <td>
+                        <div>
+                          <div className="small text-muted">Started</div>
                           <div>
-                            <div className="small text-muted">Started</div>
-                            <div>
-                              {project.startDate ? new Date(project.startDate).toLocaleDateString() : "N/A"}
-                            </div>
-                            <div className="small text-muted mt-1">Completed</div>
-                            <div>
-                              {project.completionDate ? new Date(project.completionDate).toLocaleDateString() : 
-                               project.paymentDate ? new Date(project.paymentDate).toLocaleDateString() : "N/A"}
-                            </div>
+                            {new Date(project.startDate).toLocaleDateString()}
                           </div>
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              project.status === "completed"
-                                ? "bg-success"
-                                : project.paymentStatus === "paid"
-                                ? "bg-info"
-                                : "bg-danger"
-                            }`}
-                          >
-                            {project.status === "completed" ? "Completed" : 
-                             project.paymentStatus === "paid" ? "Paid" : project.status}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="fw-bold text-success">
-                            PKR {(project.acceptedBidAmount || project.budget)?.toLocaleString()}
+                          <div className="small text-muted mt-1">Completed</div>
+                          <div>
+                            {new Date(
+                              project.completionDate
+                            ).toLocaleDateString()}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        </div>
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            project.status === "completed"
+                              ? "bg-success"
+                              : "bg-danger"
+                          }`}
+                        >
+                          {project.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="fw-bold text-success">
+                          PKR {project.budget.toLocaleString()}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

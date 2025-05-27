@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 import { FaStar } from 'react-icons/fa';
 
 const DashboardHome = ({ adminName }) => {
@@ -21,6 +21,7 @@ const DashboardHome = ({ adminName }) => {
   });
   const [activities, setActivities] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
+  const [revenueData, setRevenueData] = useState([{ name: 'Revenue', value: 0 }]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -86,16 +87,43 @@ const DashboardHome = ({ adminName }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Add new useEffect for fetching revenue data
+  useEffect(() => {
+    const fetchRevenueData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/admin/revenue', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        const data = await response.json();
+        
+        // Update stats with platform fee
+        setStats(prevStats => ({
+          ...prevStats,
+          revenue: data.totalRevenue // This is now the platform fee
+        }));
+
+        // Update revenue data for chart
+        setRevenueData([{
+          name: 'Platform Fee',
+          value: data.totalRevenue
+        }]);
+      } catch (error) {
+        console.error('Error fetching revenue data:', error);
+      }
+    };
+
+    fetchRevenueData();
+    const interval = setInterval(fetchRevenueData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Data for pie chart
   const pieData = [
     { name: 'Students', value: percentages.students, color: '#FFD700' },
     { name: 'Developers', value: percentages.developers, color: '#0074D9' },
     { name: 'Organizations', value: percentages.organizations, color: '#2ECC40' }
-  ];
-
-  // Data for revenue chart
-  const revenueData = [
-    { name: 'Revenue', value: stats.revenue }
   ];
 
   return (
@@ -205,17 +233,25 @@ const DashboardHome = ({ adminName }) => {
         </div>
         {/* Revenue Chart Section */}
         <div style={{ ...contentCardStyle, flex: 1, minWidth: 320 }}>
-          <h3 style={sectionTitleStyle}>Revenue Overview</h3>
+          <h3 style={sectionTitleStyle}>Platform Fee Overview</h3>
           <div style={{ height: "300px", width: "100%" }}>
             <ResponsiveContainer>
               <BarChart data={revenueData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#82ca9d" />
+                <Tooltip 
+                  formatter={(value) => [`PKR ${value.toLocaleString()}`, 'Platform Fee']}
+                  labelFormatter={() => 'Total Platform Fee'}
+                />
+                <Bar dataKey="value" fill="#82ca9d">
+                  <LabelList dataKey="value" position="top" formatter={(value) => `PKR ${value.toLocaleString()}`} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '10px', color: '#666' }}>
+            <p>Total Platform Fee (10% of completed project payments)</p>
           </div>
         </div>
       </div>

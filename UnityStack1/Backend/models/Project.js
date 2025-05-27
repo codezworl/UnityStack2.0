@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Organization = require('./Organization');
 const Bid = require('../models/Bid');
+const ProjectSubmission = require('./projectsubmission');
 
 const projectSchema = new mongoose.Schema({
   title: {
@@ -64,7 +65,7 @@ const projectSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['open', 'assigned', 'in-progress', 'completed', 'cancelled', 'closed'],
+    enum: ['open', 'assigned', 'in-progress', 'completed', 'cancelled', 'closed', 'submitted', 'rejected'],
     default: 'open'
   },
   isVisible: {
@@ -113,6 +114,10 @@ const projectSchema = new mongoose.Schema({
   acceptedBidAmount: {
     type: Number
   },
+  submission: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProjectSubmission'
+  }
 }, { timestamps: true });
 
 // Pre-save middleware to handle project assignment
@@ -128,6 +133,55 @@ projectSchema.pre('save', function(next) {
 
   next();
 });
+
+// Static method to update project status from submission
+projectSchema.statics.updateStatusFromSubmission = async function(projectId, submissionStatus) {
+  try {
+    console.log('Finding project:', projectId);
+    const project = await this.findById(projectId);
+    if (!project) {
+      console.error('Project not found:', projectId);
+      return null;
+    }
+
+    console.log('Current project status:', project.status);
+    let newStatus = project.status;
+    
+    if (submissionStatus === 'rejected') {
+      newStatus = 'rejected';
+    } else if (submissionStatus === 'approved') {
+      newStatus = 'completed';
+    } else if (submissionStatus === 'pending') {
+      newStatus = 'submitted';
+    }
+
+    console.log('Updating project status:', {
+      from: project.status,
+      to: newStatus,
+      submissionStatus
+    });
+
+    if (newStatus !== project.status) {
+      project.status = newStatus;
+      project.lastUpdate = new Date();
+      if (newStatus === 'completed') {
+        project.completionDate = new Date();
+      }
+      
+      // Save with validation
+      await project.save({ validateBeforeSave: true });
+      console.log('Project status updated successfully');
+    } else {
+      console.log('Project status unchanged');
+    }
+
+    return project;
+  } catch (error) {
+    console.error('Error updating project status:', error);
+    throw error;
+  }
+};
+
 
 // Indexes for optimizing queries
 projectSchema.index({ status: 1 });

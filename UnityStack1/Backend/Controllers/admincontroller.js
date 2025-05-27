@@ -5,6 +5,7 @@ const Student = require('../models/Student');
 const Developer = require('../models/Develpor');
 const Organization = require('../models/Organization');
 const Question = require('../models/question');
+const Project = require('../models/Project');
 
 // Login handler
 exports.login = async (req, res) => {
@@ -113,7 +114,6 @@ exports.seedAdmins = async () => {
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
   try {
-    const Project = require('../models/Project');
     // Get total counts
     const [totalStudents, totalDevelopers, totalOrganizations, totalQuestions, totalProjects, activeProjects, assignedProjects, completedProjects] = await Promise.all([
       Student.countDocuments(),
@@ -260,4 +260,44 @@ exports.updateUser = async (req, res) => {
     console.error('Error updating user:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+};
+
+// Get revenue data
+exports.getRevenueData = async (req, res) => {
+  try {
+    // Find all completed projects with released payments
+    const projects = await Project.find({
+      status: 'completed',
+      paymentStatus: 'released'
+    }).select('acceptedBidAmount');
+
+    // Calculate total platform fee (10% of bid amounts)
+    const totalRevenue = projects.reduce((sum, project) => {
+      const bidAmount = project.acceptedBidAmount || 0;
+      return sum + (bidAmount * 0.1); // 10% platform fee
+    }, 0);
+
+    // Calculate developer share (90% of total)
+    const developerShare = totalRevenue / 0.1 - totalRevenue;
+
+    res.json({
+      projects,
+      totalRevenue, // This is now the platform fee
+      developerShare
+    });
+  } catch (error) {
+    console.error('Error fetching revenue data:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = {
+  login: exports.login,
+  getAllUsers: exports.getAllUsers,
+  deleteUser: exports.deleteUser,
+  seedAdmins: exports.seedAdmins,
+  getDashboardStats: exports.getDashboardStats,
+  getTodayActivities: exports.getTodayActivities,
+  updateUser: exports.updateUser,
+  getRevenueData: exports.getRevenueData
 };

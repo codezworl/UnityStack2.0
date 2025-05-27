@@ -4,6 +4,9 @@ const Organization = require("../models/Organization");
 const Notification = require("../models/notification");
 const Developer = require("../models/Develpor");
 const Bid = require('../models/Bid');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
 
 // Add this helper function at the top of the file after imports
 const createNotification = async ({ userId, type, message, projectId }) => {
@@ -275,7 +278,7 @@ const closeProject = async (req, res) => {
 const assignProject = async (req, res) => {
   try {
     const { id: projectId } = req.params;
-    const { developerId, status = "assigned", startDate } = req.body; // Default to "assigned"
+    const { developerId, status = "assigned", startDate } = req.body;
 
     console.log("Assigning project:", projectId, "to developer:", developerId);
 
@@ -292,9 +295,8 @@ const assignProject = async (req, res) => {
     const currentUserId = req.user._id || req.user.id;
     console.log("Current user ID:", currentUserId);
 
-    // Check authorization (existing auth code...)
+    // Check authorization
     let isAuthorized = false;
-    
     if (project.userId && project.userId.toString() === currentUserId.toString()) {
       isAuthorized = true;
     } else if (project.companyId && project.companyId.toString() === currentUserId.toString()) {
@@ -319,33 +321,48 @@ const assignProject = async (req, res) => {
           $or: [{ bidderId: developerId }, { userId: developerId }]
         });
 
+    if (!acceptedBid) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid bid found for this developer"
+      });
+    }
+
     console.log("Found accepted bid:", acceptedBid);
 
     // Update project with assignment details
-    project.assignedDeveloper = developerId;
-    project.status = "assigned"; // Always set to "assigned" initially
-    project.assignedDate = new Date();
-    project.isVisible = false;
-    project.paymentStatus = 'pending'; // Set payment status to pending
-    
-    // Store the accepted bid info
-    if (acceptedBid) {
-      project.acceptedBid = acceptedBid._id;
-      project.acceptedBidAmount = acceptedBid.amount;
-      console.log("Stored accepted bid amount:", acceptedBid.amount);
-    } else {
-      console.log("Warning: No bid found for developer:", developerId);
-      project.acceptedBidAmount = project.budget;
-    }
+    const updateData = {
+      assignedDeveloper: developerId,
+      status: "assigned",
+      assignedDate: new Date(),
+      isVisible: false,
+      paymentStatus: 'pending',
+      acceptedBid: acceptedBid._id,
+      acceptedBidAmount: acceptedBid.amount,
+      developerId: developerId // Add this to ensure proper linking
+    };
 
-    await project.save();
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      updateData,
+      { new: true }
+    ).populate('assignedDeveloper', 'firstName lastName email');
 
     console.log("Project assigned successfully with status: assigned");
+    console.log("Updated project:", updatedProject);
+
+    // Create notification for the developer
+    await createNotification({
+      userId: developerId,
+      type: 'Project Assigned',
+      message: `You have been assigned to project: ${project.title}`,
+      projectId: project._id
+    });
 
     res.status(200).json({
       success: true,
       message: "Project assigned successfully",
-      data: project
+      data: updatedProject
     });
 
   } catch (error) {
@@ -366,79 +383,45 @@ const getProjectHistory = async (req, res) => {
     
     console.log("Fetching project history for user:", userId, "with role:", userRole);
     
-    // Build comprehensive query for all user roles
+    // Query to get all projects assigned to the developer
     let query = {
-      $and: [
-        {
-          $or: [
-            { status: 'completed' },
-            { status: 'cancelled' },
-            { paymentStatus: 'paid' } // Include paid projects regardless of status
-          ]
-        },
-        {
-          $or: [
-            { userId: userId },           // Projects created by student
-            { companyId: userId },        // Projects created by organization  
-            { developerId: userId },      // Projects created by developer
-            { assignedDeveloper: userId } // Projects assigned to developer
-          ]
-        }
+      $or: [
+        { assignedDeveloper: userId },
+        { developerId: userId }
       ]
     };
 
+    // Get all projects assigned to the user
     const projects = await Project.find(query)
       .populate('assignedDeveloper', 'firstName lastName email')
       .populate('companyId', 'companyName email') 
       .populate('userId', 'firstName lastName email')
       .populate('developerId', 'firstName lastName email')
-      .sort({ completionDate: -1, paymentDate: -1 });
+      .sort({ updatedAt: -1 });
 
     console.log("Found projects for history:", projects.length);
 
-    // Build comprehensive stats query  
-    let statsQuery = {
-      $or: [
-        { userId: userId },           // Projects created by student
-        { companyId: userId },        // Projects created by organization
-        { developerId: userId },      // Projects created by developer  
-        { assignedDeveloper: userId } // Projects assigned to developer
-      ]
-    };
+    // Calculate stats
+    const totalProjects = projects.length; // Total assigned projects
+    const completedProjects = projects.filter(p => p.status === 'completed').length;
+    const cancelledProjects = projects.filter(p => p.status === 'cancelled').length;
 
-    const totalProjects = await Project.countDocuments(statsQuery);
-    const completedProjects = await Project.countDocuments({
-      ...statsQuery,
-      status: 'completed'
-    });
-    const cancelledProjects = await Project.countDocuments({
-      ...statsQuery, 
-      status: 'cancelled'
-    });
+    // Calculate total earnings from withdrawn amounts for assigned projects
+    const totalEarnings = projects
+      .filter(p => 
+        (p.assignedDeveloper && p.assignedDeveloper._id.toString() === userId.toString()) && 
+        p.paymentStatus === 'released'
+      )
+      .reduce((sum, p) => sum + (p.acceptedBidAmount || 0), 0);
 
-    // Calculate earnings differently based on role
-    let earningsQuery;
-    if (userRole === 'developer') {
-      // For developers: earnings from projects assigned to them
-      earningsQuery = { assignedDeveloper: userId, paymentStatus: 'paid' };
-    } else {
-      // For organizations/students: total spent on their projects
-      earningsQuery = { 
-        $or: [{ userId: userId }, { companyId: userId }, { developerId: userId }],
-        paymentStatus: 'paid'
-      };
-    }
-
-    const earningsResult = await Project.aggregate([
-      { $match: earningsQuery },
-      { $group: { _id: null, total: { $sum: { $ifNull: ["$acceptedBidAmount", "$budget"] } } } }
-    ]);
+    console.log("Calculated earnings:", totalEarnings);
+    console.log("Projects with released payments:", projects.filter(p => p.paymentStatus === 'released').length);
 
     const stats = {
       total: totalProjects,
-      completed: completedProjects, 
+      completed: completedProjects,
       cancelled: cancelledProjects,
-      totalEarnings: earningsResult[0]?.total || 0
+      totalEarnings: totalEarnings
     };
 
     console.log("Project history stats:", stats);
@@ -592,21 +575,15 @@ const getActiveProjects = async (req, res) => {
     
     console.log("Fetching active projects for user:", userId, "with role:", userRole);
     
-    // Find projects that are assigned or in-progress and belong to the current user
+    // Query to find all active projects for the user
     let query = {
-      $and: [
-        {
-          status: { $in: ['assigned', 'in-progress'] }, // Both assigned and in-progress
-          assignedDeveloper: { $exists: true } // Must have an assigned developer
-        },
-        {
-          $or: [
-            { userId: userId },         // Projects created by user
-            { companyId: userId },      // Projects created by company  
-            { developerId: userId }     // Projects created by developer
-          ]
-        }
-      ]
+      $or: [
+        { userId: userId },
+        { companyId: userId },
+        { developerId: userId },
+        { assignedDeveloper: userId }
+      ],
+      status: { $in: ['in-progress', 'submitted', 'rejected'] }
     };
 
     console.log("Active projects query:", JSON.stringify(query, null, 2));
@@ -616,6 +593,14 @@ const getActiveProjects = async (req, res) => {
       .sort({ assignedDate: -1 });
 
     console.log("Found active projects:", activeProjects.length);
+    console.log("Project details:", activeProjects.map(p => ({
+      id: p._id,
+      title: p.title,
+      status: p.status,
+      paymentStatus: p.paymentStatus,
+      assignedDeveloper: p.assignedDeveloper,
+      developerId: p.developerId
+    })));
 
     res.status(200).json(activeProjects);
   } catch (error) {
@@ -735,14 +720,42 @@ const getAvailableProjects = async (req, res) => {
 // Get assigned projects
 const getAssignedProjects = async (req, res) => {
   try {
-    const developerId = req.user.id;
-    const projects = await Project.find({
-      assignedDeveloper: developerId,
-      status: { $in: ['assigned', 'in-progress'] }
-    }).populate('companyId', 'companyName')
-      .sort({ assignedDate: -1 });
+    const userId = req.user._id || req.user.id;
+    console.log("Fetching assigned projects for user:", userId);
 
-    res.status(200).json(projects);
+    // Get all projects assigned to this developer
+    const projects = await Project.find({
+      assignedDeveloper: userId
+    })
+    .populate('assignedDeveloper', 'firstName lastName email')
+    .populate('companyId', 'companyName email')
+    .populate('userId', 'firstName lastName email')
+    .populate('developerId', 'firstName lastName email')
+    .sort({ updatedAt: -1 });
+
+    console.log("Found assigned projects:", projects.length);
+
+    // Calculate stats
+    const totalProjects = projects.length;
+    const completedProjects = projects.filter(p => p.status === 'completed').length;
+    const cancelledProjects = projects.filter(p => p.status === 'cancelled').length;
+    const totalEarnings = projects
+      .filter(p => p.paymentStatus === 'released' || p.paymentStatus === 'paid')
+      .reduce((sum, p) => sum + (p.acceptedBidAmount || 0), 0);
+
+    const stats = {
+      total: totalProjects,
+      completed: completedProjects,
+      cancelled: cancelledProjects,
+      totalEarnings: totalEarnings
+    };
+
+    console.log("Project stats:", stats);
+
+    res.status(200).json({
+      projects,
+      stats
+    });
   } catch (error) {
     console.error("Error fetching assigned projects:", error);
     res.status(500).json({ message: "Error fetching assigned projects" });
@@ -757,8 +770,50 @@ const getInvoiceProjects = async (req, res) => {
     
     // Build query based on user role
     let query = {
-      status: { $in: ['in-progress', 'assigned'] },
-      paymentStatus: { $in: ['pending', 'paid'] }
+      $or: [
+        // For pending payments
+        { status: 'assigned', paymentStatus: 'pending' },
+        // For paid/released projects
+        { status: { $in: ['in-progress', 'completed'] }, paymentStatus: { $in: ['paid', 'released'] } },
+        // For completed projects
+        { status: 'completed', paymentStatus: { $in: ['paid', 'released'] } }
+      ]
+    };
+
+    // Add role-specific filters - only show invoices to the person who made the payment
+    if (userRole === 'organization') {
+      query.companyId = userId; // Only show projects created by this organization
+    } else if (userRole === 'developer') {
+      query.developerId = userId; // Only show projects created by this developer
+    } else if (userRole === 'student') {
+      query.userId = userId; // Only show projects created by this student
+    }
+
+    const projects = await Project.find(query)
+      .populate('assignedDeveloper', 'firstName lastName email profilePicture')
+      .populate('companyId', 'companyName email')
+      .populate('userId', 'firstName lastName email')
+      .populate('developerId', 'firstName lastName email')
+      .populate('acceptedBid', 'amount proposal userName')
+      .sort({ updatedAt: -1 });
+
+    console.log("📋 Found invoice projects:", projects.length);
+    res.status(200).json(projects);
+  } catch (error) {
+    console.error("Error fetching invoice projects:", error);
+    res.status(500).json({ message: "Error fetching invoice projects" });
+  }
+};
+
+// Get projects assigned by the current user
+const getAssignedByMe = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userRole = req.userRole || req.user.role;
+
+    let query = {
+      status: { $in: ['in-progress', 'submitted', 'rejected', 'completed'] },
+      paymentStatus: { $in: ['paid', 'released'] }
     };
 
     // Add role-specific filters
@@ -771,14 +826,168 @@ const getInvoiceProjects = async (req, res) => {
     }
 
     const projects = await Project.find(query)
-      .populate('assignedDeveloper', 'firstName lastName email')
-      .populate('acceptedBid', 'amount proposal userName')
-      .sort({ assignedDate: -1 });
+      .populate('assignedDeveloper', 'firstName lastName email profilePicture')
+      .populate('bids')
+      .sort({ createdAt: -1 });
 
     res.status(200).json(projects);
   } catch (error) {
-    console.error("Error fetching invoice projects:", error);
-    res.status(500).json({ message: "Error fetching invoice projects" });
+    console.error("Error fetching assigned projects:", error);
+    res.status(500).json({ 
+      message: "Error fetching assigned projects", 
+      error: error.message 
+    });
+  }
+};
+
+// Get find work invoice projects
+const getFindWorkInvoices = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userRole = req.userRole;
+    
+    // Show projects that the developer has worked on with various payment statuses
+    const query = {
+      $or: [
+        { assignedDeveloper: userId },
+        { developerId: userId }
+      ],
+      status: { $in: ['completed', 'in-progress'] },
+      paymentStatus: { $in: ['paid', 'released'] }
+    };
+
+    const projects = await Project.find(query)
+      .populate('assignedDeveloper', 'firstName lastName email profilePicture')
+      .populate('companyId', 'companyName email')
+      .populate('userId', 'firstName lastName email')
+      .populate('developerId', 'firstName lastName email')
+      .populate('acceptedBid', 'amount proposal userName')
+      .sort({ updatedAt: -1 });
+
+    console.log("📋 Found find work invoice projects:", projects.length);
+    res.status(200).json(projects);
+  } catch (error) {
+    console.error("Error fetching find work invoice projects:", error);
+    res.status(500).json({ message: "Error fetching find work invoice projects" });
+  }
+};
+
+// Generate and download invoice
+const downloadInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+    const userRole = req.userRole;
+
+    // Find the project
+    const project = await Project.findById(id)
+      .populate('assignedDeveloper', 'firstName lastName email')
+      .populate('companyId', 'companyName email')
+      .populate('userId', 'firstName lastName email')
+      .populate('developerId', 'firstName lastName email');
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Check authorization
+    const isAuthorized = 
+      project.assignedDeveloper?._id.toString() === userId.toString() ||
+      project.developerId?._id.toString() === userId.toString() ||
+      project.userId?._id.toString() === userId.toString() ||
+      project.companyId?._id.toString() === userId.toString();
+
+    if (!isAuthorized) {
+      return res.status(403).json({ message: "Not authorized to download this invoice" });
+    }
+
+    // Create PDF
+    const doc = new PDFDocument();
+    const invoicePath = path.join(__dirname, `../uploads/invoices/invoice-${id}.pdf`);
+
+    // Ensure directory exists
+    const dir = path.dirname(invoicePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Pipe PDF to file
+    doc.pipe(fs.createWriteStream(invoicePath));
+
+    // Add content to PDF
+    doc.fontSize(25).text('Invoice', { align: 'center' });
+    doc.moveDown();
+
+    // Project Details
+    doc.fontSize(14).text('Project Details:', { underline: true });
+    doc.fontSize(12).text(`Title: ${project.title}`);
+    doc.text(`Status: ${project.status}`);
+    doc.text(`Payment Status: ${project.paymentStatus}`);
+    doc.moveDown();
+
+    // Client Details
+    doc.fontSize(14).text('Client Details:', { underline: true });
+    if (project.companyId) {
+      doc.fontSize(12).text(`Company: ${project.companyId.companyName}`);
+    } else if (project.userId) {
+      doc.fontSize(12).text(`Client: ${project.userId.firstName} ${project.userId.lastName}`);
+    }
+    doc.moveDown();
+
+    // Developer Details
+    doc.fontSize(14).text('Developer Details:', { underline: true });
+    if (project.assignedDeveloper) {
+      doc.fontSize(12).text(`Developer: ${project.assignedDeveloper.firstName} ${project.assignedDeveloper.lastName}`);
+    } else if (project.developerId) {
+      doc.fontSize(12).text(`Developer: ${project.developerId.firstName} ${project.developerId.lastName}`);
+    }
+    doc.moveDown();
+
+    // Payment Details
+    doc.fontSize(14).text('Payment Details:', { underline: true });
+    const totalAmount = project.acceptedBidAmount || project.budget;
+    const platformFee = totalAmount * 0.10;
+    const finalAmount = totalAmount - platformFee;
+
+    doc.fontSize(12).text(`Total Amount: PKR ${totalAmount.toLocaleString()}`);
+    doc.text(`Platform Fee (10%): PKR ${platformFee.toLocaleString()}`);
+    doc.text(`Final Amount: PKR ${finalAmount.toLocaleString()}`);
+    doc.moveDown();
+
+    // Dates
+    doc.fontSize(14).text('Dates:', { underline: true });
+    doc.fontSize(12).text(`Created: ${new Date(project.createdAt).toLocaleDateString()}`);
+    if (project.completedAt) {
+      doc.text(`Completed: ${new Date(project.completedAt).toLocaleDateString()}`);
+    }
+    if (project.paymentDate) {
+      doc.text(`Payment Date: ${new Date(project.paymentDate).toLocaleDateString()}`);
+    }
+
+    // Finalize PDF
+    doc.end();
+
+    // Wait for PDF to be generated
+    await new Promise((resolve) => {
+      doc.on('end', resolve);
+    });
+
+    // Send the PDF file
+    res.download(invoicePath, `invoice-${id}.pdf`, (err) => {
+      if (err) {
+        console.error('Error sending file:', err);
+      }
+      // Clean up: delete the file after sending
+      fs.unlink(invoicePath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.error('Error deleting temporary file:', unlinkErr);
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error("Error generating invoice:", error);
+    res.status(500).json({ message: "Error generating invoice" });
   }
 };
 
@@ -798,5 +1007,8 @@ module.exports = {
   updateProgress,
   getAvailableProjects,
   getAssignedProjects,
-  getInvoiceProjects
+  getInvoiceProjects,
+  getFindWorkInvoices,
+  getAssignedByMe,
+  downloadInvoice
 };

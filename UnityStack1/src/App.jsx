@@ -40,13 +40,21 @@ import StudentSidebar from "./pages/StudentSidebar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentProfile from "./pages/studentprofile";
 import Userpage from "./pages/UsersPage";
+import Submission from "./pages/projectSubmission/Submission";
+import ViewSubmission from "./pages/projectSubmission/viewsubmission";
+import EditSubmission from './pages/projectSubmission/EditSubmission';
 import { ToastContainer } from "react-toastify";
+import { Toaster } from 'react-hot-toast';
 import 'react-toastify/dist/ReactToastify.css';
+import Review from './pages/projectSubmission/review';
+import Invoiceget from "./pages/projectSubmission/Invoiceget";
+import Payment from './pages/projectSubmission/payment';
 
 
 const App = () => {
   return (
     <Router>
+      <Toaster position="top-right" />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/question" element={<Question />} />
@@ -65,7 +73,7 @@ const App = () => {
         <Route path="/account" element={<Account />} />
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/companies" element={<Companies />} />
-        <Route path="/companiesprofile" element={<CompanyProfile />} />
+        <Route path="/companiesprofile/:id" element={<CompanyProfile />} />
         <Route path="/organizationsighnup" element={<Organizationsighnup />} />
         <Route path="/forgotpassword" element={<ForgotPassword />} />
         <Route path="/otpVerification" element={<OtpVerification />} />
@@ -85,6 +93,19 @@ const App = () => {
         <Route path="/studentSidebar" element={<StudentSidebar />} />
         <Route path="/studentprofile" element={<StudentProfile />} />
         <Route path="/users" element={<Userpage />} />
+        <Route path="/submission/:projectId" element={<Submission />} />
+        <Route path="/view-submission/:projectId" element={<ViewSubmission />} />
+        <Route path="/edit-submission/:projectId" element={<EditSubmission />} />
+        <Route 
+          path="/review/:projectId" 
+          element={
+            <ProtectedRoute allowedRoles={["organization", "student","developer"]}>
+              <Review />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/invoiceget/:projectId" element={<Invoiceget />} />
+        <Route path="/payment/:projectId" element={<Payment />} />
 
         {/* Protected Routes */}
         <Route

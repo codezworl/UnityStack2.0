@@ -29,19 +29,17 @@ const DeveloperDashboard = () => {
   const [showRevenueModal, setShowRevenueModal] = useState(false);
   const [revenueTab, setRevenueTab] = useState('overview');
   const lastUpdated = 'May 10, 2025';
-  const revenueSummary = {
-    total: 'PKR 7,852,000',
-    monthly: 'PKR 654,333',
-    annual: 'PKR 8,500,000',
-    totalChange: '+12.5% from last year',
-    monthlyChange: '+2.3% from previous period',
-    annualChange: '+8.2% year over year',
-  };
-  const monthlyBreakdown = [
-    { month: 'January', revenue: 'PKR 620,000', projects: 12, avg: 'PKR 51,667', growth: '+5.2%' },
-    { month: 'February', revenue: 'PKR 580,000', projects: 10, avg: 'PKR 58,000', growth: '-6.5%' },
-    { month: 'March', revenue: 'PKR 700,000', projects: 14, avg: 'PKR 50,000', growth: '+8.1%' },
-  ];
+  const [revenueData, setRevenueData] = useState({
+    total: 0,
+    monthly: 0,
+    annual: 0,
+    totalChange: '0%',
+    monthlyChange: '0%',
+    annualChange: '0%'
+  });
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalRatings, setTotalRatings] = useState(0);
 
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
@@ -56,27 +54,145 @@ const DeveloperDashboard = () => {
     const fetchDeveloperProjects = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/projects', {
+        const response = await fetch('http://localhost:5000/api/projects/assigned', {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
         if (!response.ok) throw new Error('Failed to fetch projects');
-        const allProjects = await response.json();
-        // Filter for projects assigned to this developer
-        const myProjects = allProjects.filter(p => p.assignedTo === developerId);
-        setDeveloperProjects(myProjects);
+        const data = await response.json();
+        
+        // Set the projects from the response
+        setDeveloperProjects(data.projects || []);
+        
+        // Update project stats
         setProjectStats({
-          completed: myProjects.filter(p => p.status === 'completed').length,
-          inProgress: myProjects.filter(p => p.status === 'in-progress').length,
-          pending: myProjects.filter(p => p.status === 'pending').length
+          completed: data.stats?.completed || 0,
+          inProgress: data.stats?.total - (data.stats?.completed || 0) - (data.stats?.cancelled || 0),
+          pending: data.stats?.cancelled || 0
         });
       } catch (err) {
+        console.error('Error fetching projects:', err);
         setDeveloperProjects([]);
         setProjectStats({ completed: 0, inProgress: 0, pending: 0 });
       }
     };
     fetchDeveloperProjects();
   }, [showProjectsModal]);
+
+  // Fetch revenue and reviews data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const developerId = localStorage.getItem('developerId');
+
+        // Fetch completed projects for revenue calculation
+        const projectsResponse = await fetch('http://localhost:5000/api/projects/assigned', {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+        });
+        const data = await projectsResponse.json();
+        const projects = data.projects || [];
+
+        // Calculate revenue from completed projects with released payments
+        const completedProjects = projects.filter(p => 
+          p.status === 'completed' && 
+          p.paymentStatus === 'released'
+        );
+
+        console.log('Completed projects:', completedProjects);
+
+        const totalRevenue = completedProjects.reduce((sum, project) => {
+          const bidAmount = project.acceptedBidAmount || project.budget || 0;
+          return sum + (bidAmount * 0.9); // 90% of bid amount after platform fee
+        }, 0);
+
+        // Calculate monthly and annual revenue
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+
+        const monthlyRevenue = completedProjects
+          .filter(p => {
+            const projectDate = new Date(p.completedAt);
+            return projectDate.getMonth() === currentMonth && 
+                   projectDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, project) => {
+            const bidAmount = project.acceptedBidAmount || project.budget || 0;
+            return sum + (bidAmount * 0.9); // 90% of bid amount after platform fee
+          }, 0);
+
+        const annualRevenue = completedProjects
+          .filter(p => {
+            const projectDate = new Date(p.completedAt);
+            return projectDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, project) => {
+            const bidAmount = project.acceptedBidAmount || project.budget || 0;
+            return sum + (bidAmount * 0.9); // 90% of bid amount after platform fee
+          }, 0);
+
+        console.log('Revenue calculations:', {
+          totalRevenue,
+          monthlyRevenue,
+          annualRevenue,
+          completedProjectsCount: completedProjects.length
+        });
+
+        // Fetch reviews for completed projects where developer is assigned
+        console.log('Fetching reviews for assigned projects...');
+        const reviewsResponse = await fetch('http://localhost:5000/api/reviews/assigned', {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+        });
+        
+        if (!reviewsResponse.ok) {
+          throw new Error('Failed to fetch reviews');
+        }
+        
+        const reviewsData = await reviewsResponse.json();
+        console.log('Reviews data received:', reviewsData);
+        
+        setRevenueData({
+          total: totalRevenue,
+          monthly: monthlyRevenue,
+          annual: annualRevenue,
+          totalChange: '0%',
+          monthlyChange: '0%',
+          annualChange: '0%'
+        });
+
+        // Update reviews state with proper error handling
+        if (reviewsData && Array.isArray(reviewsData.reviews)) {
+          console.log('Setting reviews:', reviewsData.reviews);
+          setReviews(reviewsData.reviews);
+          setAverageRating(reviewsData.stats?.averageRating || 0);
+          setTotalRatings(reviewsData.stats?.totalReviews || 0);
+        } else {
+          console.log('No reviews data found or invalid format');
+          setReviews([]);
+          setAverageRating(0);
+          setTotalRatings(0);
+        }
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setReviews([]);
+        setAverageRating(0);
+        setTotalRatings(0);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Add a useEffect to monitor reviews state changes
+  useEffect(() => {
+    console.log('Current reviews state:', reviews);
+    console.log('Current average rating:', averageRating);
+    console.log('Current total ratings:', totalRatings);
+  }, [reviews, averageRating, totalRatings]);
 
   const handleSidebarSelection = (page) => {
     setSelectedPage(page); // Update selected page based on sidebar selection
@@ -196,8 +312,11 @@ const DeveloperDashboard = () => {
                   <div className="d-flex justify-content-between align-items-start mb-2">
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 28, marginBottom: 0, color: '#111' }}>Revenue</div>
-                      <div style={{ fontWeight: 700, fontSize: 32, color: '#222', marginBottom: 0 }}>PKR 7,852,000</div>
-                      <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 16, marginBottom: 0 }}>+2% from last week</div>
+                      <div style={{ fontWeight: 700, fontSize: 32, color: '#222', marginBottom: 0 }}>PKR {developerProjects
+                        .filter(p => p.status === 'completed' && p.paymentStatus === 'released')
+                        .reduce((sum, p) => sum + ((p.acceptedBidAmount || p.budget) * 0.9), 0)
+                        .toLocaleString()}</div>
+                      <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 16, marginBottom: 0 }}>{revenueData.totalChange} from last week</div>
                     </div>
                     <Button variant="outline-dark" size="sm" style={{ borderRadius: 10, fontWeight: 600, fontSize: 16, border: '1px solid #D1D5DB', background: '#fff', color: '#222', boxShadow: 'none' }} onClick={() => setShowRevenueModal(true)}>View Report</Button>
                   </div>
@@ -285,25 +404,39 @@ const DeveloperDashboard = () => {
               <div className="col-lg-6">
                 <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: 32, minHeight: 370, boxShadow: 'none', height: '100%' }}>
                   <div style={{ fontWeight: 700, fontSize: 32, marginBottom: 18, color: '#111', letterSpacing: -1 }}>Ratings and Reviews</div>
-                  <div className="d-flex align-items-center mb-2" style={{ gap: 18 }}>
-                    <span style={{ fontSize: 48, fontWeight: 700, color: '#111', lineHeight: 1 }}>4.6</span>
-                    <span style={{ fontSize: 32, color: '#FFD600', marginTop: 4 }}>
-                      {'★'.repeat(4)}<span style={{ color: '#E5E7EB' }}>★</span>
-                    </span>
-                  </div>
-                  <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 18, marginBottom: 18 }}>189,561 ratings</div>
-                  {/* Star bars */}
-                  {[5, 4, 3, 2, 1].map((star, idx) => {
-                    const barPercents = [0.65, 0.18, 0.08, 0.05, 0.04];
-                    return (
-                      <div key={star} className="d-flex align-items-center mb-2" style={{ gap: 10 }}>
-                        <span style={{ width: 60, fontWeight: 500, color: '#222', fontSize: 16 }}>{star} Star{star > 1 ? 's' : ''}:</span>
-                        <div style={{ flex: 1, background: '#F3F4F6', borderRadius: 8, height: 10, position: 'relative' }}>
-                          <div style={{ width: `${barPercents[idx] * 100}%`, background: '#111', height: 10, borderRadius: 8 }}></div>
-                        </div>
+                  {reviews.length > 0 ? (
+                    <>
+                      <div className="d-flex align-items-center mb-2" style={{ gap: 18 }}>
+                        <span style={{ fontSize: 48, fontWeight: 700, color: '#111', lineHeight: 1 }}>{averageRating.toFixed(1)}</span>
+                        <span style={{ fontSize: 32, color: '#FFD600', marginTop: 4 }}>
+                          {'★'.repeat(Math.floor(averageRating))}
+                          {averageRating % 1 >= 0.5 ? '★' : ''}
+                          <span style={{ color: '#E5E7EB' }}>{'★'.repeat(5 - Math.ceil(averageRating))}</span>
+                        </span>
                       </div>
-                    );
-                  })}
+                      <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 18, marginBottom: 18 }}>{totalRatings} ratings</div>
+                      {/* Star bars */}
+                      {[5, 4, 3, 2, 1].map((star, idx) => {
+                        const count = reviews.filter(review => review.rating === star).length;
+                        const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
+                        return (
+                          <div key={star} className="d-flex align-items-center mb-2" style={{ gap: 10 }}>
+                            <span style={{ width: 60, fontWeight: 500, color: '#222', fontSize: 16 }}>{star} Star{star > 1 ? 's' : ''}:</span>
+                            <div style={{ flex: 1, background: '#F3F4F6', borderRadius: 8, height: 10, position: 'relative' }}>
+                              <div style={{ width: `${percentage}%`, background: '#111', height: 10, borderRadius: 8 }}></div>
+                            </div>
+                            <span style={{ width: 40, textAlign: 'right', color: '#6B7280', fontSize: 14 }}>{count}</span>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                      <div style={{ fontSize: 48, color: '#E5E7EB', marginBottom: 16 }}>★</div>
+                      <div style={{ fontSize: 20, fontWeight: 600, color: '#111', marginBottom: 8 }}>No Reviews Yet</div>
+                      <div style={{ color: '#6B7280', fontSize: 16 }}>Complete projects to receive reviews from clients</div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -311,24 +444,29 @@ const DeveloperDashboard = () => {
                 <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: 32, minHeight: 370, boxShadow: 'none', height: '100%' }}>
                   <div style={{ fontWeight: 700, fontSize: 32, marginBottom: 18, color: '#111', letterSpacing: -1 }}>Feedback</div>
                   <div style={{ maxHeight: 270, overflowY: 'auto', paddingRight: 8 }}>
-                    {[
-                      { name: 'Dileep Singh', stars: 5, comment: "It's fantastic to stay connected with clients via a mobile app, allowing for prompt and frequent responses to their project needs." },
-                      { name: 'John Doe', stars: 4, comment: 'The new updates have improved the experience significantly. Great work!' },
-                      { name: 'Jane Smith', stars: 5, comment: 'I appreciate the quick response time and the helpful support team.' },
-                    ].map((feedback, index) => (
-                      <div key={index} className="d-flex align-items-start mb-4" style={{ gap: 18 }}>
-                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 20, color: '#222', flexShrink: 0 }}>
-                          {feedback.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 18, color: '#111', marginBottom: 2 }}>{feedback.name}</div>
-                          <div style={{ color: '#FFD600', fontSize: 18, marginBottom: 2 }}>
-                            {'★'.repeat(feedback.stars)}{'☆'.repeat(5 - feedback.stars)}
+                    {reviews && reviews.length > 0 ? (
+                      reviews.map((review, index) => (
+                        <div key={index} className="d-flex align-items-start mb-4" style={{ gap: 18 }}>
+                          <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 20, color: '#222', flexShrink: 0 }}>
+                            {review.reviewerName.split(' ').map(n => n[0]).join('').toUpperCase()}
                           </div>
-                          <div style={{ color: '#222', fontSize: 16, lineHeight: 1.5 }}>{feedback.comment}</div>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 18, color: '#111', marginBottom: 2 }}>{review.reviewerName}</div>
+                            <div style={{ color: '#6B7280', fontSize: 14, marginBottom: 2 }}>{review.reviewerRole}</div>
+                            <div style={{ color: '#FFD600', fontSize: 18, marginBottom: 2 }}>
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </div>
+                            <div style={{ color: '#222', fontSize: 16, lineHeight: 1.5 }}>{review.description}</div>
+                          </div>
                         </div>
+                      ))
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                        <div style={{ fontSize: 48, color: '#E5E7EB', marginBottom: 16 }}>💬</div>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: '#111', marginBottom: 8 }}>No Feedback Yet</div>
+                        <div style={{ color: '#6B7280', fontSize: 16 }}>Your feedback will appear here once clients review your work</div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
@@ -355,9 +493,6 @@ const DeveloperDashboard = () => {
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-center">
                       <h5>Total Projects</h5>
-                      <Button variant="primary" size="sm" onClick={() => setShowProjectsModal(true)}>
-                        View all project
-                      </Button>
                     </div>
                     <h2>{developerProjects.length}</h2>
                   </Card.Body>
@@ -395,35 +530,57 @@ const DeveloperDashboard = () => {
 
             {/* Small Cards for Project Types */}
             <div className="row g-4 mt-4">
-              {[
-                { label: 'AI Projects', count: 24 },
-                { label: 'MERN Projects', count: 36 },
-                { label: 'UI/UX Projects', count: 18 },
-                { label: 'Mobile App Projects', count: 28 },
-              ].map((type, index) => (
-                <div className="col-lg-3" key={index}>
-                  <Card
-                    className="shadow-sm h-100"
-                    style={{
-                      transition: 'transform 0.3s, border-color 0.3s',
-                      border: '1px solid #e0e0e0',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.03)';
-                      e.currentTarget.style.borderColor = '#007bff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.borderColor = '#e0e0e0';
-                    }}
-                  >
-                    <Card.Body>
-                      <h6>{type.label}</h6>
-                      <h3>{type.count}</h3>
-                    </Card.Body>
-                  </Card>
-                </div>
-              ))}
+              {(() => {
+                // Get all completed projects
+                const completedProjects = developerProjects.filter(p => p.status === 'completed');
+                
+                // Create a map to count skills
+                const skillCounts = {};
+                completedProjects.forEach(project => {
+                  if (project.skills && Array.isArray(project.skills)) {
+                    project.skills.forEach(skill => {
+                      skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+                    });
+                  }
+                });
+
+                // Convert to array of objects for rendering
+                const skillCards = Object.entries(skillCounts).map(([skill, count]) => ({
+                  label: skill,
+                  count: count
+                }));
+
+                // Sort by count in descending order
+                skillCards.sort((a, b) => b.count - a.count);
+
+                // Take top 4 skills
+                const topSkills = skillCards.slice(0, 4);
+
+                return topSkills.map((skill, index) => (
+                  <div className="col-lg-3" key={index}>
+                    <Card
+                      className="shadow-sm h-100"
+                      style={{
+                        transition: 'transform 0.3s, border-color 0.3s',
+                        border: '1px solid #e0e0e0',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.03)';
+                        e.currentTarget.style.borderColor = '#007bff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.borderColor = '#e0e0e0';
+                      }}
+                    >
+                      <Card.Body>
+                        <h6>{skill.label} Projects</h6>
+                        <h3>{skill.count}</h3>
+                      </Card.Body>
+                    </Card>
+                  </div>
+                ));
+              })()}
             </div>
 
             {/* Time Slots Section */}
@@ -558,24 +715,24 @@ const DeveloperDashboard = () => {
                   <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: 32, height: '100%' }}>
                     <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 2 }}>Total Revenue</div>
                     <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 16, marginBottom: 8 }}>All time</div>
-                    <div style={{ fontWeight: 700, fontSize: 32, color: '#111', marginBottom: 8 }}>{revenueSummary.total}</div>
-                    <div style={{ color: '#22C55E', fontWeight: 600, fontSize: 16, background: '#ECFDF5', borderRadius: 8, display: 'inline-block', padding: '2px 12px' }}>↑ {revenueSummary.totalChange}</div>
+                    <div style={{ fontWeight: 700, fontSize: 32, color: '#111', marginBottom: 8 }}>{revenueData.total.toLocaleString()}</div>
+                    <div style={{ color: '#22C55E', fontWeight: 600, fontSize: 16, background: '#ECFDF5', borderRadius: 8, display: 'inline-block', padding: '2px 12px' }}>↑ {revenueData.totalChange}</div>
                   </div>
                 </div>
                 <div className="col-md-4 mb-3">
                   <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: 32, height: '100%' }}>
                     <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 2 }}>Monthly Average</div>
                     <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 16, marginBottom: 8 }}>Last 12 months</div>
-                    <div style={{ fontWeight: 700, fontSize: 32, color: '#111', marginBottom: 8 }}>{revenueSummary.monthly}</div>
-                    <div style={{ color: '#22C55E', fontWeight: 600, fontSize: 16, background: '#ECFDF5', borderRadius: 8, display: 'inline-block', padding: '2px 12px' }}>↑ {revenueSummary.monthlyChange}</div>
+                    <div style={{ fontWeight: 700, fontSize: 32, color: '#111', marginBottom: 8 }}>{revenueData.monthly.toLocaleString()}</div>
+                    <div style={{ color: '#22C55E', fontWeight: 600, fontSize: 16, background: '#ECFDF5', borderRadius: 8, display: 'inline-block', padding: '2px 12px' }}>↑ {revenueData.monthlyChange}</div>
                   </div>
                 </div>
                 <div className="col-md-4 mb-3">
                   <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: 32, height: '100%' }}>
                     <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 2 }}>Projected Annual</div>
                     <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 16, marginBottom: 8 }}>Based on current growth</div>
-                    <div style={{ fontWeight: 700, fontSize: 32, color: '#111', marginBottom: 8 }}>{revenueSummary.annual}</div>
-                    <div style={{ color: '#22C55E', fontWeight: 600, fontSize: 16, background: '#ECFDF5', borderRadius: 8, display: 'inline-block', padding: '2px 12px' }}>↑ {revenueSummary.annualChange}</div>
+                    <div style={{ fontWeight: 700, fontSize: 32, color: '#111', marginBottom: 8 }}>{revenueData.annual.toLocaleString()}</div>
+                    <div style={{ color: '#22C55E', fontWeight: 600, fontSize: 16, background: '#ECFDF5', borderRadius: 8, display: 'inline-block', padding: '2px 12px' }}>↑ {revenueData.annualChange}</div>
                   </div>
                 </div>
               </div>

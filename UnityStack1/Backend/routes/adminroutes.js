@@ -17,4 +17,7 @@ router.get('/users', authenticateToken, adminController.getAllUsers);
 router.delete('/users/:role/:userId', authenticateToken, adminController.deleteUser);
 router.put('/users/:role/:userId', authenticateToken, adminController.updateUser);
 
+// Get revenue data
+router.get('/revenue', authenticateToken, adminController.getRevenueData);
+
 module.exports = router;

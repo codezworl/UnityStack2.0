@@ -106,6 +106,12 @@ const developerSchema = new mongoose.Schema(
       },
     ],
 
+    // ✅ Stripe Account ID for payouts
+    stripeAccountId: {
+      type: String,
+      default: null
+    },
+
     // ✅ Job Experience Section (Ensuring startDate <= endDate)
     employment: [
       {

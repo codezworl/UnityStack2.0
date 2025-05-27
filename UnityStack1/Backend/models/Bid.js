@@ -40,7 +40,7 @@ const bidSchema = new mongoose.Schema({
   userRole: {
     type: String,
     required: true,
-    enum: ['developer', 'Organization'],  // Changed 'developer' to 'Developer' and 'organization' to 'Organization'
+    enum: ['developer', 'organization', 'Developer', 'Organization'],  // Allow both cases
   },
   // Reference to the project that the bid is associated with
   projectId: {
