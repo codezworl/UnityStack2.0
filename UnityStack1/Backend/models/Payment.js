@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const paymentSchema = new mongoose.Schema({
   projectId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project',
-    required: true
+    ref: 'Project'
+  },
+  sessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Session'
   },
   // For organization payments
   organizationId: {

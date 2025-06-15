@@ -4,7 +4,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Project = require('../models/Project');
 const Payment = require('../models/Payment');
-const { createPaymentIntent, handleStripePaymentSuccess, handleStripeWebhook } = require('../Controllers/paymentController');
+const { createPaymentIntent, handleStripePaymentSuccess, handleStripeWebhook, handleSessionPaymentSuccess } = require('../Controllers/paymentcontroller');
 
 // Stripe payment routes
 router.post('/create-payment-intent', auth, createPaymentIntent);
@@ -53,5 +53,7 @@ router.post('/simple-payment', auth, async (req, res) => {
     res.status(500).json({ message: 'Error processing payment' });
   }
 });
+
+router.post('/session-payment', auth, handleSessionPaymentSuccess);
 
 module.exports = router;

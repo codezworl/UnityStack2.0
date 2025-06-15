@@ -4,7 +4,8 @@ import UsersPage from "./UsersPage";
 import TransactionsPage from "./ShowTranssactions";
 import SettingsPage from "./Adminsettings";
 import { useNavigate } from 'react-router-dom';
-import { FaStar } from "react-icons/fa";
+import { FaStar, FaHome, FaUsers, FaClock, FaMoneyBillWave, FaCog } from "react-icons/fa";
+import HandleRequest from './handleRequest';
 
 const DashboardLayout = ({ children }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -131,17 +132,19 @@ const DashboardLayout = ({ children }) => {
 
   // Render the active page based on state
   const renderActivePage = () => {
-    switch (activePage) {
-      case "Home":
+    switch (activePage.toLowerCase()) {
+      case "home":
         return <DashboardHome adminName={adminName} />;
-      case "Users":
+      case "users":
         return <UsersPage />;
-      case "Transactions":
+      case "transactions":
         return <TransactionsPage />;
-      case "Settings":
+      case "settings":
         return <SettingsPage notifications={notifications} />;
+      case "requests":
+        return <HandleRequest />;
       default:
-        return <DashboardHome />;
+        return <DashboardHome adminName={adminName} />;
     }
   };
 
@@ -243,6 +246,30 @@ const DashboardLayout = ({ children }) => {
     );
   };
 
+  const menuItems = [
+    {
+      title: 'Dashboard',
+      icon: <FaHome />,
+      component: <DashboardHome />
+    },
+    {
+      title: 'Users',
+      icon: <FaUsers />,
+      component: <UsersPage />
+    },
+    {
+      title: 'Requests',
+      icon: <FaClock />,
+      component: <HandleRequest />
+    },
+    {
+      title: 'Transactions',
+      icon: <FaMoneyBillWave />,
+      component: <TransactionsPage />
+    },
+    
+  ];
+
   return (
     <div
       style={{
@@ -273,22 +300,16 @@ const DashboardLayout = ({ children }) => {
         </div>
         <nav>
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {[
-              { name: "Home", value: "Home" },
-              { name: "Users", value: "Users" },
-              { name: "Transactions", value: "Transactions" },
-              { name: "Analytics", value: "Analytics" },
-              { name: "Settings", value: "Settings" },
-            ].map((item, index) => (
+            {menuItems.map((item, index) => (
               <li
                 key={index}
-                onClick={() => setActivePage(item.value)} // Set active page on click
+                onClick={() => setActivePage(item.title.toLowerCase())} // Set active page on click
                 style={{
                   padding: "10px 15px",
                   cursor: "pointer",
                   backgroundColor:
-                    activePage === item.value ? "#004080" : "transparent",
-                  color: activePage === item.value ? "#FFD700" : "#ffffff",
+                    activePage === item.title.toLowerCase() ? "#004080" : "transparent",
+                  color: activePage === item.title.toLowerCase() ? "#FFD700" : "#ffffff",
                   borderRadius: "5px",
                   transition: "background-color 0.3s",
                 }}
@@ -297,10 +318,10 @@ const DashboardLayout = ({ children }) => {
                 }
                 onMouseOut={(e) =>
                   (e.target.style.backgroundColor =
-                    activePage === item.value ? "#004080" : "transparent")
+                    activePage === item.title.toLowerCase() ? "#004080" : "transparent")
                 }
               >
-                {item.name}
+                {item.title}
               </li>
             ))}
           </ul>
@@ -580,9 +601,7 @@ const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Main Content Area */}
-        <main style={{ padding: "20px" }}>{
-          activePage === "Home" ? <DashboardHome adminName={adminName} /> : renderActivePage()
-        }</main>
+        <main style={{ padding: "20px" }}>{renderActivePage()}</main>
       </div>
     </div>
   );

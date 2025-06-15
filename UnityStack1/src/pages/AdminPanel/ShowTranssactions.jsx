@@ -1,47 +1,59 @@
-import React, { useState } from "react";
-
-const transactions = [
-  {
-    id: 1,
-    user: "John Doe",
-    date: "2025-02-01",
-    amount: "$150",
-    type: "Session Request",
-    status: "Payment Pending",
-    total: "$150",
-  },
-  {
-    id: 2,
-    user: "Jane Smith",
-    date: "2025-02-02",
-    amount: "$200",
-    type: "Session Request",
-    status: "Payment On Hold",
-    total: "$200",
-  },
-  {
-    id: 3,
-    user: "Mike Johnson",
-    date: "2025-02-03",
-    amount: "$100",
-    type: "Session Request",
-    status: "Payment Released",
-    total: "$100",
-  },
-];
+import React, { useState, useEffect } from "react";
+import { FaMoneyBillWave, FaClock, FaCheckCircle } from 'react-icons/fa';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const TransactionsPage = () => {
+  const [transactions, setTransactions] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [statistics, setStatistics] = useState({
+    total: 0,
+    onHold: 0,
+    released: 0,
+    failed: 0,
+    platformRevenue: 0
+  });
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/admin/transactions', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        setTransactions(response.data.transactions);
+        
+        // Calculate statistics
+        const stats = {
+          total: response.data.transactions.length,
+          onHold: response.data.transactions.filter(t => 
+            (t.type === 'Project' && t.paymentStatus === 'paid') || 
+            (t.type === 'Session' && t.paymentStatus === 'completed')
+          ).length,
+          released: response.data.transactions.filter(t => t.paymentStatus === 'released').length,
+          failed: response.data.transactions.filter(t => t.paymentStatus === 'failed').length,
+          platformRevenue: response.data.transactions
+            .filter(t => t.paymentStatus === 'released')
+            .reduce((sum, t) => sum + (t.amount * 0.1), 0)
+        };
+        setStatistics(stats);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        toast.error('Failed to fetch transactions');
+      }
+    };
+    fetchTransactions();
+  }, []);
 
   const filteredTransactions = transactions.filter((t) => {
-    return (
-      (filterStatus === "All" || t.status === filterStatus) &&
-      (t.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.type.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const matchesSearch = t.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.type.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (filterStatus === "All") return matchesSearch;
+    if (filterStatus === "On Hold") return matchesSearch && t.paymentStatus === 'completed' && t.status === 'completed';
+    return matchesSearch && t.paymentStatus === filterStatus;
   });
 
   // Function to handle verification
@@ -50,23 +62,38 @@ const TransactionsPage = () => {
   };
 
   // Function to handle payment release
-  const handleReleasePayment = (transaction) => {
+  const handleReleasePayment = async (transaction) => {
     try {
-      // Simulate API call or state update
-      if (transaction.status === "Payment On Hold") {
-        const updatedTransactions = transactions.map((t) =>
-          t.id === transaction.id ? { ...t, status: "Payment Released" } : t
-        );
-        setNotifications([
-          ...notifications,
-          {
-            id: Date.now(),
-            message: `Payment released for ${transaction.user}`,
-          },
-        ]);
-      } else {
-        throw new Error("Payment must be on hold to release.");
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/admin/transactions/${transaction._id}/release`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to release payment');
       }
+
+      // Update local state
+      const updatedTransactions = transactions.map((t) =>
+        t._id === transaction._id ? { ...t, paymentStatus: 'released' } : t
+      );
+      setTransactions(updatedTransactions);
+      
+      setNotifications([
+        ...notifications,
+        {
+          id: Date.now(),
+          message: `Payment released for ${transaction.user}`,
+          type: 'success'
+        },
+      ]);
+
+      // Refresh transactions to update stats
+      fetchTransactions();
     } catch (error) {
       setNotifications([
         ...notifications,
@@ -76,25 +103,38 @@ const TransactionsPage = () => {
   };
 
   // Function to handle payment cancellation
-  const handleCancelPayment = (transaction) => {
+  const handleCancelPayment = async (transaction) => {
     try {
-      if (
-        transaction.status === "Payment Pending" ||
-        transaction.status === "Payment On Hold"
-      ) {
-        const updatedTransactions = transactions.map((t) =>
-          t.id === transaction.id ? { ...t, status: "Payment Cancelled" } : t
-        );
-        setNotifications([
-          ...notifications,
-          {
-            id: Date.now(),
-            message: `Payment cancelled for ${transaction.user}`,
-          },
-        ]);
-      } else {
-        throw new Error("Payment cannot be cancelled in this state.");
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/admin/transactions/${transaction._id}/cancel`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel payment');
       }
+
+      // Update local state
+      const updatedTransactions = transactions.map((t) =>
+        t._id === transaction._id ? { ...t, paymentStatus: 'failed' } : t
+      );
+      setTransactions(updatedTransactions);
+      
+      setNotifications([
+        ...notifications,
+        {
+          id: Date.now(),
+          message: `Payment cancelled for ${transaction.user}`,
+          type: 'success'
+        },
+      ]);
+
+      // Refresh transactions to update stats
+      fetchTransactions();
     } catch (error) {
       setNotifications([
         ...notifications,
@@ -175,294 +215,154 @@ const TransactionsPage = () => {
     );
   };
 
+  // Helper function for status colors
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'success';
+      case 'pending':
+        return 'warning';
+      case 'cancelled':
+        return 'danger';
+      default:
+        return 'secondary';
+    }
+  };
+
+  // Helper function for payment status colors
+  const getPaymentStatusColor = (status) => {
+    switch (status) {
+      case 'completed':
+      case 'paid':
+        return 'warning'; // On Hold
+      case 'released':
+        return 'success';
+      case 'failed':
+        return 'danger';
+      case 'pending':
+        return 'info';
+      default:
+        return 'secondary';
+    }
+  };
+
   return (
-    <div
-      style={{
-        padding: "20px",
-        backgroundColor: "#F8F9FA",
-        minHeight: "100vh",
-      }}
-    >
-      <h1 style={{ fontSize: "24px", marginBottom: "20px" }}>Transactions</h1>
-
-      {/* Summary Stats */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "20px",
-          marginBottom: "20px",
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "8px",
-            textAlign: "center",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <h2 style={{ fontSize: "18px" }}>Total Revenue</h2>
-          <p style={{ fontSize: "24px", fontWeight: "bold", color: "#28a745" }}>
-            $
-            {transactions
-              .reduce(
-                (sum, t) => sum + parseFloat(t.amount.replace("$", "")),
-                0
-              )
-              .toFixed(2)}
-          </p>
-        </div>
-        <div
-          style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "8px",
-            textAlign: "center",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <h2 style={{ fontSize: "18px" }}>Total Payments Out</h2>
-          <p style={{ fontSize: "24px", fontWeight: "bold", color: "#FF4500" }}>
-            $
-            {transactions
-              .filter((t) => t.status === "Payment Released")
-              .reduce(
-                (sum, t) => sum + parseFloat(t.amount.replace("$", "")),
-                0
-              )
-              .toFixed(2)}
-          </p>
-        </div>
-        <div
-          style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "8px",
-            textAlign: "center",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <h2 style={{ fontSize: "18px" }}>Payments On Hold</h2>
-          <p style={{ fontSize: "24px", fontWeight: "bold", color: "#FFA500" }}>
-            {transactions.filter((t) => t.status === "Payment On Hold").length}
-          </p>
-        </div>
-        <div
-          style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "8px",
-            textAlign: "center",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <h2 style={{ fontSize: "18px" }}>Cancelled Payments</h2>
-          <p style={{ fontSize: "24px", fontWeight: "bold", color: "#dc3545" }}>
-            {
-              transactions.filter((t) => t.status === "Payment Cancelled")
-                .length
-            }
-          </p>
-        </div>
-      </div>
-
-      {/* Filters & Search */}
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "20px",
-          alignItems: "center",
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Search user or type..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            flex: 1,
-            padding: "10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
-        />
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{
-            padding: "10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-          }}
-        >
-          <option value="All">All</option>
-          <option value="Payment Pending">Payment Pending</option>
-          <option value="Payment On Hold">Payment On Hold</option>
-          <option value="Payment Released">Payment Released</option>
-          <option value="Payment Cancelled">Payment Cancelled</option>
-        </select>
-      </div>
-
-      {/* Notifications */}
-      <div
-        style={{
-          backgroundColor: "#fff",
-          padding: "20px",
-          borderRadius: "8px",
-          marginBottom: "20px",
-          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <h2>Notifications</h2>
-        {notifications.slice(0, 3).map((notification) => (
-          <div
-            key={notification.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "10px 0",
-              borderBottom: "1px solid #eee",
-            }}
-          >
-            <div
-              style={{
-                width: "30px",
-                height: "30px",
-                borderRadius: "50%",
-                backgroundColor:
-                  notification.type === "error" ? "#dc3545" : "#28a745",
-                color: "white",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: "10px",
-              }}
-            >
-              {notification.type === "error" ? "❌" : "✅"}
+    <div className="container-fluid p-4">
+      {/* Statistics Cards */}
+      <div className="row mb-4">
+        <div className="col-md-3">
+          <div className="card bg-primary text-white">
+            <div className="card-body">
+              <h5 className="card-title">Total Transactions</h5>
+              <h2 className="card-text">{statistics.total}</h2>
             </div>
-            <p style={{ margin: 0 }}>{notification.message}</p>
           </div>
-        ))}
+        </div>
+        <div className="col-md-3">
+          <div className="card bg-warning text-white">
+            <div className="card-body">
+              <h5 className="card-title">Payments On Hold</h5>
+              <h2 className="card-text">{statistics.onHold}</h2>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card bg-success text-white">
+            <div className="card-body">
+              <h5 className="card-title">Released Payments</h5>
+              <h2 className="card-text">{statistics.released}</h2>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card bg-info text-white">
+            <div className="card-body">
+              <h5 className="card-title">Platform Revenue</h5>
+              <h2 className="card-text">PKR {statistics.platformRevenue.toFixed(2)}</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Search transactions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="col-md-3">
+          <select
+            className="form-select"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="All">All Statuses</option>
+            <option value="On Hold">On Hold</option>
+            <option value="released">Released</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
       </div>
 
       {/* Transactions Table */}
-      <div
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: "8px",
-          padding: "20px",
-          overflowX: "auto",
-          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
+      <div className="table-responsive">
+        <table className="table table-striped table-hover">
+          <thead className="table-dark">
             <tr>
-              {[
-                "User",
-                "Date",
-                "Amount",
-                "Type",
-                "Status",
-                "Total",
-                "Actions",
-              ].map((header) => (
-                <th
-                  key={header}
-                  style={{
-                    padding: "10px",
-                    textAlign: "left",
-                    backgroundColor: "#f8f9fa",
-                    borderBottom: "1px solid #ddd",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {header}
-                </th>
-              ))}
+              <th>Date</th>
+              <th>Type</th>
+              <th>User</th>
+              <th>Developer</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Payment Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredTransactions.map((transaction) => (
-              <tr
-                key={transaction.id}
-                style={{ borderBottom: "1px solid #eee" }}
-              >
-                <td style={{ padding: "10px" }}>{transaction.user}</td>
-                <td style={{ padding: "10px" }}>{transaction.date}</td>
-                <td style={{ padding: "10px" }}>{transaction.amount}</td>
-                <td style={{ padding: "10px" }}>{transaction.type}</td>
-                <td
-                  style={{
-                    padding: "10px",
-                    color:
-                      transaction.status === "Payment Released"
-                        ? "#28a745"
-                        : transaction.status === "Payment Pending"
-                        ? "#FFA500"
-                        : transaction.status === "Payment Cancelled"
-                        ? "#dc3545"
-                        : "#FF4500",
-                  }}
-                >
-                  {transaction.status}
+              <tr key={transaction._id}>
+                <td>{new Date(transaction.date).toLocaleDateString()}</td>
+                <td>
+                  <span className={`badge ${transaction.type === 'Project' ? 'bg-primary' : 'bg-success'}`}>
+                    {transaction.type}
+                  </span>
                 </td>
-                <td style={{ padding: "10px" }}>{transaction.total}</td>
-                <td style={{ padding: "10px" }}>
-                  {transaction.status !== "Payment Released" && (
-                    <button
-                      onClick={() => handleVerify(transaction)}
-                      style={{
-                        backgroundColor: "#28a745",
-                        color: "white",
-                        padding: "8px 12px",
-                        borderRadius: "6px",
-                        border: "none",
-                        cursor: "pointer",
-                        marginRight: "5px",
-                        fontSize: "14px",
-                      }}
-                    >
-                      Verify
-                    </button>
-                  )}
-                  {transaction.status === "Payment On Hold" && (
-                    <button
-                      onClick={() => handleReleasePayment(transaction)}
-                      style={{
-                        backgroundColor: "#007BFF",
-                        color: "white",
-                        padding: "8px 12px",
-                        borderRadius: "6px",
-                        border: "none",
-                        cursor: "pointer",
-                        marginRight: "5px",
-                        fontSize: "14px",
-                      }}
-                    >
-                      Release Payment
-                    </button>
-                  )}
-                  {(transaction.status === "Payment Pending" ||
-                    transaction.status === "Payment On Hold") && (
-                    <button
-                      onClick={() => handleCancelPayment(transaction)}
-                      style={{
-                        backgroundColor: "#dc3545",
-                        color: "white",
-                        padding: "8px 12px",
-                        borderRadius: "6px",
-                        border: "none",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                      }}
-                    >
-                      Cancel Payment
-                    </button>
+                <td>{transaction.user}</td>
+                <td>{transaction.developer}</td>
+                <td>PKR {transaction.amount}</td>
+                <td>
+                  <span className={`badge bg-${getStatusColor(transaction.status)}`}>
+                    {transaction.status}
+                  </span>
+                </td>
+                <td>
+                  <span className={`badge bg-${getPaymentStatusColor(transaction.paymentStatus)}`}>
+                    {transaction.paymentStatus === 'completed' ? 'On Hold' : transaction.paymentStatus}
+                  </span>
+                </td>
+                <td>
+                  {((transaction.type === 'Project' && transaction.paymentStatus === 'paid') ||
+                    (transaction.type === 'Session' && transaction.paymentStatus === 'completed')) && (
+                    <div className="btn-group">
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => handleReleasePayment(transaction._id)}
+                      >
+                        Release
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleCancelPayment(transaction._id)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -471,6 +371,26 @@ const TransactionsPage = () => {
         </table>
       </div>
 
+      {/* Notifications */}
+      {notifications.map((notification) => (
+        <div
+          key={notification.id}
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            padding: "10px 20px",
+            backgroundColor: notification.type === "error" ? "#dc3545" : "#28a745",
+            color: "white",
+            borderRadius: "4px",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+          }}
+        >
+          {notification.message}
+        </div>
+      ))}
+
+      {/* Verification Dialog */}
       {selectedTransaction && (
         <VerificationDialog
           transaction={selectedTransaction}
@@ -479,6 +399,152 @@ const TransactionsPage = () => {
       )}
     </div>
   );
+};
+
+// Styles
+const statCardStyle = {
+  backgroundColor: "#fff",
+  padding: "20px",
+  borderRadius: "8px",
+  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+  display: "flex",
+  alignItems: "center",
+  gap: "15px",
+};
+
+const statIconStyle = {
+  width: "48px",
+  height: "48px",
+  borderRadius: "12px",
+  backgroundColor: "#E3F2FD",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "24px",
+  color: "#1976D2",
+};
+
+const statTitleStyle = {
+  fontSize: "16px",
+  color: "#666",
+  margin: "0 0 5px 0",
+};
+
+const statValueStyle = {
+  fontSize: "24px",
+  fontWeight: "bold",
+  color: "#333",
+  margin: "0 0 5px 0",
+};
+
+const statSubtitleStyle = {
+  fontSize: "14px",
+  color: "#999",
+  margin: 0,
+};
+
+const tableContainerStyle = {
+  backgroundColor: "#fff",
+  borderRadius: "8px",
+  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+  padding: "20px",
+  marginTop: "20px",
+};
+
+const tableHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "20px",
+};
+
+const filterContainerStyle = {
+  display: "flex",
+  gap: "10px",
+};
+
+const searchInputStyle = {
+  padding: "8px 12px",
+  borderRadius: "4px",
+  border: "1px solid #ddd",
+  fontSize: "14px",
+};
+
+const filterSelectStyle = {
+  padding: "8px 12px",
+  borderRadius: "4px",
+  border: "1px solid #ddd",
+  fontSize: "14px",
+};
+
+const tableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
+};
+
+const tableRowStyle = (isHeader) => ({
+  display: "grid",
+  gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr",
+  padding: "12px",
+  borderBottom: "1px solid #eee",
+  backgroundColor: isHeader ? "#f8f9fa" : "transparent",
+  fontWeight: isHeader ? "bold" : "normal",
+});
+
+const tableCellStyle = {
+  padding: "8px",
+  display: "flex",
+  alignItems: "center",
+};
+
+const actionButtonStyle = {
+  padding: "6px 12px",
+  borderRadius: "4px",
+  border: "none",
+  backgroundColor: "#007bff",
+  color: "white",
+  cursor: "pointer",
+  fontSize: "14px",
+};
+
+const getStatusStyle = (status) => ({
+  padding: "4px 8px",
+  borderRadius: "12px",
+  fontSize: "12px",
+  fontWeight: "bold",
+  backgroundColor:
+    status === "paid"
+      ? "#D4EDDA"
+      : status === "on_hold"
+      ? "#FFF3CD"
+      : status === "released"
+      ? "#CCE5FF"
+      : "#F8D7DA",
+  color:
+    status === "paid"
+      ? "#155724"
+      : status === "on_hold"
+      ? "#856404"
+      : status === "released"
+      ? "#004085"
+      : "#721C24",
+});
+
+const notificationsContainerStyle = {
+  position: "fixed",
+  bottom: "20px",
+  right: "20px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+  zIndex: 1000,
+};
+
+const notificationStyle = {
+  padding: "12px 20px",
+  borderRadius: "4px",
+  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+  animation: "slideIn 0.3s ease-out",
 };
 
 export default TransactionsPage;

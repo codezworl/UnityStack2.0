@@ -7,7 +7,7 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
-// there stripe
+//stripe
 const questionRoutes = require("./routes/questionroutes");
 const projectRoutes = require("./routes/projectRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
@@ -18,6 +18,9 @@ const adminRoutes = require('./routes/adminroutes');
 const adminController = require('./Controllers/admincontroller');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const reviewRoutes = require("./routes/reviewRoutes");
+const sessionRoutes = require('./routes/sessionRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const requestRoutes = require('./routes/requestRoutes');
 
 dotenv.config();
 
@@ -48,9 +51,20 @@ app.use(express.static(publicPath));
 // ✅ Rate limiting (only for API routes)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  max: 500, // Increased from 100 to 500 requests per window
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use("/api", limiter); // ✅ Apply rate limiting only to API routes
+
+// Apply rate limiting to all routes except file uploads
+app.use((req, res, next) => {
+  if (req.path.includes('/save-recording')) {
+    next();
+  } else {
+    limiter(req, res, next);
+  }
+});
 
 // ✅ API Routes
 const StudentRoutes = require("./routes/StudentRoutes");
@@ -210,6 +224,77 @@ socket.on("sendMessage", async (message, toUserId, fromUserId, fromUserName, roo
       console.error("Error marking messages as seen:", error);
     }
   });
+
+  // --- SESSION VIDEO CALL SIGNALING EVENTS ---
+  // Join a session room
+  socket.on('join-session-room', ({ sessionId, userId, role }) => {
+    console.log(`[Socket.IO] User ${userId} (${role}) joining session room ${sessionId}`);
+    socket.join(sessionId);
+    socket.sessionId = sessionId;
+    socket.userId = userId;
+    socket.role = role;
+  });
+
+  // Code editor events
+  socket.on('code-change', ({ sessionId, code, language }) => {
+    console.log(`[Socket.IO] Code change in session ${sessionId}`);
+    socket.to(sessionId).emit('code-change', { code, language });
+  });
+
+  socket.on('editor-toggle', ({ sessionId, show }) => {
+    console.log(`[Socket.IO] Editor toggle in session ${sessionId}: ${show}`);
+    socket.to(sessionId).emit('editor-toggle', { show });
+  });
+
+  // Student asks to join
+  socket.on('ask-to-join', ({ sessionId, studentName }) => {
+    console.log(`[Socket.IO] Student ${studentName} requesting to join session ${sessionId}`);
+    // Broadcast to all clients in the session room except the sender
+    socket.to(sessionId).emit('join-request', { studentName });
+  });
+
+  // Developer accepts
+  socket.on('accept-join', ({ sessionId }) => {
+    console.log(`[Socket.IO] Developer accepting join request for session ${sessionId}`);
+    // Broadcast to all clients in the session room
+    io.to(sessionId).emit('join-accepted');
+  });
+
+  // WebRTC signaling
+  socket.on('signal', ({ sessionId, data }) => {
+    console.log(`[Socket.IO] Signal received in session ${sessionId}`, data.type);
+    socket.to(sessionId).emit('signal', data);
+  });
+
+  // Early end request (when someone wants to end call before session time)
+  socket.on('early-end-request', ({ sessionId, from, to }) => {
+    console.log(`[Socket.IO] Early end request from ${from} to ${to} for session ${sessionId}`);
+    socket.to(sessionId).emit('early-end-request', { from });
+  });
+
+  // Reject early end request
+  socket.on('reject-early-end', ({ sessionId }) => {
+    console.log(`[Socket.IO] Early end request rejected for session ${sessionId}`);
+    io.to(sessionId).emit('early-end-rejected');
+  });
+
+  // Accept early end request
+  socket.on('accept-early-end', ({ sessionId }) => {
+    console.log(`[Socket.IO] Early end request accepted for session ${sessionId}`);
+    io.to(sessionId).emit('early-end-accepted');
+  });
+
+  // End session request (for normal session end)
+  socket.on('end-session-request', ({ sessionId }) => {
+    console.log(`[Socket.IO] End session request received for session ${sessionId}`);
+    socket.to(sessionId).emit('end-session-request');
+  });
+
+  // Confirm session end
+  socket.on('confirm-end-session', ({ sessionId }) => {
+    console.log(`[Socket.IO] Session ${sessionId} ended`);
+    io.to(sessionId).emit('session-ended');
+  });
 });
 
 // Update the users endpoint to exclude current user
@@ -327,16 +412,19 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use("/api/submissions", submissionRoutes);
+app.use('/api/sessions', sessionRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/requests', requestRoutes);
 
-// Set a single, comprehensive CSP header for Stripe
+// Set a single, comprehensive CSP header for Stripe and Monaco Editor
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https: http:; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; " +
-    "style-src 'self' 'unsafe-inline'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net https://unpkg.com; " +
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; " +
     "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.stripe.com https://api.emailjs.com http://localhost:* https://js.stripe.com; " +
+    "connect-src 'self' https://api.stripe.com https://api.emailjs.com http://localhost:* https://js.stripe.com https://cdn.jsdelivr.net https://unpkg.com; " +
     "frame-src 'self' https://js.stripe.com; " +
     "frame-ancestors 'self'; " +
     "form-action 'self' https://api.stripe.com;"

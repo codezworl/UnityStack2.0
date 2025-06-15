@@ -1,5 +1,5 @@
 require('dotenv').config();
-// there stripe
+//stripe
 const Project = require('../models/Project');
 const Payment = require('../models/Payment');
 
@@ -143,8 +143,40 @@ const handleStripeWebhook = async (req, res) => {
   }
 };
 
+const handleSessionPaymentSuccess = async (req, res) => {
+  try {
+    const { sessionId, paymentIntentId, amount, studentId, developerId } = req.body;
+
+    const payment = new Payment({
+      sessionId,
+      studentId,
+      developerId,
+      amount,
+      paymentIntentId,
+      status: 'paid',
+      paymentDate: new Date(),
+      payerType: 'student',
+      payeeType: 'developer',
+      netAmount: amount,
+      currency: 'USD',
+      paymentMethod: 'card'
+    });
+    await payment.save();
+
+    res.json({
+      success: true,
+      message: 'Session payment processed successfully',
+      payment
+    });
+  } catch (error) {
+    console.error('Error processing session payment:', error);
+    res.status(500).json({ message: 'Error processing session payment' });
+  }
+};
+
 module.exports = {
   createPaymentIntent,
   handleStripePaymentSuccess,
-  handleStripeWebhook
+  handleStripeWebhook,
+  handleSessionPaymentSuccess
 }; 

@@ -3,8 +3,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import Header from "./header";
 import StudentSidebar from "../components/sidebar"; // ✅ Ensure correct path
 import FindDeveloper from '../pages/finddevelpor';
+import ScheduleSession from '../pages/Session/shedulesession';
 import { Link } from 'react-router-dom';
-
 import { useNavigate } from 'react-router-dom';
 
 const StudentDashboard = () => {
@@ -68,6 +68,8 @@ const StudentDashboard = () => {
   const renderContent = () => {
     if (selectedPage === 'finddeveloper') {
       return <FindDeveloper />;
+    } else if (selectedPage === 'sessionSchedule') {
+      return <ScheduleSession />;
     }
 
     if (isLoading) {
@@ -119,7 +121,7 @@ const StudentDashboard = () => {
           <div className="col-lg-4">
             <div 
               className="card text-center shadow-sm p-3" 
-              onClick={handleProjectHelpClick}
+              onClick={() => handleSidebarSelection('finddeveloper')}
               style={{
                 background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
                 color: 'white',
@@ -318,7 +320,7 @@ const StudentDashboard = () => {
             borderRight: "1px solid #ddd",
           }}
         >
-          <StudentSidebar onSelectPage={handleSidebarSelection} />
+          <StudentSidebar onSelectPage={handleSidebarSelection} selectedPage={selectedPage} />
         </div>
 
         {/* Main Content */}

@@ -7,7 +7,10 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 const Header = () => {
   const [isExploreDropdownOpen, setIsExploreDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +23,8 @@ const Header = () => {
         if (response.data) {
           console.log("Header - Fetched user:", response.data);
           setUser(response.data);
+          // Fetch notifications after user is loaded
+          fetchNotifications();
         } else {
           setUser(null);
         }
@@ -31,6 +36,37 @@ const Header = () => {
 
     fetchUser();
   }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/notifications', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(response.data.notifications);
+      // Count unread notifications
+      const unread = response.data.notifications.filter(n => !n.read).length;
+      setUnreadCount(unread);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`http://localhost:5000/api/notifications/${notificationId}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Update notifications list
+      setNotifications(notifications.map(n => 
+        n._id === notificationId ? { ...n, read: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -139,6 +175,77 @@ const Header = () => {
               </div>
             )}
           </div>
+
+          {/* Notification Icon with Dropdown */}
+          {user && (
+            <div
+              style={{ position: "relative", display: "inline-block" }}
+              onMouseEnter={() => setIsNotificationDropdownOpen(true)}
+              onMouseLeave={() => setIsNotificationDropdownOpen(false)}
+            >
+              <div style={{ position: "relative", cursor: "pointer" }}>
+                <i className="fas fa-bell" style={{ color: "#64748b", fontSize: "20px" }}></i>
+                {unreadCount > 0 && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "-8px",
+                      right: "-8px",
+                      backgroundColor: "#ef4444",
+                      color: "white",
+                      borderRadius: "50%",
+                      padding: "2px 6px",
+                      fontSize: "12px",
+                      minWidth: "18px",
+                      textAlign: "center",
+                    }}
+                  >
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              {isNotificationDropdownOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: "0",
+                    backgroundColor: "#ffffff",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    minWidth: "300px",
+                    maxHeight: "400px",
+                    overflowY: "auto",
+                  }}
+                >
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification._id}
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #e5e7eb",
+                          backgroundColor: notification.read ? "transparent" : "#f3f4f6",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => markAsRead(notification._id)}
+                      >
+                        <p style={{ margin: 0, color: "#374151" }}>{notification.message}</p>
+                        <small style={{ color: "#6b7280" }}>
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </small>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ padding: "10px", color: "#6b7280", textAlign: "center" }}>
+                      No notifications
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* User Dropdown */}
           {user ? (

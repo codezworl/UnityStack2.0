@@ -97,6 +97,34 @@ const developerSchema = new mongoose.Schema(
     },
     availability: { type: String, trim: true, default: "Offline" },
 
+    // Weekly schedule for sessions
+    schedule: {
+      type: Map,
+      of: {
+        type: Map,
+        of: {
+          type: String,
+          enum: ['Available', 'Not Available'],
+          default: 'Available'
+        }
+      },
+      default: () => {
+        const defaultSchedule = {};
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        days.forEach(day => {
+          defaultSchedule[day] = {};
+          // Generate hourly slots from 9 AM to 5 PM by default
+          for (let hour = 9; hour < 17; hour++) {
+            const slot = `${hour}:00-${hour + 1}:00`;
+            // Set all slots as Available by default
+            defaultSchedule[day][slot] = 'Available';
+          }
+        });
+        return defaultSchedule;
+      }
+    },
+
     // ✅ Expertise Section (Ensuring positive values for projects)
     expertise: [
       {
@@ -135,4 +163,5 @@ const developerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Developer", developerSchema);
+// Check if the model exists before creating it
+module.exports = mongoose.models.Developer || mongoose.model("Developer", developerSchema);

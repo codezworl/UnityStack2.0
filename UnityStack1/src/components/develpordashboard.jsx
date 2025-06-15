@@ -6,6 +6,7 @@ import ComHeader from '../components/header';
 import ComSidebar from '../components/sidebar';
 import FindDeveloper from '../pages/finddevelpor';
 import FindWork from '../pages/findwork';
+import DevSessions from '../pages/Session/devsessions';
 import { FaEdit, FaTrash, FaEye, FaCalendarAlt, FaVideo, FaComments, FaSyncAlt, FaPrint, FaChevronDown, FaSearch, FaDownload, FaFilter } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,15 +17,213 @@ const DeveloperDashboard = () => {
   // Weekly schedule state
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [schedule, setSchedule] = useState({
-    Monday:    { Morning: 'Booked', Afternoon: 'Available', Evening: 'Booked' },
-    Tuesday:   { Morning: 'Available', Afternoon: 'Booked', Evening: 'Booked' },
-    Wednesday: { Morning: 'Booked', Afternoon: 'Available', Evening: 'Available' },
-    Thursday:  { Morning: 'Available', Afternoon: 'Booked', Evening: 'Available' },
-    Friday:    { Morning: 'Booked', Afternoon: 'Available', Evening: 'Booked' },
-    Saturday:  { Morning: 'Not Set', Afternoon: 'Not Set', Evening: 'Not Set' },
-    Sunday:    { Morning: 'Not Set', Afternoon: 'Not Set', Evening: 'Not Set' },
+    Monday: {},
+    Tuesday: {},
+    Wednesday: {},
+    Thursday: {},
+    Friday: {},
+    Saturday: {},
+    Sunday: {}
   });
-  const [editSchedule, setEditSchedule] = useState(schedule);
+  const [editSchedule, setEditSchedule] = useState({
+    Monday: {},
+    Tuesday: {},
+    Wednesday: {},
+    Thursday: {},
+    Friday: {},
+    Saturday: {},
+    Sunday: {}
+  });
+  const [bookedSessions, setBookedSessions] = useState([]);
+  const [workingHours, setWorkingHours] = useState({ from: "21:00", to: "00:00" }); // Default to 9 PM - 12 AM
+
+  // Generate hourly slots based on working hours
+  const generateHourlySlots = () => {
+    const slots = {};
+    const [startHour] = workingHours.from.split(':').map(Number);
+    const [endHour] = workingHours.to.split(':').map(Number);
+    
+    const effectiveEndHour = endHour === 0 ? 24 : endHour;
+    
+    for (let hour = startHour; hour < effectiveEndHour; hour++) {
+      const slot = `${hour}:00-${hour + 1}:00`;
+      slots[slot] = 'Available';
+    }
+    return slots;
+  };
+
+  // Fetch developer's working hours and initialize schedule
+  useEffect(() => {
+    const fetchDeveloperDetails = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.error('No authentication token found');
+          return;
+        }
+
+        const developerId = localStorage.getItem('developerId');
+        if (!developerId) {
+          console.error('No developer ID found');
+          return;
+        }
+
+        const response = await fetch(`http://localhost:5000/api/developers/${developerId}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch developer details');
+        }
+
+        const data = await response.json();
+        
+        if (data.workingHours) {
+          setWorkingHours(data.workingHours);
+        }
+
+        const initialSchedule = {
+          Monday: generateHourlySlots(),
+          Tuesday: generateHourlySlots(),
+          Wednesday: generateHourlySlots(),
+          Thursday: generateHourlySlots(),
+          Friday: generateHourlySlots(),
+          Saturday: generateHourlySlots(),
+          Sunday: generateHourlySlots()
+        };
+
+        if (data.schedule && Object.keys(data.schedule).length > 0) {
+          // Convert Map to object if needed
+          const scheduleObj = {};
+          for (const [day, slots] of Object.entries(data.schedule)) {
+            scheduleObj[day] = {};
+            for (const [slot, status] of Object.entries(slots)) {
+              scheduleObj[day][slot] = status;
+            }
+          }
+          setSchedule(scheduleObj);
+          setEditSchedule(scheduleObj);
+        } else {
+          setSchedule(initialSchedule);
+          setEditSchedule(initialSchedule);
+          // Save the initial schedule to the database
+          await handleSaveSchedule(initialSchedule);
+        }
+      } catch (error) {
+        console.error('Error fetching developer details:', error);
+      }
+    };
+
+    fetchDeveloperDetails();
+  }, []);
+
+  const handleEditSchedule = () => {
+    // When opening the modal, use the current schedule
+    setEditSchedule(schedule);
+    setShowScheduleModal(true);
+  };
+
+  const handleScheduleChange = (day, slot) => {
+    // Check if slot is booked
+    const isBooked = bookedSessions.some(session => {
+      const sessionDate = new Date(session.date);
+      const sessionDay = sessionDate.toLocaleDateString('en-US', { weekday: 'long' });
+      const sessionStartTime = session.startTime;
+      const sessionEndTime = session.endTime;
+      return sessionDay === day && 
+             sessionStartTime === slot.split('-')[0] && 
+             sessionEndTime === slot.split('-')[1];
+    });
+
+    if (isBooked) {
+      return;
+    }
+
+    setEditSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [slot]: prev[day][slot] === 'Available' ? 'Not Available' : 'Available'
+      }
+    }));
+  };
+
+  const handleSaveSchedule = async (scheduleToSave = null) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      const scheduleData = scheduleToSave || editSchedule;
+
+      // Validate schedule structure before sending
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      for (const day of days) {
+        if (!scheduleData[day]) {
+          console.error(`Missing schedule for ${day}`);
+          return;
+        }
+      }
+
+      const response = await fetch('http://localhost:5000/api/developers/schedule', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ schedule: scheduleData })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save schedule');
+      }
+
+      const data = await response.json();
+      setSchedule(data.schedule);
+      setEditSchedule(data.schedule);
+      if (!scheduleToSave) {
+        setShowScheduleModal(false);
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+    }
+  };
+
+  // Fetch booked sessions
+  useEffect(() => {
+    const fetchBookedSessions = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        const response = await fetch('http://localhost:5000/api/sessions/developer', {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch sessions');
+        }
+        
+        const data = await response.json();
+        setBookedSessions(data.sessions || []);
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+        alert(error.message || 'Failed to load sessions');
+      }
+    };
+    fetchBookedSessions();
+  }, []);
 
   const [showRevenueModal, setShowRevenueModal] = useState(false);
   const [revenueTab, setRevenueTab] = useState('overview');
@@ -47,6 +246,9 @@ const DeveloperDashboard = () => {
   const [sessionsTab, setSessionsTab] = useState('all');
   const [developerProjects, setDeveloperProjects] = useState([]);
   const [projectStats, setProjectStats] = useState({ completed: 0, inProgress: 0, pending: 0 });
+  const [sessions, setSessions] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState([]);
   const developerId = localStorage.getItem('developerId'); // Or get from auth context
 
   // Fetch developer's own projects
@@ -91,8 +293,26 @@ const DeveloperDashboard = () => {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
-        const data = await projectsResponse.json();
-        const projects = data.projects || [];
+        const projectsData = await projectsResponse.json();
+        const projects = projectsData.projects || [];
+
+        // Fetch completed sessions
+        const sessionsResponse = await fetch('http://localhost:5000/api/sessions/developer', {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+        });
+
+        if (!sessionsResponse.ok) {
+          throw new Error('Failed to fetch sessions');
+        }
+
+        const sessionsData = await sessionsResponse.json();
+        const sessions = sessionsData.sessions || [];
+
+        console.log('Fetched sessions:', sessions);
 
         // Calculate revenue from completed projects with released payments
         const completedProjects = projects.filter(p => 
@@ -100,19 +320,37 @@ const DeveloperDashboard = () => {
           p.paymentStatus === 'released'
         );
 
-        console.log('Completed projects:', completedProjects);
+        // Calculate revenue from completed sessions
+        const completedSessions = sessions.filter(s => 
+          s.status === 'completed' && 
+          s.paymentStatus === 'released'
+        );
 
-        const totalRevenue = completedProjects.reduce((sum, project) => {
+        console.log('Completed projects:', completedProjects);
+        console.log('Completed sessions:', completedSessions);
+
+        // Calculate project revenue (90% of bid amount after platform fee)
+        const projectRevenue = completedProjects.reduce((sum, project) => {
           const bidAmount = project.acceptedBidAmount || project.budget || 0;
-          return sum + (bidAmount * 0.9); // 90% of bid amount after platform fee
+          return sum + (bidAmount * 0.9);
         }, 0);
+
+        // Calculate session revenue (90% of session amount after platform fee)
+        const sessionRevenue = completedSessions.reduce((sum, session) => {
+          const sessionAmount = session.amount || 0;
+          return sum + (sessionAmount * 0.9);
+        }, 0);
+
+        // Total revenue combining projects and sessions
+        const totalRevenue = projectRevenue + sessionRevenue;
 
         // Calculate monthly and annual revenue
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
 
-        const monthlyRevenue = completedProjects
+        // Monthly revenue calculation
+        const monthlyProjectRevenue = completedProjects
           .filter(p => {
             const projectDate = new Date(p.completedAt);
             return projectDate.getMonth() === currentMonth && 
@@ -120,40 +358,92 @@ const DeveloperDashboard = () => {
           })
           .reduce((sum, project) => {
             const bidAmount = project.acceptedBidAmount || project.budget || 0;
-            return sum + (bidAmount * 0.9); // 90% of bid amount after platform fee
+            return sum + (bidAmount * 0.9);
           }, 0);
 
-        const annualRevenue = completedProjects
+        const monthlySessionRevenue = completedSessions
+          .filter(s => {
+            const sessionDate = new Date(s.completedAt);
+            return sessionDate.getMonth() === currentMonth && 
+                   sessionDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, session) => {
+            const sessionAmount = session.amount || 0;
+            return sum + (sessionAmount * 0.9);
+          }, 0);
+
+        const monthlyRevenue = monthlyProjectRevenue + monthlySessionRevenue;
+
+        // Annual revenue calculation
+        const annualProjectRevenue = completedProjects
           .filter(p => {
             const projectDate = new Date(p.completedAt);
             return projectDate.getFullYear() === currentYear;
           })
           .reduce((sum, project) => {
             const bidAmount = project.acceptedBidAmount || project.budget || 0;
-            return sum + (bidAmount * 0.9); // 90% of bid amount after platform fee
+            return sum + (bidAmount * 0.9);
           }, 0);
+
+        const annualSessionRevenue = completedSessions
+          .filter(s => {
+            const sessionDate = new Date(s.completedAt);
+            return sessionDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, session) => {
+            const sessionAmount = session.amount || 0;
+            return sum + (sessionAmount * 0.9);
+          }, 0);
+
+        const annualRevenue = annualProjectRevenue + annualSessionRevenue;
 
         console.log('Revenue calculations:', {
           totalRevenue,
           monthlyRevenue,
           annualRevenue,
-          completedProjectsCount: completedProjects.length
+          completedProjectsCount: completedProjects.length,
+          completedSessionsCount: completedSessions.length
         });
 
-        // Fetch reviews for completed projects where developer is assigned
-        console.log('Fetching reviews for assigned projects...');
-        const reviewsResponse = await fetch('http://localhost:5000/api/reviews/assigned', {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        });
+        // Fetch reviews for both projects and sessions
+        console.log('Fetching reviews for assigned projects and sessions...');
+        const [projectReviewsResponse, sessionReviewsResponse] = await Promise.all([
+          fetch('http://localhost:5000/api/reviews/assigned', {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          }),
+          fetch('http://localhost:5000/api/reviews/sessions', {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          })
+        ]);
         
-        if (!reviewsResponse.ok) {
+        if (!projectReviewsResponse.ok || !sessionReviewsResponse.ok) {
           throw new Error('Failed to fetch reviews');
         }
         
-        const reviewsData = await reviewsResponse.json();
-        console.log('Reviews data received:', reviewsData);
+        const projectReviewsData = await projectReviewsResponse.json();
+        const sessionReviewsData = await sessionReviewsResponse.json();
         
+        // Combine project and session reviews
+        const allReviews = [
+          ...(projectReviewsData.reviews || []),
+          ...(sessionReviewsData.reviews || [])
+        ];
+
+        // Calculate combined average rating
+        const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
+
+        // Calculate combined rating distribution
+        const ratingDistribution = {
+          5: allReviews.filter(r => r.rating === 5).length,
+          4: allReviews.filter(r => r.rating === 4).length,
+          3: allReviews.filter(r => r.rating === 3).length,
+          2: allReviews.filter(r => r.rating === 2).length,
+          1: allReviews.filter(r => r.rating === 1).length
+        };
+
         setRevenueData({
           total: totalRevenue,
           monthly: monthlyRevenue,
@@ -163,18 +453,13 @@ const DeveloperDashboard = () => {
           annualChange: '0%'
         });
 
-        // Update reviews state with proper error handling
-        if (reviewsData && Array.isArray(reviewsData.reviews)) {
-          console.log('Setting reviews:', reviewsData.reviews);
-          setReviews(reviewsData.reviews);
-          setAverageRating(reviewsData.stats?.averageRating || 0);
-          setTotalRatings(reviewsData.stats?.totalReviews || 0);
-        } else {
-          console.log('No reviews data found or invalid format');
-          setReviews([]);
-          setAverageRating(0);
-          setTotalRatings(0);
-        }
+        // Update reviews state with combined data
+        setReviews(allReviews);
+        setAverageRating(averageRating);
+        setTotalRatings(allReviews.length);
+
+        // Update session count
+        setSessions(sessions);
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -185,6 +470,72 @@ const DeveloperDashboard = () => {
     };
 
     fetchDashboardData();
+  }, []);
+
+  // Fetch questions and answers data
+  useEffect(() => {
+    const fetchQuestionsAndAnswers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const developerId = localStorage.getItem('developerId');
+
+        console.log('Developer ID:', developerId); // Debug log
+
+        // Fetch all questions
+        const questionsResponse = await fetch('http://localhost:5000/api/questions', {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+        });
+
+        if (!questionsResponse.ok) {
+          throw new Error('Failed to fetch questions');
+        }
+
+        const questionsData = await questionsResponse.json();
+        console.log('All Questions Data:', questionsData); // Debug log
+        
+        // Filter questions asked by this developer
+        const developerQuestions = questionsData.questions.filter(q => {
+          console.log('Question:', q); // Debug log for each question
+          console.log('Question user:', q.user); // Debug log for user ID
+          console.log('Question userRole:', q.userRole); // Debug log for user role
+          return q.userRole.toLowerCase() === 'developer' && 
+                 q.user && 
+                 q.user.toString() === developerId;
+        });
+        
+        console.log('Filtered Developer Questions:', developerQuestions); // Debug log
+        setQuestions(developerQuestions);
+
+        // Get all answers from questions
+        const allAnswers = questionsData.questions.reduce((acc, question) => {
+          if (question.answers && Array.isArray(question.answers)) {
+            const questionAnswers = question.answers.filter(a => 
+              a.userRole === 'developer' && 
+              a.user && 
+              a.user.toString() === developerId
+            );
+            return [...acc, ...questionAnswers];
+          }
+          return acc;
+        }, []);
+        
+        setAnswers(allAnswers);
+
+        console.log('Developer Questions Count:', developerQuestions.length);
+        console.log('Developer Answers Count:', allAnswers.length);
+
+      } catch (error) {
+        console.error('Error fetching questions and answers:', error);
+        setQuestions([]);
+        setAnswers([]);
+      }
+    };
+
+    fetchQuestionsAndAnswers();
   }, []);
 
   // Add a useEffect to monitor reviews state changes
@@ -220,32 +571,13 @@ const DeveloperDashboard = () => {
     },
   ];
 
-  const handleEditSchedule = () => {
-    setEditSchedule(schedule);
-    setShowScheduleModal(true);
-  };
-  const handleScheduleChange = (day, slot) => {
-    setEditSchedule(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [slot]: prev[day][slot] === 'Available' ? 'Booked' : prev[day][slot] === 'Booked' ? 'Not Set' : 'Available',
-      }
-    }));
-  };
-  const handleSaveSchedule = () => {
-    setSchedule(editSchedule);
-    setShowScheduleModal(false);
-  };
-
   const renderContent = () => {
     if (selectedPage === 'finddeveloper') {
       return <FindDeveloper />;
     } else if (selectedPage === 'findwork') {
       return <FindWork />;
-    } else if (selectedPage === 'sessions') {
-      // You can replace this with your actual sessions page/component
-      return <div>Sessions Page (implement navigation as needed)</div>;
+    } else if (selectedPage === 'devsessions') {
+      return <DevSessions />;
     } else if (selectedPage === 'answerquestions') {
       // You can replace this with your actual answer questions page/component
       return <div>Answer Questions Page (implement navigation as needed)</div>;
@@ -312,9 +644,12 @@ const DeveloperDashboard = () => {
                   <div className="d-flex justify-content-between align-items-start mb-2">
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 28, marginBottom: 0, color: '#111' }}>Revenue</div>
-                      <div style={{ fontWeight: 700, fontSize: 32, color: '#222', marginBottom: 0 }}>PKR {developerProjects
+                      <div style={{ fontWeight: 700, fontSize: 32, color: '#222', marginBottom: 0 }}>PKR {(developerProjects
                         .filter(p => p.status === 'completed' && p.paymentStatus === 'released')
-                        .reduce((sum, p) => sum + ((p.acceptedBidAmount || p.budget) * 0.9), 0)
+                        .reduce((sum, p) => sum + ((p.acceptedBidAmount || p.budget) * 0.9), 0) +
+                        sessions
+                        .filter(s => s.status === 'completed' && s.paymentStatus === 'released')
+                        .reduce((sum, s) => sum + ((s.amount || 0) * 0.9), 0))
                         .toLocaleString()}</div>
                       <div style={{ color: '#6B7280', fontWeight: 500, fontSize: 16, marginBottom: 0 }}>{revenueData.totalChange} from last week</div>
                     </div>
@@ -364,18 +699,23 @@ const DeveloperDashboard = () => {
               <div className="col-lg-6">
                 <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: 32, minHeight: 370, boxShadow: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div className="d-flex justify-content-between align-items-start mb-2">
-                    <div style={{ fontWeight: 700, fontSize: 28, color: '#111' }}>Order Time</div>
-                    <Button variant="outline-dark" size="sm" style={{ borderRadius: 10, fontWeight: 600, fontSize: 16, border: '1px solid #D1D5DB', background: '#fff', color: '#222', boxShadow: 'none' }}>View Report</Button>
+                    <div style={{ fontWeight: 700, fontSize: 28, color: '#111' }}>Activity Overview</div>
+                    <Button variant="outline-dark" size="sm" style={{ borderRadius: 10, fontWeight: 600, fontSize: 16, border: '1px solid #D1D5DB', background: '#fff', color: '#222', boxShadow: 'none' }}>View Details</Button>
                   </div>
                   <div style={{ height: '200px', marginTop: 16 }}>
                     <Doughnut
                       data={{
-                        labels: ['Afternoon', 'Evening', 'Morning'],
+                        labels: ['Completed Projects', 'Questions Asked', 'Answers Given', 'Completed Sessions'],
                         datasets: [
                           {
-                            data: [32, 25, 43],
-                            backgroundColor: ['#A5D8FF', '#2563EB', '#3B82F6'],
-                            hoverBackgroundColor: ['#60A5FA', '#1D4ED8', '#2563EB'],
+                            data: [
+                              developerProjects.filter(p => p.status === 'completed').length,
+                              questions.length,
+                              answers.length,
+                              sessions.filter(s => s.status === 'completed').length
+                            ],
+                            backgroundColor: ['#A5D8FF', '#2563EB', '#3B82F6', '#60A5FA'],
+                            hoverBackgroundColor: ['#60A5FA', '#1D4ED8', '#2563EB', '#3B82F6'],
                           },
                         ],
                       }}
@@ -390,11 +730,19 @@ const DeveloperDashboard = () => {
                     />
                   </div>
                   <div className="d-flex justify-content-center align-items-center mt-3" style={{ gap: 18 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: '50%', background: '#A5D8FF', display: 'inline-block' }}></span>Afternoon</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: '50%', background: '#2563EB', display: 'inline-block' }}></span>Evening</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: '50%', background: '#3B82F6', display: 'inline-block' }}></span>Morning</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: '50%', background: '#A5D8FF', display: 'inline-block' }}></span>Projects</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: '50%', background: '#2563EB', display: 'inline-block' }}></span>Questions</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: '50%', background: '#3B82F6', display: 'inline-block' }}></span>Answers</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: '50%', background: '#60A5FA', display: 'inline-block' }}></span>Sessions</span>
                   </div>
-                  <div className="text-center mt-2" style={{ color: '#222', fontWeight: 500, fontSize: 17 }}>Afternoon orders: 32%</div>
+                  <div className="text-center mt-2" style={{ color: '#222', fontWeight: 500, fontSize: 17 }}>
+                    Total Activities: {
+                      developerProjects.filter(p => p.status === 'completed').length +
+                      questions.length +
+                      answers.length +
+                      sessions.filter(s => s.status === 'completed').length
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -522,7 +870,7 @@ const DeveloperDashboard = () => {
                         View Sessions
                       </Button>
                     </div>
-                    <h2>48</h2>
+                    <h2>{sessions ? sessions.length : 0}</h2>
                   </Card.Body>
                 </Card>
               </div>
@@ -598,28 +946,53 @@ const DeveloperDashboard = () => {
                       <thead className="table-light">
                         <tr>
                           <th style={{ fontWeight: 600, color: '#6B7280', background: '#F9FAFB', borderTopLeftRadius: 12 }}>Days</th>
-                          <th style={{ fontWeight: 600, color: '#6B7280', background: '#F9FAFB' }}>Morning</th>
-                          <th style={{ fontWeight: 600, color: '#6B7280', background: '#F9FAFB' }}>Afternoon</th>
-                          <th style={{ fontWeight: 600, color: '#6B7280', background: '#F9FAFB', borderTopRightRadius: 12 }}>Evening</th>
+                          {(() => {
+                            const [startHour] = workingHours.from.split(':').map(Number);
+                            const [endHour] = workingHours.to.split(':').map(Number);
+                            const effectiveEndHour = endHour === 0 ? 24 : endHour;
+                            return Array.from({ length: effectiveEndHour - startHour }, (_, i) => startHour + i).map(hour => (
+                              <th key={hour} style={{ fontWeight: 600, color: '#6B7280', background: '#F9FAFB' }}>
+                                {hour}:00 - {hour + 1}:00
+                              </th>
+                            ));
+                          })()}
                         </tr>
                       </thead>
                       <tbody>
                         {Object.keys(schedule).map(day => (
                           <tr key={day}>
                             <td style={{ fontWeight: 600 }}>{day}</td>
-                            {['Morning', 'Afternoon', 'Evening'].map(slot => (
-                              <td key={slot}>
-                                <span style={{
-                                  display: 'inline-block',
-                                  padding: '4px 16px',
-                                  borderRadius: 16,
-                                  fontWeight: 600,
-                                  fontSize: 15,
-                                  background: schedule[day][slot] === 'Booked' ? '#FEE2E2' : schedule[day][slot] === 'Available' ? '#D1FAE5' : '#F3F4F6',
-                                  color: schedule[day][slot] === 'Booked' ? '#DC2626' : schedule[day][slot] === 'Available' ? '#059669' : '#6B7280',
-                                }}>{schedule[day][slot]}</span>
-                              </td>
-                            ))}
+                            {(() => {
+                              const [startHour] = workingHours.from.split(':').map(Number);
+                              const [endHour] = workingHours.to.split(':').map(Number);
+                              const effectiveEndHour = endHour === 0 ? 24 : endHour;
+                              return Array.from({ length: effectiveEndHour - startHour }, (_, i) => startHour + i).map(hour => {
+                                const slot = `${hour}:00-${hour + 1}:00`;
+                                const status = schedule[day][slot] || 'Not Available';
+                                const isBooked = bookedSessions.some(session => {
+                                  const sessionDate = new Date(session.date);
+                                  const sessionDay = sessionDate.toLocaleDateString('en-US', { weekday: 'long' });
+                                  const sessionStartTime = session.startTime;
+                                  const sessionEndTime = session.endTime;
+                                  return sessionDay === day && 
+                                         sessionStartTime === slot.split('-')[0] && 
+                                         sessionEndTime === slot.split('-')[1];
+                                });
+                                return (
+                                  <td key={hour}>
+                                    <span style={{
+                                      display: 'inline-block',
+                                      padding: '4px 16px',
+                                      borderRadius: 16,
+                                      fontWeight: 600,
+                                      fontSize: 15,
+                                      background: isBooked ? '#FEE2E2' : status === 'Available' ? '#D1FAE5' : '#F3F4F6',
+                                      color: isBooked ? '#DC2626' : status === 'Available' ? '#059669' : '#6B7280',
+                                    }}>{isBooked ? 'Booked' : status}</span>
+                                  </td>
+                                );
+                              });
+                            })()}
                           </tr>
                         ))}
                       </tbody>
@@ -655,7 +1028,7 @@ const DeveloperDashboard = () => {
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.18)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div style={{ background: '#fff', borderRadius: 16, maxWidth: 700, width: '100%', padding: 32, boxShadow: '0 8px 32px rgba(0,0,0,0.12)', position: 'relative', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: 16, maxWidth: 800, width: '100%', padding: 32, boxShadow: '0 8px 32px rgba(0,0,0,0.12)', position: 'relative', maxHeight: '80vh', overflowY: 'auto' }}>
             <button onClick={() => setShowScheduleModal(false)} style={{ position: 'absolute', top: 18, right: 24, background: 'none', border: 'none', fontSize: 28, color: '#888', cursor: 'pointer' }}>×</button>
             <h4 style={{ fontWeight: 700, marginBottom: 8 }}>Edit Weekly Schedule</h4>
             <div style={{ color: '#6B7280', marginBottom: 24 }}>Select the time slots when you are available for sessions. Clients will be able to book sessions during these times.</div>
@@ -663,25 +1036,54 @@ const DeveloperDashboard = () => {
               <div key={day} style={{ marginBottom: 18 }}>
                 <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 6 }}>{day}</div>
                 <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-                  {['Morning', 'Afternoon', 'Evening'].map(slot => (
-                    <label key={slot} style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500, fontSize: 15, cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={editSchedule[day][slot] === 'Available'}
-                        onChange={() => handleScheduleChange(day, slot)}
-                        style={{ accentColor: '#2563EB', width: 18, height: 18 }}
-                      />
-                      {slot} <span style={{ color: '#6B7280', fontWeight: 400, fontSize: 13, marginLeft: 2 }}>
-                        {slot === 'Morning' ? '(9 AM - 12 PM)' : slot === 'Afternoon' ? '(12 PM - 3 PM)' : '(6 PM - 9 PM)'}
-                      </span>
-                    </label>
-                  ))}
+                  {(() => {
+                    const [startHour] = workingHours.from.split(':').map(Number);
+                    const [endHour] = workingHours.to.split(':').map(Number);
+                    const effectiveEndHour = endHour === 0 ? 24 : endHour;
+                    return Array.from({ length: effectiveEndHour - startHour }, (_, i) => startHour + i).map(hour => {
+                      const slot = `${hour}:00-${hour + 1}:00`;
+                      const isBooked = bookedSessions.some(session => {
+                        const sessionDate = new Date(session.date);
+                        const sessionDay = sessionDate.toLocaleDateString('en-US', { weekday: 'long' });
+                        const sessionStartTime = session.startTime;
+                        const sessionEndTime = session.endTime;
+                        return sessionDay === day && 
+                               sessionStartTime === slot.split('-')[0] && 
+                               sessionEndTime === slot.split('-')[1];
+                      });
+                      return (
+                        <label key={hour} style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 8, 
+                          fontWeight: 500, 
+                          fontSize: 15, 
+                          cursor: isBooked ? 'not-allowed' : 'pointer',
+                          color: isBooked ? '#DC2626' : editSchedule[day][slot] === 'Available' ? '#059669' : '#6B7280'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={editSchedule[day][slot] === 'Available'}
+                            onChange={() => handleScheduleChange(day, slot)}
+                            disabled={isBooked}
+                            style={{ 
+                              accentColor: editSchedule[day][slot] === 'Available' ? '#059669' : '#6B7280',
+                              width: 18, 
+                              height: 18 
+                            }}
+                          />
+                          {hour}:00 - {hour + 1}:00
+                          {isBooked && <span style={{ color: '#DC2626', fontSize: 13 }}>(Booked)</span>}
+                        </label>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             ))}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 18 }}>
               <Button variant="outline-secondary" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
-              <Button variant="primary" onClick={handleSaveSchedule}>Save Changes</Button>
+              <Button variant="primary" onClick={() => handleSaveSchedule()}>Save Changes</Button>
             </div>
           </div>
         </div>

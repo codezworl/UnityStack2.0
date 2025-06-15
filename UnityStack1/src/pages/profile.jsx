@@ -458,6 +458,23 @@ const convertTo12Hour = (time24) => {
 
 
           <div style={{ flex: 1 }}>
+          {loggedInUser && loggedInUser.role === 'student' && (
+            <button
+              onClick={() => navigate(`/booksession/${developer._id}`)}
+              style={{
+                background: "blue",
+                color: "white",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "5px",
+                cursor: "pointer",
+                marginBottom: "20px",
+                display: "block"
+              }}
+            >
+              Book Session
+            </button>
+          )}
           <h3 style={{ borderBottom: "3px solid blue", paddingBottom: "5px", display: "inline-block" }}>
         About Me
     </h3>

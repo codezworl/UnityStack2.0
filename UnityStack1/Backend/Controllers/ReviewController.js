@@ -1,95 +1,198 @@
 const Review = require('../models/review');
 const Project = require('../models/Project');
 const Notification = require('../models/notification');
+const Session = require('../models/session');
+const Student = require('../models/Student');
+const Developer = require('../models/Develpor');
 
-// Create a new review
+// Create a new review (for both projects and sessions)
 const createReview = async (req, res) => {
   try {
-    const { projectId } = req.params;
-    const { rating, description, reviewerRole } = req.body;
-    const userId = req.user._id;
+    const { projectId, sessionId, rating, description, reviewerRole } = req.body;
+    const reviewerId = req.user._id;
 
-    // Find the project
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+    console.log('Review submission:', {
+      projectId,
+      sessionId,
+      rating,
+      description,
+      reviewerRole,
+      reviewerId
+    });
+
+    // Validate reviewer role
+    if (!reviewerRole || !['student', 'developer', 'organization'].includes(reviewerRole)) {
+      return res.status(400).json({ message: 'Invalid reviewer role' });
     }
 
-    // Verify user is authorized to create review (must be project owner or assigned developer)
-    let isAuthorized = false;
-    if (reviewerRole === 'organization' && project.companyId && project.companyId.toString() === userId.toString()) {
-      isAuthorized = true;
-    } else if (reviewerRole === 'student' && project.userId && project.userId.toString() === userId.toString()) {
-      isAuthorized = true;
-    } else if (reviewerRole === 'developer' && project.developerId && project.developerId.toString() === userId.toString()) {
-      isAuthorized = true;
+    // Determine review type and validate
+    let reviewType, targetId, project = null, session = null;
+    if (projectId) {
+      reviewType = 'project';
+      targetId = projectId;
+      project = await Project.findById(projectId);
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+    } else if (sessionId) {
+      reviewType = 'session';
+      targetId = sessionId;
+      session = await Session.findById(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+      // Check if session is completed
+      if (session.status !== 'completed') {
+        return res.status(400).json({ message: 'Cannot review a session that is not completed' });
+      }
+    } else {
+      return res.status(400).json({ message: 'Either projectId or sessionId is required' });
     }
 
-    if (!isAuthorized) {
-      return res.status(403).json({ message: 'Not authorized to create review for this project' });
-    }
-
-    // Check if project is completed
-    if (project.status !== 'completed') {
-      return res.status(400).json({ message: 'Can only review completed projects' });
+    // Get reviewer's name
+    let reviewerName;
+    if (reviewerRole === 'student') {
+      const student = await Student.findById(reviewerId);
+      if (!student) {
+        return res.status(404).json({ message: 'Student not found' });
+      }
+      reviewerName = `${student.firstName} ${student.lastName}`;
+    } else if (reviewerRole === 'developer') {
+      const developer = await Developer.findById(reviewerId);
+      if (!developer) {
+        return res.status(404).json({ message: 'Developer not found' });
+      }
+      reviewerName = `${developer.firstName} ${developer.lastName}`;
     }
 
     // Check if review already exists
-    const existingReview = await Review.findOne({ projectId });
+    const existingReview = await Review.findOne({
+      [reviewType === 'project' ? 'projectId' : 'sessionId']: targetId,
+      reviewerId,
+      reviewerRole
+    });
+
     if (existingReview) {
-      return res.status(400).json({ message: 'Review already exists for this project' });
+      return res.status(400).json({ message: 'You have already reviewed this ' + reviewType });
     }
 
-    // Get reviewer name based on role
-    let reviewerName = '';
-    if (reviewerRole === 'organization') {
-      reviewerName = req.user.companyName || 'Unknown Organization';
-    } else if (reviewerRole === 'student') {
-      reviewerName = `${req.user.firstName} ${req.user.lastName}` || 'Unknown Student';
-    } else if (reviewerRole === 'developer') {
-       reviewerName = `${req.user.firstName} ${req.user.lastName}` || 'Unknown Developer';
-    }
-
-    // Create the review with correct field names
+    // Create review
     const review = new Review({
-      projectId,
-      reviewerId: userId,
+      [reviewType === 'project' ? 'projectId' : 'sessionId']: targetId,
+      reviewerId,
       reviewerRole,
       reviewerName,
       rating,
-      description
+      description,
+      reviewType
     });
 
     await review.save();
 
-    // Create notification for the developer (if reviewer is organization/student)
-    // or for the project owner (if reviewer is developer)
-    let notificationUserId = null;
-    let notificationMessage = '';
-    let notificationType = 'new_review';
+    // Notification logic
+    if (reviewType === 'project' && project) {
+      let notificationUserId = null;
+      let notificationMessage = '';
+      let notificationType = 'new_review';
+      let recipientModel = '';
+      let senderModel = reviewerRole.charAt(0).toUpperCase() + reviewerRole.slice(1);
 
-    if (reviewerRole === 'organization' || reviewerRole === 'student') {
+      if (reviewerRole === 'organization' || reviewerRole === 'student') {
         notificationUserId = project.developerId;
+        recipientModel = 'Developer';
         notificationMessage = `You received a new review for project: ${project.title}`;
-    } else if (reviewerRole === 'developer') {
-        notificationUserId = project.companyId || project.userId; // Notify the project owner
+      } else if (reviewerRole === 'developer') {
+        notificationUserId = project.companyId || project.userId;
+        recipientModel = project.companyId ? 'Organization' : 'Student';
         notificationMessage = `A developer reviewed project: ${project.title}`;
-    }
+      }
 
-    if (notificationUserId) {
+      if (notificationUserId) {
         await Notification.create({
-            organization: notificationUserId,
-            title: notificationType,
-            message: notificationMessage,
-            type: 'info',
-            link: project._id ? `/project/${project._id}` : null
+          recipient: notificationUserId,
+          recipientModel: recipientModel,
+          sender: reviewerId,
+          senderModel: senderModel,
+          projectId: project._id,
+          type: notificationType,
+          message: notificationMessage
         });
+      }
+    } else if (reviewType === 'session' && session) {
+      let notificationUserId = null;
+      let notificationMessage = '';
+      let notificationType = 'session_review';
+      let recipientModel = '';
+      let senderModel = reviewerRole.charAt(0).toUpperCase() + reviewerRole.slice(1);
+
+      if (reviewerRole === 'student') {
+        notificationUserId = session.developerId;
+        recipientModel = 'Developer';
+        notificationMessage = `You received a new review for session: ${session.title}`;
+      } else if (reviewerRole === 'developer') {
+        notificationUserId = session.studentId;
+        recipientModel = 'Student';
+        notificationMessage = `You received a new review for session: ${session.title}`;
+      }
+
+      if (notificationUserId) {
+        await Notification.create({
+          recipient: notificationUserId,
+          recipientModel: recipientModel,
+          sender: reviewerId,
+          senderModel: senderModel,
+          sessionId: session._id,
+          type: notificationType,
+          message: notificationMessage
+        });
+      }
     }
 
-    res.status(201).json(review);
+    res.status(201).json({
+      message: 'Review submitted successfully',
+      review
+    });
   } catch (error) {
     console.error('Error creating review:', error);
-    res.status(500).json({ message: 'Error creating review', error: error.message });
+    res.status(500).json({ 
+      message: 'Error creating review', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+// Get reviews for a project or session
+const getReviews = async (req, res) => {
+  try {
+    const { projectId, sessionId } = req.params;
+    const reviewType = projectId ? 'project' : 'session';
+    const targetId = projectId || sessionId;
+
+    const reviews = await Review.find({
+      [reviewType === 'project' ? 'projectId' : 'sessionId']: targetId,
+      reviewType
+    }).sort({ createdAt: -1 });
+
+    res.json({ reviews });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ message: 'Error fetching reviews' });
+  }
+};
+
+// Get average rating for a project or session
+const getAverageRating = async (req, res) => {
+  try {
+    const { projectId, sessionId } = req.params;
+    const reviewType = projectId ? 'project' : 'session';
+    const targetId = projectId || sessionId;
+
+    const averageRating = await Review.getAverageRating(targetId, reviewType);
+    res.json({ averageRating });
+  } catch (error) {
+    console.error('Error fetching average rating:', error);
+    res.status(500).json({ message: 'Error fetching average rating' });
   }
 };
 
@@ -188,6 +291,59 @@ const getAssignedProjectReviews = async (req, res) => {
   }
 };
 
+// Get all reviews for assigned sessions
+const getAssignedSessionReviews = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log('Fetching reviews for sessions assigned to developer:', userId);
+    
+    // Find all sessions where this developer is assigned
+    const sessions = await Session.find({ 
+      developerId: userId
+    });
+    console.log('Found assigned sessions:', sessions.length);
+
+    // Get all session IDs
+    const sessionIds = sessions.map(session => session._id);
+    console.log('Session IDs:', sessionIds);
+
+    // Find all reviews for these sessions where reviewer is NOT the developer
+    const reviews = await Review.find({
+      sessionId: { $in: sessionIds },
+      reviewerRole: { $ne: 'developer' }  // Only get reviews from students
+    }).populate('sessionId', 'title description');
+    
+    console.log('Found session reviews:', reviews.length);
+
+    // Calculate average rating
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+    console.log('Calculated average rating:', averageRating);
+
+    // Calculate rating distribution
+    const ratingDistribution = {
+      5: reviews.filter(r => r.rating === 5).length,
+      4: reviews.filter(r => r.rating === 4).length,
+      3: reviews.filter(r => r.rating === 3).length,
+      2: reviews.filter(r => r.rating === 2).length,
+      1: reviews.filter(r => r.rating === 1).length
+    };
+    console.log('Rating distribution:', ratingDistribution);
+
+    res.status(200).json({
+      reviews,
+      stats: {
+        totalReviews: reviews.length,
+        averageRating: averageRating,
+        ratingDistribution
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching assigned session reviews:', error);
+    res.status(500).json({ message: 'Error fetching reviews', error: error.message });
+  }
+};
+
 // Add a test review for debugging
 const addTestReview = async (req, res) => {
   try {
@@ -219,5 +375,8 @@ module.exports = {
   getProjectReview,
   getUserReviews,
   getAssignedProjectReviews,
-  addTestReview
+  getAssignedSessionReviews,
+  addTestReview,
+  getReviews,
+  getAverageRating
 }; 

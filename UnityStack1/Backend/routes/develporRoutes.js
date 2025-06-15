@@ -38,6 +38,83 @@ router.get("/:id", getDeveloperProfile);
 // ✅ Update Profile (With Image Upload)
 router.put("/profile", authenticateToken, uploadProfileImage, updateProfile); // ✅ Ensure `authenticate` is defined
 
+// ✅ Update Developer Schedule
+router.put("/schedule", authenticateToken, async (req, res) => {
+  try {
+    const { schedule } = req.body;
+    const developerId = req.user.id;
+
+    // Validate schedule format
+    if (!schedule || typeof schedule !== 'object') {
+      return res.status(400).json({ message: 'Invalid schedule format' });
+    }
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentHour = now.getHours();
+    const dayMap = {
+      'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+      'Thursday': 4, 'Friday': 5, 'Saturday': 6
+    };
+
+    // Validate each day's schedule
+    for (const day of days) {
+      if (!schedule[day] || typeof schedule[day] !== 'object') {
+        return res.status(400).json({ message: `Invalid schedule format for ${day}` });
+      }
+
+      const slotDay = dayMap[day];
+      const isCurrentOrNextDay = slotDay === currentDay || slotDay === (currentDay + 1) % 7;
+
+      // Only allow modifications for current and next day
+      if (!isCurrentOrNextDay) {
+        // For other days, keep the existing schedule
+        const existingSchedule = await Developer.findById(developerId).select(`schedule.${day}`);
+        if (existingSchedule && existingSchedule.schedule) {
+          schedule[day] = existingSchedule.schedule.get(day) || {};
+        }
+        continue;
+      }
+
+      // For current and next day, validate each slot
+      for (const [slot, status] of Object.entries(schedule[day])) {
+        if (!['Available', 'Not Available'].includes(status)) {
+          return res.status(400).json({ message: `Invalid status for ${day} ${slot}` });
+        }
+
+        // For current day, prevent modifying past slots
+        if (slotDay === currentDay) {
+          const [slotHour] = slot.split('-')[0].split(':').map(Number);
+          if (slotHour <= currentHour) {
+            // Keep past slots as they are
+            const existingSchedule = await Developer.findById(developerId).select(`schedule.${day}.${slot}`);
+            if (existingSchedule && existingSchedule.schedule) {
+              schedule[day][slot] = existingSchedule.schedule.get(day)?.get(slot) || 'Available';
+            }
+          }
+        }
+      }
+    }
+
+    // Update the schedule
+    const updatedDeveloper = await Developer.findByIdAndUpdate(
+      developerId,
+      { $set: { schedule } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedDeveloper) {
+      return res.status(404).json({ message: 'Developer not found' });
+    }
+
+    res.json({ message: 'Schedule updated successfully', schedule: updatedDeveloper.schedule });
+  } catch (error) {
+    console.error('Error updating schedule:', error);
+    res.status(500).json({ message: 'Error updating schedule' });
+  }
+});
+
 // ✅ Fetch All Developers
 router.get("/developers", async (req, res) => {
   try {

@@ -123,7 +123,7 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
           {
             icon: faChartSimple,
             label: "Dashboard",
-            page: "dashboard",
+            page: "dashboard"
           },
           { 
             icon: faComments, 
@@ -131,17 +131,24 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
             page: "/chat",
             notification: unreadChats > 0 ? unreadChats : null
           },
-          { icon: faVideo, label: "Sessions", page: "sessions" },
+          { 
+            icon: faVideo, 
+            label: "Sessions", 
+            page: "devsessions" 
+          },
           {
             icon: faUser,
             label: "Find Developer",
-            page: "finddeveloper",
+            page: "finddeveloper"
           },
-          { icon: faBriefcase, label: "Find Work", page: "findwork" },
+          { 
+            icon: faBriefcase, 
+            label: "Find Work", 
+            page: "findwork" 
+          },
         ]
       : [
           { icon: faHouse, label: "Dashboard", page: "studentdashboard" },
-          { icon: faChartSimple, label: "Account", page: "account" },
           { 
             icon: faComments, 
             label: "Chat", 
@@ -151,19 +158,24 @@ const Sidebar = ({ onSelectPage, selectedPage }) => {
           {
             icon: faUser,
             label: "Find Developer",
-            page: "finddeveloper",
+            page: "finddeveloper"
           },
           {
             icon: faProjectDiagram,
             label: "Schedule Session",
-            page: "sessionSchedule",
-          },
-          { icon: faVideo, label: "Session History", page: "SessionHistory" },
+            page: "sessionSchedule"
+          }
         ];
 
   const handleNavigation = (page) => {
     if (page.startsWith('/')) {
       navigate(page);  // Use navigate for absolute paths
+    } else if (page === 'devsessions') {
+      onSelectPage('devsessions');  // Use onSelectPage to show devsessions content without changing route
+    } else if (page === 'sessionSchedule') {
+      onSelectPage('sessionSchedule');  // Use onSelectPage to show schedule session content without changing route
+    } else if (page === 'studentdashboard') {
+      navigate('/studentdashboard');
     } else {
       onSelectPage(page);  // Use onSelectPage for relative paths
     }

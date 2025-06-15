@@ -133,11 +133,12 @@ const Review = () => {
       const reviewData = {
         rating,
         description,
-        reviewerRole: userData.role
+        reviewerRole: userData.role,
+        projectId: projectId
       };
 
       await axios.post(
-        `http://localhost:5000/api/reviews/${projectId}`,
+        `http://localhost:5000/api/reviews/`,
         reviewData,
         { headers: { Authorization: `Bearer ${token}` } }
       );

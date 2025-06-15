@@ -49,6 +49,14 @@ import 'react-toastify/dist/ReactToastify.css';
 import Review from './pages/projectSubmission/review';
 import Invoiceget from "./pages/projectSubmission/Invoiceget";
 import Payment from './pages/projectSubmission/payment';
+import BookSession from './pages/Session/booksesion';
+import SessionPayment from './pages/Session/sessionpayment';
+import ScheduleSession from './pages/Session/shedulesession';
+import DevSessions from './pages/Session/devsessions';
+import JoinSession from './pages/Session/joinsession';
+import WithdrawSession from './pages/Session/withdrawsession';
+import SessionReviewForm from './pages/Session/SessionReviewForm';
+import Request from './pages/Session/request';
 
 
 const App = () => {
@@ -129,6 +137,68 @@ const App = () => {
           element={
             <ProtectedRoute allowedRoles={["organization"]}>
               <CompanyDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Session Routes */}
+        <Route
+          path="/booksession/:developerId"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <BookSession />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sessionpayment"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <SessionPayment />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sessionSchedule"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <ScheduleSession />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/devsessions"
+          element={
+            <ProtectedRoute allowedRoles={["developer"]}>
+              <DevSessions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/joinsession/:sessionId"
+          element={<JoinSession />}
+        />
+        <Route
+          path="/withdrawsession/:sessionId"
+          element={
+            <ProtectedRoute allowedRoles={["developer"]}>
+              <WithdrawSession />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/session/:sessionId/review"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <SessionReviewForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/session/:sessionId/request"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <Request />
             </ProtectedRoute>
           }
         />

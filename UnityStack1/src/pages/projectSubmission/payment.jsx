@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Initialize Stripe with your publishable key
+const stripePromise = loadStripe('pk_test_51RL6m0I2RrNQfuPDoaSkTwq4vG73aSFJgtYtXGA15SLfdM8xea8JulLwfRfYfUlHzQVf3ys9erWc7vbUiD1Jw6Gt00mniCOHay');
 
-
-const PaymentForm = ({ clientSecret, project, onSuccess }) => {
+const PaymentForm = ({ clientSecret, project, session, onSuccess }) => {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -43,7 +43,7 @@ const PaymentForm = ({ clientSecret, project, onSuccess }) => {
         payment_method: {
           card: elements.getElement(CardElement),
           billing_details: {
-            name: project.title,
+            name: project ? project.title : session.title,
           },
         },
       });
@@ -58,53 +58,63 @@ const PaymentForm = ({ clientSecret, project, onSuccess }) => {
       if (paymentIntent.status === 'succeeded') {
         // Debug: Log details sent to backend
         const PKR_TO_USD = 280;
-        const pkrAmount = project.acceptedBidAmount;
-        if (!pkrAmount) {
-          throw new Error('No accepted bid amount found for this project');
-        }
-        const usdAmount = +(pkrAmount / PKR_TO_USD).toFixed(2);
-        
-        // Add detailed logging
-        console.log('Project details:', {
-          id: project._id,
-          title: project.title,
-          developerId: project.developerId,
-          assignedDeveloper: project.assignedDeveloper,
-          acceptedBidAmount: project.acceptedBidAmount,
-          budget: project.budget
-        });
-        
-        console.log('Payment details:', {
-          paymentIntentId: paymentIntent.id,
-          amount: usdAmount,
-          pkrAmount: pkrAmount
-        });
+        let pkrAmount;
+        let paymentData = {};
 
-        // Confirm payment on backend
-        const paymentData = {
-          projectId: project._id,
-          paymentIntentId: paymentIntent.id,
-          amount: usdAmount,
-          developerId: project.developerId || project.assignedDeveloper // Try both fields
-        };
-        
-        console.log('Sending to /confirm-payment:', paymentData);
-        const response = await axios.post(
-          'http://localhost:5000/api/payments/confirm-payment',
-          paymentData,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
+        if (project) {
+          // Project payment handling
+          pkrAmount = project.acceptedBidAmount;
+          if (!pkrAmount) {
+            throw new Error('No accepted bid amount found for this project');
           }
-        );
-
-        if (response.data.success || response.data.payment) {
-          toast.success('Payment successful!');
-          onSuccess();
-        } else {
-          toast.error('Payment confirmation failed on server.');
+          const usdAmount = +(pkrAmount / PKR_TO_USD).toFixed(2);
+          
+          paymentData = {
+            projectId: project._id,
+            paymentIntentId: paymentIntent.id,
+            amount: usdAmount,
+            developerId: project.developerId || project.assignedDeveloper
+          };
+          
+          // Confirm project payment
+          await axios.post(
+            'http://localhost:5000/api/payments/confirm-payment',
+            paymentData,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+        } else if (session) {
+          // Session payment handling
+          pkrAmount = session.amount;
+          if (!pkrAmount) {
+            throw new Error('No amount found for this session');
+          }
+          const usdAmount = +(pkrAmount / PKR_TO_USD).toFixed(2);
+          
+          paymentData = {
+            sessionId: session._id,
+            paymentIntentId: paymentIntent.id,
+            amount: usdAmount,
+            developerId: session.developerId
+          };
+          
+          // Confirm session payment
+          await axios.post(
+            'http://localhost:5000/api/sessions/confirm-payment',
+            paymentData,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
         }
+
+        toast.success('Payment successful!');
+        onSuccess();
       }
     } catch (err) {
       console.error('Payment error:', err.response?.data || err.message || err);
@@ -146,7 +156,7 @@ const PaymentForm = ({ clientSecret, project, onSuccess }) => {
         className="btn btn-primary w-100"
         disabled={!stripe || loading || !cardComplete}
       >
-        {loading ? 'Processing...' : `Pay PKR ${project.acceptedBidAmount || project.budget}`}
+        {loading ? 'Processing...' : `Pay PKR ${project ? project.acceptedBidAmount : session.amount}`}
       </button>
     </form>
   );
@@ -154,14 +164,16 @@ const PaymentForm = ({ clientSecret, project, onSuccess }) => {
 
 const Payment = () => {
   const { projectId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
+  const [session, setSession] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchProjectDetails = async () => {
+    const fetchDetails = async () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -169,40 +181,27 @@ const Payment = () => {
           return;
         }
 
-        const response = await axios.get(
-          `http://localhost:5000/api/projects/${projectId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-
-        if (response.data) {
-          const projectData = response.data;
-          setProject(projectData);
-          
-          // --- Currency conversion ---
-          const PKR_TO_USD = 280; // Fixed conversion rate
-          const pkrAmount = projectData.acceptedBidAmount;
-          if (!pkrAmount) {
-            throw new Error('No accepted bid amount found for this project');
-          }
-          const usdAmount = +(pkrAmount / PKR_TO_USD).toFixed(2); // Convert to USD with 2 decimal places
-          
-          console.log('Creating payment intent with data:', {
-            projectId,
-            amount: usdAmount,
-            developerId: projectData.developerId || projectData.assignedDeveloper?._id,
-            projectData: projectData,
-            pkrAmount,
-            usdAmount
-          });
-
-          const paymentResponse = await axios.post(
-            'http://localhost:5000/api/payments/create-payment-intent',
+        // Check if this is a session payment
+        if (location.state?.sessionId) {
+          const response = await axios.get(
+            `http://localhost:5000/api/sessions/detail/${location.state.sessionId}`,
             {
-              projectId,
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+          setSession(response.data.session);
+          
+          // Create payment intent for session
+          const PKR_TO_USD = 280;
+          const pkrAmount = response.data.session.amount;
+          const usdAmount = +(pkrAmount / PKR_TO_USD).toFixed(2);
+          
+          const paymentResponse = await axios.post(
+            'http://localhost:5000/api/sessions/create-payment-intent',
+            {
+              sessionId: location.state.sessionId,
               amount: usdAmount,
-              developerId: projectData.developerId || projectData.assignedDeveloper?._id || projectData.assignedDeveloper
+              developerId: response.data.session.developerId
             },
             {
               headers: { Authorization: `Bearer ${token}` }
@@ -211,31 +210,62 @@ const Payment = () => {
 
           if (paymentResponse.data && paymentResponse.data.clientSecret) {
             setClientSecret(paymentResponse.data.clientSecret);
-          } else {
-            setError(paymentResponse.data?.message || 'Failed to get client secret for payment.');
+          }
+        } else {
+          // Project payment handling
+          const response = await axios.get(
+            `http://localhost:5000/api/projects/${projectId}`,
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+
+          if (response.data) {
+            const projectData = response.data;
+            setProject(projectData);
+            
+            const PKR_TO_USD = 280;
+            const pkrAmount = projectData.acceptedBidAmount;
+            if (!pkrAmount) {
+              throw new Error('No accepted bid amount found for this project');
+            }
+            const usdAmount = +(pkrAmount / PKR_TO_USD).toFixed(2);
+            
+            const paymentResponse = await axios.post(
+              'http://localhost:5000/api/payments/create-payment-intent',
+              {
+                projectId,
+                amount: usdAmount,
+                developerId: projectData.developerId || projectData.assignedDeveloper?._id
+              },
+              {
+                headers: { Authorization: `Bearer ${token}` }
+              }
+            );
+
+            if (paymentResponse.data && paymentResponse.data.clientSecret) {
+              setClientSecret(paymentResponse.data.clientSecret);
+            }
           }
         }
       } catch (err) {
-        console.error('Error fetching project details:', err);
-        setError(err.response?.data?.message || 'Failed to load project details.');
+        console.error('Error fetching details:', err);
+        setError(err.response?.data?.message || 'Failed to load details.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProjectDetails();
-  }, [projectId, navigate]);
+    fetchDetails();
+  }, [projectId, location.state, navigate]);
 
   const handlePaymentSuccess = () => {
-    navigate('/projects');
+    if (session) {
+      navigate('/SessionHistory');
+    } else {
+      navigate('/projects');
+    }
   };
-
-  console.log('Payment component state:', {
-    loading,
-    error,
-    project: project ? 'loaded' : 'null/undefined',
-    clientSecret: clientSecret ? 'loaded' : 'null/undefined',
-  });
 
   if (loading) {
     return <div className="text-center p-5">Loading...</div>;
@@ -245,11 +275,9 @@ const Payment = () => {
     return <div className="alert alert-danger m-4">{error}</div>;
   }
 
-  if (!project || !clientSecret) {
-    return <div className="alert alert-warning m-4">Project details not found.</div>;
+  if ((!project && !session) || !clientSecret) {
+    return <div className="alert alert-warning m-4">Details not found.</div>;
   }
-
-  console.log('clientSecret:', clientSecret); // Diagnostic log
 
   return (
     <div className="container py-5">
@@ -260,8 +288,8 @@ const Payment = () => {
               <h2 className="card-title mb-4">Payment Details</h2>
 
               <div className="mb-4">
-                <h5>Project: {project.title}</h5>
-                <p className="text-muted">Amount: PKR {project.acceptedBidAmount || project.budget}</p>
+                <h5>{project ? 'Project' : 'Session'}: {project ? project.title : session.title}</h5>
+                <p className="text-muted">Amount: PKR {project ? project.acceptedBidAmount : session.amount}</p>
                 <p className="text-warning" style={{ fontSize: '0.95rem' }}>
                   Note: You will be charged in USD equivalent to the PKR amount shown above.
                 </p>
@@ -271,6 +299,7 @@ const Payment = () => {
                 <PaymentForm
                   clientSecret={clientSecret}
                   project={project}
+                  session={session}
                   onSuccess={handlePaymentSuccess}
                 />
               </Elements>
@@ -282,7 +311,7 @@ const Payment = () => {
       <style jsx>{`
         .card-element-container {
           padding: 12px;
-          border: 1px solid red; /* Added for debugging */
+          border: 1px solid #e0e0e0;
           border-radius: 4px;
           background-color: #f8f9fa;
         }

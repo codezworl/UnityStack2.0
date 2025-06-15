@@ -12,7 +12,10 @@ const DashboardHome = ({ adminName }) => {
     totalProjects: 0,
     activeProjects: 0,
     assignedProjects: 0,
-    completedProjects: 0
+    completedProjects: 0,
+    totalSessions: 0,
+    activeSessions: 0,
+    completedSessions: 0
   });
   const [percentages, setPercentages] = useState({
     students: 0,
@@ -21,7 +24,10 @@ const DashboardHome = ({ adminName }) => {
   });
   const [activities, setActivities] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
-  const [revenueData, setRevenueData] = useState([{ name: 'Revenue', value: 0 }]);
+  const [revenueData, setRevenueData] = useState([
+    { name: 'Project Revenue', value: 0 },
+    { name: 'Session Revenue', value: 0 }
+  ]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -101,14 +107,20 @@ const DashboardHome = ({ adminName }) => {
         // Update stats with platform fee
         setStats(prevStats => ({
           ...prevStats,
-          revenue: data.totalRevenue // This is now the platform fee
+          revenue: data.totalRevenue // This is now the total platform fee
         }));
 
         // Update revenue data for chart
-        setRevenueData([{
-          name: 'Platform Fee',
-          value: data.totalRevenue
-        }]);
+        setRevenueData([
+          {
+            name: 'Project Revenue',
+            value: data.projectRevenue
+          },
+          {
+            name: 'Session Revenue',
+            value: data.sessionRevenue
+          }
+        ]);
       } catch (error) {
         console.error('Error fetching revenue data:', error);
       }
@@ -204,6 +216,32 @@ const DashboardHome = ({ adminName }) => {
         </div>
       </div>
 
+      {/* Session Stats Cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "20px",
+          marginBottom: "30px",
+        }}
+      >
+        {/* Total Sessions */}
+        <div style={overviewCardStyle}>
+          <p style={overviewCardTitleStyle}>Total Sessions</p>
+          <h2 style={overviewCardValueStyle}>{stats.totalSessions}</h2>
+        </div>
+        {/* Active Sessions */}
+        <div style={overviewCardStyle}>
+          <p style={overviewCardTitleStyle}>Active Sessions</p>
+          <h2 style={overviewCardValueStyle}>{stats.activeSessions}</h2>
+        </div>
+        {/* Completed Sessions */}
+        <div style={overviewCardStyle}>
+          <p style={overviewCardTitleStyle}>Completed Sessions</p>
+          <h2 style={overviewCardValueStyle}>{stats.completedSessions}</h2>
+        </div>
+      </div>
+
       {/* Charts Section: Pie and Revenue Side by Side */}
       <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
         {/* Pie Chart Section */}
@@ -251,7 +289,7 @@ const DashboardHome = ({ adminName }) => {
             </ResponsiveContainer>
           </div>
           <div style={{ textAlign: 'center', marginTop: '10px', color: '#666' }}>
-            <p>Total Platform Fee (10% of completed project payments)</p>
+            <p>Total Platform Fee (10% of completed project and session payments)</p>
           </div>
         </div>
       </div>
