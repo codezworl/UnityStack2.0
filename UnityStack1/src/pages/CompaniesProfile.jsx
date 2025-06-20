@@ -18,37 +18,43 @@ const LoginModal = ({ isOpen, onClose, onLogin }) => {
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '2rem',
-        borderRadius: '8px',
-        maxWidth: '400px',
-        width: '90%',
-        textAlign: 'center'
-      }}>
-        <h2 style={{ marginBottom: '1rem' }}>Login Required</h2>
-        <p style={{ marginBottom: '1.5rem' }}>Please login to start messaging this company.</p>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1000,
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "2rem",
+          borderRadius: "8px",
+          maxWidth: "400px",
+          width: "90%",
+          textAlign: "center",
+        }}
+      >
+        <h2 style={{ marginBottom: "1rem" }}>Login Required</h2>
+        <p style={{ marginBottom: "1.5rem" }}>
+          Please login to start messaging this company.
+        </p>
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
             onClick={onClose}
             style={{
-              padding: '0.5rem 1rem',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              background: 'white',
-              cursor: 'pointer'
+              padding: "0.5rem 1rem",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              background: "white",
+              cursor: "pointer",
             }}
           >
             Cancel
@@ -56,12 +62,12 @@ const LoginModal = ({ isOpen, onClose, onLogin }) => {
           <button
             onClick={onLogin}
             style={{
-              padding: '0.5rem 1rem',
-              border: 'none',
-              borderRadius: '4px',
-              background: '#1d4ed8',
-              color: 'white',
-              cursor: 'pointer'
+              padding: "0.5rem 1rem",
+              border: "none",
+              borderRadius: "4px",
+              background: "#1d4ed8",
+              color: "white",
+              cursor: "pointer",
             }}
           >
             Login Now
@@ -72,6 +78,14 @@ const LoginModal = ({ isOpen, onClose, onLogin }) => {
   );
 };
 
+const glass = {
+  background: "rgba(255,255,255,0.7)",
+  boxShadow: "0 8px 32px 0 rgba(31,38,135,0.18)",
+  borderRadius: "24px",
+  border: "1px solid rgba(255,255,255,0.18)",
+  backdropFilter: "blur(8px)",
+};
+
 const CompanyProfile = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -80,19 +94,27 @@ const CompanyProfile = () => {
   const [loading, setLoading] = useState(true);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  // Animation state
+  const [tabAnim, setTabAnim] = useState("fadein 0.7s");
+  useEffect(() => {
+    setTabAnim("fadein 0.7s");
+  }, [activeTab]);
 
   // Fetch company data
   useEffect(() => {
     const fetchCompany = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/organizations/${id}`, {
-          credentials: 'include'
-        });
-        if (!response.ok) throw new Error('Failed to fetch company');
+        const response = await fetch(
+          `http://localhost:5000/api/organizations/${id}`,
+          {
+            credentials: "include",
+          }
+        );
+        if (!response.ok) throw new Error("Failed to fetch company");
         const data = await response.json();
         setCompany(data);
       } catch (error) {
-        console.error('Error fetching company:', error);
+        console.error("Error fetching company:", error);
       } finally {
         setLoading(false);
       }
@@ -101,13 +123,13 @@ const CompanyProfile = () => {
     const fetchUser = async () => {
       try {
         const response = await axios.get("http://localhost:5000/api/user", {
-          withCredentials: true
+          withCredentials: true,
         });
         if (response.data) {
           setLoggedInUser(response.data);
         }
       } catch (error) {
-        console.error('Error fetching user:', error);
+        console.error("Error fetching user:", error);
         setLoggedInUser(null);
       }
     };
@@ -116,28 +138,28 @@ const CompanyProfile = () => {
     fetchUser();
   }, [id]);
 
-  // Updated handleMessageClick function with return-to-page functionality
+
   const handleMessageClick = async () => {
     try {
       // Check if user is logged in
       const response = await axios.get("http://localhost:5000/api/user", {
-        withCredentials: true
+        withCredentials: true,
       });
 
       if (response.data) {
         // Store the selected company ID in localStorage
-        localStorage.setItem('selectedChatDeveloper', company._id);
+        localStorage.setItem("selectedChatDeveloper", company._id);
         // Navigate to chat page
-        navigate('/chat');
+        navigate("/chat");
       } else {
         // Store the selected company ID in localStorage before showing login modal
-        localStorage.setItem('selectedChatDeveloper', company._id);
+        localStorage.setItem("selectedChatDeveloper", company._id);
         // User is not logged in, show login modal
         setShowLoginModal(true);
       }
     } catch (error) {
       // Store the selected company ID in localStorage before showing login modal
-      localStorage.setItem('selectedChatDeveloper', company._id);
+      localStorage.setItem("selectedChatDeveloper", company._id);
       // If error, user is not logged in
       setShowLoginModal(true);
     }
@@ -150,366 +172,443 @@ const CompanyProfile = () => {
 
   const handleLoginModalLogin = () => {
     // Store the current page and selected company info for redirect after login
-    localStorage.setItem('returnTo', `/companiesprofile/${id}`);
-    localStorage.setItem('returnAction', 'chat');
+    localStorage.setItem("returnTo", `/companiesprofile/${id}`);
+    localStorage.setItem("returnAction", "chat");
     setShowLoginModal(false);
-    navigate('/login');
+    navigate("/login");
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading)
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(135deg,#e0e7ff 0%,#f0fdfa 100%)",
+        }}
+      >
+        Loading...
+      </div>
+    );
   if (!company) return <div>Company not found</div>;
-
-  const styles = {
-    container: {
-      display: "flex",
-      gap: "20px",
-      maxWidth: "1200px",
-      margin: "20px auto",
-    },
-    sidebar: {
-      width: "300px",
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      padding: "20px",
-      backgroundColor: "#fff",
-      textAlign: "center",
-    },
-    profileImage: {
-      width: "150px",
-      height: "150px",
-      borderRadius: "50%",
-      objectFit: "cover",
-      marginBottom: "10px",
-    },
-    companyName: {
-      fontSize: "20px",
-      fontWeight: "600",
-      marginBottom: "10px",
-    },
-    address: {
-      fontSize: "14px",
-      color: "#666",
-      marginBottom: "10px",
-    },
-    socialAccounts: {
-      marginTop: "20px",
-      textAlign: "center",
-    },
-    socialHeading: {
-      backgroundColor: "#007bff",
-      color: "#fff",
-      padding: "10px",
-      borderRadius: "8px",
-      fontSize: "16px",
-      fontWeight: "600",
-    },
-    socialIcons: {
-      display: "flex",
-      justifyContent: "center",
-      gap: "15px",
-      marginTop: "10px",
-    },
-    socialIcon: {
-      fontSize: "24px",
-      color: "#000",
-      backgroundColor: "#f1f1f1",
-      borderRadius: "50%",
-      padding: "10px",
-      cursor: "pointer",
-      transition: "all 0.3s",
-    },
-    mainContent: {
-      flex: 1,
-      backgroundColor: "#fff",
-      borderRadius: "8px",
-      padding: "20px",
-      border: "1px solid #ddd",
-    },
-    tabHeader: {
-      display: "flex",
-      gap: "20px",
-      marginBottom: "20px",
-      borderBottom: "1px solid #ddd",
-      paddingBottom: "10px",
-    },
-    tabButton: {
-      cursor: "pointer",
-      padding: "10px",
-      borderRadius: "8px",
-      border: "none",
-      background: "none",
-      fontWeight: "600",
-      color: "#007bff",
-      outline: "none",
-    },
-    activeTab: {
-      borderBottom: "3px solid #007bff",
-      fontWeight: "700",
-    },
-    blogsSection: {
-      display: "flex",
-      flexDirection: "column",
-      gap: "20px",
-    },
-    blogCard: {
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      overflow: "hidden",
-      backgroundColor: "#fff",
-      marginBottom: "20px",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-    },
-    blogHeader: {
-      display: "flex",
-      justifyContent: "flex-end",
-      padding: "10px 15px",
-      backgroundColor: "#f8f9fa",
-      borderBottom: "1px solid #eee",
-    },
-    blogDate: {
-      fontSize: "14px",
-      color: "#666",
-      fontWeight: "500",
-    },
-    blogImage: {
-      width: "100%",
-      height: "300px",
-      objectFit: "cover",
-    },
-    blogContent: {
-      padding: "20px",
-    },
-    blogTitle: {
-      fontSize: "20px",
-      fontWeight: "600",
-      marginBottom: "10px",
-      color: "#333",
-    },
-    blogDescription: {
-      fontSize: "16px",
-      lineHeight: "1.6",
-      color: "#666",
-      marginBottom: "15px",
-    },
-    servicesSection: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: "20px",
-      justifyContent: "center",
-    },
-    serviceCard: {
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      padding: "20px",
-      textAlign: "center",
-      width: "calc(25% - 20px)", // Ensures 4 cards per row
-      boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
-    },
-    serviceLogo: {
-      fontSize: "30px",
-      marginBottom: "10px",
-    },
-    serviceName: {
-      fontSize: "16px",
-      fontWeight: "600",
-      color: "#333",
-    },
-    aboutUsSection: {
-      display: "flex",
-      alignItems: "center",
-      gap: "20px",
-      padding: "20px",
-    },
-    ceoImage: {
-      width: "200px",
-      height: "200px",
-      borderRadius: "8px",
-      objectFit: "cover",
-      border: "1px solid #ddd",
-    },
-    aboutUsText: {
-      flex: 1,
-      fontSize: "16px",
-      color: "#555",
-      lineHeight: "1.6",
-    },
-    ceoName: {
-      fontSize: "18px",
-      fontWeight: "600",
-      marginTop: "10px",
-      color: "#007bff",
-      textAlign: "center",
-    },
-    ceoTitle: {
-      fontSize: "14px",
-      color: "#555",
-      textAlign: "center",
-    },
-  };
 
   return (
     <>
       <Header />
-      <div style={styles.container}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg,#e0e7ff 0%,#f0fdfa 100%)",
+          padding: "2vw",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "flex-start",
+        }}
+      >
         {/* Sidebar */}
-        <div style={styles.sidebar}>
+        <div
+          style={{
+            ...glass,
+            width: "320px",
+            padding: "2rem 1.5rem",
+            marginRight: "2vw",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1.5rem",
+            transition: "box-shadow 0.3s",
+            position: "sticky",
+            top: "2vw",
+          }}
+        >
           <img
             src={company.profileImage || "/default-company.png"}
             alt="Company Logo"
-            style={styles.profileImage}
+            style={{
+              width: "120px",
+              height: "120px",
+              borderRadius: "50%",
+              objectFit: "cover",
+              boxShadow: "0 4px 24px #a5b4fc55",
+              border: "4px solid #fff",
+              transition: "transform 0.4s",
+              marginBottom: "0.5rem",
+              animation: "popin 0.7s",
+            }}
           />
-          <h3 style={styles.companyName}>{company.companyName}</h3>
-          <p style={styles.address}>
+          <h3
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              margin: 0,
+            }}
+          >
+            {company.companyName}
+          </h3>
+          <div
+            style={{
+              color: "#64748b",
+              fontSize: "1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5em",
+            }}
+          >
             <FaMapMarkerAlt /> {company.location}
-          </p>
-          <p style={styles.address}>
-            Operating Cities: {company.operatingCities?.join(', ')}
-          </p>
-          <p style={styles.address}>
-            <FaGlobe />{" "}
-            <a href={company.website} target="_blank" rel="noopener noreferrer">
-              Visit Website
-            </a>
-          </p>
-
-          {/* Updated Message Button */}
+          </div>
+          <div style={{ color: "#64748b", fontSize: "0.95rem" }}>
+            Operating Cities: {company.operatingCities?.join(", ")}
+          </div>
+          <a
+            href={company.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "#2563eb",
+              fontWeight: 500,
+              textDecoration: "none",
+              transition: "color 0.2s",
+            }}
+          >
+            🌐 Visit Website
+          </a>
           <button
             onClick={handleMessageClick}
             style={{
-              width: '100%',
-              padding: '12px 16px',
-              backgroundColor: '#2563EB',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              marginTop: '15px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
+              width: "100%",
+              padding: "0.9em",
+              background: "linear-gradient(90deg,#6366f1 0%,#06b6d4 100%)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 600,
+              fontSize: "1rem",
+              marginTop: "0.5em",
+              boxShadow: "0 2px 8px #06b6d455",
+              cursor: "pointer",
+              transition: "transform 0.2s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5em",
             }}
+            onMouseOver={(e) =>
+              (e.currentTarget.style.transform = "scale(1.04)")
+            }
+            onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
           >
             💬 Message Company
           </button>
-
-          {/* Social Accounts */}
-          <div style={styles.socialAccounts}>
-            <h4 style={styles.socialHeading}>Social Accounts</h4>
-            <div style={styles.socialIcons}>
+          <div style={{ marginTop: "1.5em" }}>
+            <div
+              style={{ display: "flex", justifyContent: "center", gap: "1em" }}
+            >
               {company.socialLinks?.youtube && (
-                <a href={company.socialLinks.youtube} target="_blank" rel="noopener noreferrer">
-                  <FaYoutube style={styles.socialIcon} />
+                <a
+                  href={company.socialLinks.youtube}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FaYoutube
+                    style={{
+                      fontSize: "1.7em",
+                      color: "#f87171",
+                      background: "#fff",
+                      borderRadius: "50%",
+                      padding: "0.3em",
+                      boxShadow: "0 2px 8px #f8717155",
+                      transition: "transform 0.2s",
+                    }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.transform = "scale(1.2)")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.transform = "scale(1)")
+                    }
+                  />
                 </a>
               )}
               {company.socialLinks?.twitter && (
-                <a href={company.socialLinks.twitter} target="_blank" rel="noopener noreferrer">
-                  <FaTwitter style={styles.socialIcon} />
+                <a
+                  href={company.socialLinks.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FaTwitter
+                    style={{
+                      fontSize: "1.7em",
+                      color: "#38bdf8",
+                      background: "#fff",
+                      borderRadius: "50%",
+                      padding: "0.3em",
+                      boxShadow: "0 2px 8px #38bdf855",
+                      transition: "transform 0.2s",
+                    }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.transform = "scale(1.2)")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.transform = "scale(1)")
+                    }
+                  />
                 </a>
               )}
               {company.socialLinks?.facebook && (
-                <a href={company.socialLinks.facebook} target="_blank" rel="noopener noreferrer">
-                  <FaFacebookF style={styles.socialIcon} />
+                <a
+                  href={company.socialLinks.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FaFacebookF
+                    style={{
+                      fontSize: "1.7em",
+                      color: "#2563eb",
+                      background: "#fff",
+                      borderRadius: "50%",
+                      padding: "0.3em",
+                      boxShadow: "0 2px 8px #2563eb55",
+                      transition: "transform 0.2s",
+                    }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.transform = "scale(1.2)")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.transform = "scale(1)")
+                    }
+                  />
                 </a>
               )}
               {company.socialLinks?.linkedin && (
-                <a href={company.socialLinks.linkedin} target="_blank" rel="noopener noreferrer">
-                  <FaLinkedin style={styles.socialIcon} />
+                <a
+                  href={company.socialLinks.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FaLinkedin
+                    style={{
+                      fontSize: "1.7em",
+                      color: "#0ea5e9",
+                      background: "#fff",
+                      borderRadius: "50%",
+                      padding: "0.3em",
+                      boxShadow: "0 2px 8px #0ea5e955",
+                      transition: "transform 0.2s",
+                    }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.transform = "scale(1.2)")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.transform = "scale(1)")
+                    }
+                  />
                 </a>
               )}
             </div>
           </div>
         </div>
-
         {/* Main Content */}
-        <div style={styles.mainContent}>
-          <div style={styles.tabHeader}>
-            <button
-              style={{
-                ...styles.tabButton,
-                ...(activeTab === "blogs" && styles.activeTab),
-              }}
-              onClick={() => setActiveTab("blogs")}
-            >
-              Blogs
-            </button>
-            <button
-              style={{
-                ...styles.tabButton,
-                ...(activeTab === "services" && styles.activeTab),
-              }}
-              onClick={() => setActiveTab("services")}
-            >
-              Services
-            </button>
-            <button
-              style={{
-                ...styles.tabButton,
-                ...(activeTab === "about" && styles.activeTab),
-              }}
-              onClick={() => setActiveTab("about")}
-            >
-              About Us
-            </button>
+        <div
+          style={{
+            ...glass,
+            flex: 1,
+            minWidth: 0,
+            padding: "2rem",
+            animation: tabAnim,
+            transition: "box-shadow 0.3s",
+            boxShadow: "0 8px 32px 0 rgba(31,38,135,0.10)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: "2em",
+              marginBottom: "2em",
+              borderBottom: "1px solid #e0e7ef",
+            }}
+          >
+            {["blogs", "services", "about"].map((tab) => (
+              <button
+                key={tab}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontWeight: 700,
+                  fontSize: "1.1em",
+                  color: activeTab === tab ? "#2563eb" : "#64748b",
+                  padding: "0.7em 0",
+                  borderBottom:
+                    activeTab === tab
+                      ? "3px solid #2563eb"
+                      : "3px solid transparent",
+                  cursor: "pointer",
+                  transition: "color 0.2s,border-bottom 0.2s",
+                }}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setTabAnim("fadein 0.7s");
+                }}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
-
+          {/* Blogs */}
           {activeTab === "blogs" && (
-            <div style={styles.blogsSection}>
-              {company.blogs?.map((blog, index) => (
-                <div key={index} style={styles.blogCard}>
-                  <div style={styles.blogHeader}>
-                    <span style={styles.blogDate}>{blog.date}</span>
-                  </div>
-                  <img 
-                    src={blog.image} 
-                    alt={blog.caption} 
-                    style={styles.blogImage} 
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = '/default-blog.png';
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: "1.5em",
+                justifyItems: "center",
+                animation: tabAnim,
+              }}
+            >
+              {company.blogs?.length ? (
+                company.blogs.map((blog, i) => (
+                  <div
+                    key={i}
+                    onClick={() => navigate(`/blog/${blog._id || i}`)}
+                    style={{
+                      cursor: "pointer",
+                      background: "#fff",
+                      borderRadius: "16px",
+                      boxShadow: "0 2px 12px #2563eb11",
+                      overflow: "hidden",
+                      display: "flex",
+                      flexDirection: "column",
+                      transition: "transform 0.18s, box-shadow 0.18s",
+                      border: "1px solid #f1f5f9",
+                      maxWidth: 340,
+                      minWidth: 0,
+                      width: "100%",
+                      minHeight: 260,
+                      position: "relative",
                     }}
-                  />
-                  <div style={styles.blogContent}>
-                    <h3 style={styles.blogTitle}>{blog.caption}</h3>
-                    <div
-                      style={styles.blogDescription}
-                      dangerouslySetInnerHTML={{ __html: blog.description }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.transform = "translateY(-4px) scale(1.03)";
+                      e.currentTarget.style.boxShadow = "0 8px 24px #2563eb22";
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.transform = "";
+                      e.currentTarget.style.boxShadow = "0 2px 12px #2563eb11";
+                    }}
+                  >
+                    <img
+                      src={blog.image}
+                      alt={blog.caption}
+                      style={{
+                        width: "100%",
+                        height: "140px",
+                        objectFit: "cover",
+                        background: "#f1f5f9",
+                      }}
+                      onError={e => {
+                        e.target.onerror = null;
+                        e.target.src = "/default-blog.png";
+                      }}
                     />
+                    <div style={{ padding: "1em 1.1em", flex: 1, display: "flex", flexDirection: "column" }}>
+                      <div style={{ color: "#0ea5e9", fontWeight: 600, fontSize: "0.98em", marginBottom: 6 }}>
+                        {blog.category || "Tips & Tricks"}
+                      </div>
+                      <div style={{ fontSize: "1.08em", fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>
+                        {blog.caption}
+                      </div>
+                      <div style={{ color: "#64748b", fontSize: "0.93em", marginTop: "auto" }}>
+                        By {blog.author || "Unknown"} on {blog.date}
+                      </div>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div style={{ color: "#64748b", textAlign: "center" }}>
+                  No blogs yet.
                 </div>
-              ))}
+              )}
             </div>
           )}
-
+          {/* Services */}
           {activeTab === "services" && (
-            <div style={styles.servicesSection}>
-              {company.services?.map((service, index) => (
-                <div key={index} style={styles.serviceCard}>
-                  <div style={styles.serviceLogo}>{service.logo}</div>
-                  <div style={styles.serviceName}>{service.name}</div>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "2em",
+                justifyContent: "center",
+                animation: tabAnim,
+              }}
+            >
+              {company.services?.length ? (
+                company.services.map((service, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      ...glass,
+                      width: "220px",
+                      padding: "1.5em",
+                      textAlign: "center",
+                      boxShadow: "0 2px 12px #06b6d411",
+                      transition: "transform 0.3s",
+                      animation: "fadein 0.7s",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: '80px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        fontSize: "1.1em",
+                        color: "#2563eb",
+                      }}
+                    >
+                      {service.name}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ color: "#64748b", textAlign: "center" }}>
+                  No services listed.
                 </div>
-              ))}
+              )}
             </div>
           )}
-
+          {/* About Us */}
           {activeTab === "about" && (
-            <div style={styles.aboutUsSection}>
-              <div style={styles.aboutUsText}>{company.about}</div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "2em",
+                animation: tabAnim,
+              }}
+            >
+              <div
+                style={{ fontSize: "1.1em", color: "#334155", lineHeight: 1.7 }}
+              >
+                {company.about}
+              </div>
             </div>
           )}
         </div>
-
-        {/* Updated Login Modal */}
         <LoginModal
           isOpen={showLoginModal}
           onClose={handleLoginModalClose}
           onLogin={handleLoginModalLogin}
         />
       </div>
-
       <Footer />
+      {/* Animations */}
+      <style>{`
+        @keyframes fadein { from{opacity:0;transform:translateY(30px);} to{opacity:1;transform:translateY(0);} }
+        @keyframes popin { from{opacity:0;transform:scale(0.7);} to{opacity:1;transform:scale(1);} }
+      `}</style>
     </>
   );
 };
