@@ -4,6 +4,7 @@ import io from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Header from '../components/header';
 import { format } from 'date-fns';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 function Chat() {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -19,6 +20,7 @@ function Chat() {
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const [selectedDeveloperId, setSelectedDeveloperId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -336,55 +338,103 @@ function Chat() {
     };
   }, [socket, currentUser]);
 
+  // Helper to get last message for a user
+  const getLastMessageForUser = (userId) => {
+    // Find the last message exchanged with this user
+    const relevantMessages = messages.filter(
+      msg => (selectedUser && (msg.sender === 'Me' || msg.sender === selectedUser.displayName))
+    );
+    if (relevantMessages.length === 0) return '';
+    return relevantMessages[relevantMessages.length - 1].text;
+  };
+
+  // Helper to get last message time for a user
+  const getLastMessageTimeForUser = (userId) => {
+    // Find the last message exchanged with this user
+    const relevantMessages = messages.filter(
+      msg => (selectedUser && (msg.sender === 'Me' || msg.sender === selectedUser.displayName))
+    );
+    if (relevantMessages.length === 0) return '';
+    return formatMessageTime(relevantMessages[relevantMessages.length - 1].time);
+  };
+
+  // Filter users based on search query
+  const filteredUsers = users.filter(user => {
+    const nameMatch = user.displayName.toLowerCase().includes(searchQuery.toLowerCase());
+    // Optionally, you could also search last message
+    // const lastMsg = getLastMessageForUser(user._id).toLowerCase();
+    // return nameMatch || lastMsg.includes(searchQuery.toLowerCase());
+    return nameMatch;
+  });
+
   return (
     <div className="d-flex flex-column" style={{ height: '100vh' }}>
       <Header />
 
       <div className="d-flex flex-grow-1">
       {/* Users List */}
-      <div className="col-3 border-end bg-light">
-        <div className="p-3">
-          <h5>Chats</h5>
-          <div className="list-group" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
-            {Array.isArray(users) && users.length > 0 ? (
-              users.map(user => (
-                <button
-                  key={user._id}
-                  onClick={() => handleUserClick(user)}
-                  className={`list-group-item list-group-item-action d-flex align-items-center ${selectedUser?._id === user._id ? 'active' : ''}`}
-                >
-                  <div className="position-relative">
-                    <img 
-                      src={user.profileImage || 'https://via.placeholder.com/40'} 
-                      alt={user.displayName} 
-                      style={{ width: '40px', height: '40px', borderRadius: '50%', marginRight: '10px' }} 
-                    />
-                    {user.isOnline && (
-                      <span 
-                        className="position-absolute bottom-0 end-0 bg-success rounded-circle"
-                        style={{ width: '10px', height: '10px', border: '2px solid white' }}
-                      />
-                    )}
-                    {/* Unread badge for this user */}
-                    {unreadCounts[user._id] > 0 && selectedUser?._id !== user._id && (
-                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>
-                        {unreadCounts[user._id]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-grow-1">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>{user.displayName}</div>
+      <div className="col-3 border-end sidebar-glass" style={{padding: 0, minHeight: '100vh', position: 'relative', zIndex: 2}}>
+        <div className="p-3" style={{paddingBottom: 0}}>
+          {/* Search Bar */}
+          <div className="mb-3">
+            <div className="input-group">
+              <span className="input-group-text bg-white border-end-0" style={{borderRadius: '20px 0 0 20px'}}>
+                <i className="bi bi-search" />
+              </span>
+              <input
+                type="text"
+                className="form-control border-start-0"
+                placeholder="Search"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{borderRadius: '0 20px 20px 0'}}
+              />
+            </div>
+          </div>
+          <div className="list-group" style={{ maxHeight: '80vh', overflowY: 'auto', border: 'none' }}>
+            {Array.isArray(filteredUsers) && filteredUsers.length > 0 ? (
+              filteredUsers.map((user, idx) => {
+                // Avatar fallback
+                const showAvatar = !user.profileImage || user.profileImage === 'https://via.placeholder.com/40';
+                const avatarColor = `hsl(${(user.displayName.charCodeAt(0) * 39) % 360}, 70%, 60%)`;
+                return (
+                  <React.Fragment key={user._id}>
+                    <button
+                      onClick={() => handleUserClick(user)}
+                      className={`list-group-item list-group-item-action d-flex align-items-center border-0 chat-list-fade ${selectedUser?._id === user._id ? 'active' : ''}`}
+                      style={{ background: 'transparent', borderRadius: 0, padding: '12px 0', animationDelay: `${idx * 60}ms` }}
+                    >
+                      {showAvatar ? (
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: avatarColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 22, marginRight: 16, userSelect: 'none' }}>
+                          {user.displayName.charAt(0).toUpperCase()}
+                        </div>
+                      ) : (
+                        <img
+                          src={user.profileImage}
+                          alt={user.displayName}
+                          style={{ width: '48px', height: '48px', borderRadius: '50%', marginRight: '16px', objectFit: 'cover' }}
+                        />
+                      )}
+                      <div className="flex-grow-1 text-start">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span style={{ fontWeight: 600 }}>{user.displayName}</span>
+                          <span style={{ fontSize: '0.85rem', color: '#888' }}>{getLastMessageTimeForUser(user._id) || 'May 10, 25'}</span>
+                        </div>
+                        <div style={{ fontSize: '0.95rem', color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
+                          {getLastMessageForUser(user._id) || '...'}
+                        </div>
+                      </div>
+                      {/* Unread badge for this user */}
                       {unreadCounts[user._id] > 0 && selectedUser?._id !== user._id && (
-                        <span className="badge bg-primary rounded-pill">
+                        <span className="badge rounded-pill bg-danger ms-2" style={{ fontSize: '0.85rem', minWidth: '28px', textAlign: 'center' }}>
                           {unreadCounts[user._id]}
                         </span>
                       )}
-                    </div>
-                    <small className="text-muted">{user.role}</small>
-                  </div>
-                </button>
-              ))
+                    </button>
+                    <hr style={{ margin: 0, borderColor: '#eee' }} />
+                  </React.Fragment>
+                );
+              })
             ) : (
               <div className="text-center p-3 text-muted">
                 No users available
@@ -395,68 +445,97 @@ function Chat() {
       </div>
 
       {/* Chat Area */}
-      <div className="col-9 d-flex flex-column">
+      <div className="col-9 d-flex flex-column p-0" style={{background: '#eaf4fb'}}>
         {selectedUser ? (
           <>
-            <div className="p-3 border-bottom bg-white d-flex align-items-center">
-              <div className="position-relative">
-                <img 
-                  src={selectedUser.profileImage || 'https://via.placeholder.com/40'} 
-                  alt={selectedUser.displayName}
-                  style={{ width: '40px', height: '40px', borderRadius: '50%', marginRight: '10px' }}
-                />
-                {selectedUser.isOnline && (
-                  <span 
-                    className="position-absolute bottom-0 end-0 bg-success rounded-circle"
-                    style={{ width: '10px', height: '10px', border: '2px solid white' }}
-                  />
-                )}
-              </div>
+            {/* Header */}
+            <div className="p-3 border-bottom bg-white d-flex align-items-center" style={{minHeight: '72px'}}>
+              <img 
+                src={selectedUser.profileImage || 'https://via.placeholder.com/40'} 
+                alt={selectedUser.displayName}
+                style={{ width: '48px', height: '48px', borderRadius: '50%', marginRight: '16px', objectFit: 'cover' }}
+              />
               <div>
-                <div>{selectedUser.displayName}</div>
-                <small className="text-muted">{selectedUser.role}</small>
+                <div style={{fontWeight: 600, fontSize: '1.1rem'}}>{selectedUser.displayName}</div>
+                <div style={{fontSize: '0.95rem', color: selectedUser.isOnline ? '#28a745' : '#888'}}>
+                  <span style={{display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: selectedUser.isOnline ? '#28a745' : '#ccc', marginRight: 6, verticalAlign: 'middle'}}></span>
+                  {selectedUser.isOnline ? 'Online' : 'Offline'}
+                </div>
               </div>
             </div>
 
-            <div className="flex-grow-1 p-3" style={{ overflowY: 'auto', backgroundColor: '#e5ddd5' }}>
-              {messages.map(message => (
-                <div key={message.id} className={`d-flex ${message.sender === 'Me' ? 'justify-content-end' : 'justify-content-start'} mb-2`}>
-                  <div 
-                    className={`p-2 rounded-3 ${message.sender === 'Me' ? 'bg-primary text-white' : 'bg-white text-dark'}`} 
-                    style={{ 
-                      maxWidth: '70%',
-                      position: 'relative',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    <div>{message.text}</div>
-                    <div className="d-flex justify-content-end align-items-center" style={{ fontSize: '0.7rem' }}>
-                      <span className="text-muted me-1">
-                        {formatMessageTime(message.time)}
-                      </span>
-                      {message.sender === 'Me' && (
-                        <span className="text-muted">
-                          {getMessageStatusIcon(message.status)}
-                        </span>
-                      )}
+            {/* Messages Area */}
+            <div className="flex-grow-1 p-4" style={{ height: '65vh', overflowY: 'auto', background: '#eaf4fb', position: 'relative' }}>
+              {/* Date Separator (show only if valid date) */}
+              {messages.length > 0 && (() => {
+                const firstDate = messages[0].time && !isNaN(new Date(messages[0].time).getTime())
+                  ? new Date(messages[0].time)
+                  : null;
+                return firstDate ? (
+                  <div className="d-flex justify-content-center mb-4">
+                    <span style={{background: '#d3d3d3', color: '#555', borderRadius: 16, padding: '4px 18px', fontSize: '0.95rem'}}>
+                      {firstDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
+              {messages.map((message, idx) => {
+                const isMe = message.sender === 'Me';
+                const showProfile = !isMe && (idx === 0 || messages[idx-1].sender === 'Me');
+                // Linkify URLs
+                const textWithLinks = message.text.replace(/(https?:\/\/[^\s]+)/g, url => `<a href=\"${url}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"color:#2196f3;text-decoration:underline;\">${url}</a>`);
+                return (
+                  <div key={message.id} className={`d-flex mb-3 ${isMe ? 'justify-content-end' : 'justify-content-start'} chat-msg-fade`}> 
+                    {!isMe && showProfile && (
+                      selectedUser.profileImage && selectedUser.profileImage !== 'https://via.placeholder.com/40' ? (
+                        <img
+                          src={selectedUser.profileImage}
+                          alt={selectedUser.displayName}
+                          style={{ width: '36px', height: '36px', borderRadius: '50%', marginRight: 10, alignSelf: 'flex-end' }}
+                        />
+                      ) : (
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, marginRight: 10, alignSelf: 'flex-end', userSelect: 'none' }}>
+                          {selectedUser.displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )
+                    )}
+                    <div style={{ maxWidth: '65%' }}>
+                      <div 
+                        className={isMe ? 'bg-primary text-white' : 'bg-white text-dark'}
+                        style={{
+                          borderRadius: '18px',
+                          padding: '10px 18px',
+                          marginLeft: isMe ? 0 : (showProfile ? 0 : 46),
+                          marginRight: isMe ? 0 : 0,
+                          fontSize: '1rem',
+                          wordBreak: 'break-word',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.07)'
+                        }}
+                        dangerouslySetInnerHTML={{__html: textWithLinks}}
+                      />
+                      <div className="text-muted mt-1" style={{fontSize: '0.85rem', textAlign: isMe ? 'right' : 'left'}}>
+                        {message.time && !isNaN(new Date(message.time).getTime()) ? new Date(message.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : ''}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-3 border-top bg-white d-flex">
+            {/* Input Area */}
+            <div className="p-3 border-top bg-white d-flex align-items-center" style={{minHeight: '70px'}}>
               <input
                 type="text"
-                className="form-control"
-                placeholder="Type your message..."
+                className="form-control rounded-pill px-4"
+                placeholder="Type Something..."
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                style={{background: '#f5f5f5', border: 'none', fontSize: '1.05rem'}}
               />
-              <button className="btn btn-primary ms-2" onClick={handleSendMessage}>
-                Send
+              <button className="btn btn-primary ms-2 rounded-circle d-flex align-items-center justify-content-center" style={{width: 44, height: 44}} onClick={handleSendMessage}>
+                <i className="bi bi-send" style={{fontSize: '1.3rem'}} />
               </button>
             </div>
           </>
@@ -495,6 +574,30 @@ function Chat() {
           }
           30% {
             transform: translateY(-4px);
+          }
+        }
+        .sidebar-glass {
+          background: rgba(255, 255, 255, 0.25) !important;
+          box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.10);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-right: 1.5px solid rgba(255,255,255,0.18);
+          transition: box-shadow 0.4s cubic-bezier(.4,2,.6,1), background 0.4s;
+        }
+        .chat-list-fade {
+          opacity: 0;
+          transform: translateY(20px);
+          animation: fadeInUp 0.5s forwards;
+        }
+        .chat-msg-fade {
+          opacity: 0;
+          transform: translateY(20px);
+          animation: fadeInUp 0.5s forwards;
+        }
+        @keyframes fadeInUp {
+          to {
+            opacity: 1;
+            transform: none;
           }
         }
       `}</style>

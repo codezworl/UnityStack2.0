@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import { FaEdit, FaPlus, FaCamera, FaLinkedin, FaGithub } from "react-icons/fa";
+import { FaEdit, FaPlus, FaCamera, FaLinkedin, FaGithub, FaClock, FaDollarSign, FaBriefcase, FaCode } from "react-icons/fa";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import Header from "../components/header";
@@ -379,478 +379,559 @@ const convertTo12Hour = (time24) => {
   };
 
   return (
-    <>
+    <div className="profile-page" style={{ backgroundColor: "#f5f7fa", minHeight: "100vh" }}>
       <Header />
-      <div className="container mt-4">
-        <div className="d-flex gap-4">
-        <div className="text-center" style={{ width: "300px", borderRight: "1px solid #ddd" }}>
-        <label htmlFor="profileImageUpload" style={{ cursor: "pointer" }}>
-    <img
-        src={profileImage ? URL.createObjectURL(profileImage) : developer?.profileImage || "/default-avatar.png"}
-        alt="Profile"
-        width="150"
-        style={{ borderRadius: '50%', height: '150px', objectFit: 'cover' }} 
-    />
-    {editMode && <FaCamera style={{ position: "absolute", marginLeft: "-30px", cursor: "pointer" }} />}
-</label>
-{editMode && (
-    <input
-        type="file"
-        id="profileImageUpload"
-        style={{ display: "none" }}
-        accept="image/*"
-        onChange={(e) => {
-            if (e.target.files.length > 0) {
-                setProfileImage(e.target.files[0]); // Set the image to state
-            }
-        }}
-    />
-)}
+      <div className="container py-5">
+        <div className="row">
+          {/* Left Column - Profile Info */}
+          <div className="col-lg-4 mb-4">
+            <div className="card shadow-sm" style={{
+              background: "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "15px",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              padding: "2rem"
+            }}>
+              <div className="text-center">
+                <label htmlFor="profileImageUpload" style={{ cursor: "pointer", position: "relative", display: "inline-block" }}>
+                  <div style={{
+                    width: "180px",
+                    height: "180px",
+                    margin: "0 auto",
+                    position: "relative",
+                    borderRadius: "50%",
+                    overflow: "hidden",
+                    border: "3px solid #fff",
+                    boxShadow: "0 4px 15px rgba(0,0,0,0.1)"
+                  }}>
+                    <img
+                      src={profileImage ? URL.createObjectURL(profileImage) : developer?.profileImage || "/default-avatar.png"}
+                      alt="Profile"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                    {editMode && (
+                      <div style={{
+                        position: "absolute",
+                        bottom: "0",
+                        left: "0",
+                        right: "0",
+                        background: "rgba(0,0,0,0.6)",
+                        padding: "8px",
+                        color: "white"
+                      }}>
+                        <FaCamera size={20} />
+                      </div>
+                    )}
+                  </div>
+                </label>
+                {editMode && (
+                  <input
+                    type="file"
+                    id="profileImageUpload"
+                    style={{ display: "none" }}
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files.length > 0) {
+                        setProfileImage(e.target.files[0]);
+                      }
+                    }}
+                  />
+                )}
 
-    <h2>{developer?.firstName || "No Name"}</h2>
-    <p>Developer</p>
-    <button
-        className="btn btn-primary"
-        onClick={handleMessageClick}
-        style={{ marginRight: '10px' }}
-    >
-        Message
-    </button>
+                <h2 className="mt-3 mb-1" style={{ fontWeight: "600" }}>{developer?.firstName || "No Name"}</h2>
+                <p className="text-muted mb-3">Developer</p>
 
-    {/* Edit Profile Button (Placed Below the Message Button) */}
-    {isOwner && (
-        <button
-            onClick={() => setEditMode(!editMode)}
-            className="btn btn-secondary mt-2"
-            style={{
-                display: 'block',
-                width: '90%', // Ensures full width
-                padding: '8px',
-                borderRadius: '5px',
-                marginTop: '10px' // Adds space between buttons
-            }}
-        >
-            <FaEdit /> Edit Profile
-        </button>
-    )}
-    {isOwner && (
-    <button 
-        style={{
-            background: "red",
-            color: "white",
-            border: "none",
-            padding: "10px",
-            borderRadius: "5px",
-            cursor: "pointer",
-            marginTop: "20px",
-            width: "90%",
-            marginRight: "27px",
-        }}
-        onClick={handleDeleteAccount}
-    >
-        ❌ Delete Account
-    </button>
-)}
+                <div className="d-flex justify-content-center gap-2 mb-4">
+                  <button
+                    className="btn btn-primary px-4"
+                    onClick={handleMessageClick}
+                    style={{
+                      borderRadius: "25px",
+                      background: "linear-gradient(135deg, #007bff, #0056b3)",
+                      border: "none",
+                      boxShadow: "0 4px 15px rgba(0,123,255,0.2)"
+                    }}
+                  >
+                    Message
+                  </button>
 
-</div>
+                  {isOwner && (
+                    <button
+                      onClick={() => setEditMode(!editMode)}
+                      className="btn btn-outline-primary px-4"
+                      style={{ borderRadius: "25px" }}
+                    >
+                      <FaEdit /> Edit
+                    </button>
+                  )}
+                </div>
 
+                {loggedInUser && loggedInUser.role === 'student' && (
+                  <button
+                    onClick={() => navigate(`/booksession/${developer._id}`)}
+                    className="btn btn-success w-100 mb-3"
+                    style={{
+                      borderRadius: "25px",
+                      background: "linear-gradient(135deg, #28a745, #1e7e34)",
+                      border: "none",
+                      boxShadow: "0 4px 15px rgba(40,167,69,0.2)"
+                    }}
+                  >
+                    Book Session
+                  </button>
+                )}
 
+                {/* Quick Info Section */}
+                <div className="quick-info mt-4">
+                  {editMode ? (
+                    <div className="p-3" style={{
+                      background: "rgba(255, 255, 255, 0.5)",
+                      borderRadius: "10px",
+                      border: "1px solid rgba(255, 255, 255, 0.2)"
+                    }}>
+                      <div className="mb-3">
+                        <label className="d-flex align-items-center mb-2">
+                          <FaDollarSign className="text-primary me-2" />
+                          <span>Hourly Rate (PKR/hr)</span>
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Hourly Rate"
+                          value={formData.hourlyRate}
+                          onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                          className="form-control"
+                          style={{
+                            borderRadius: "10px",
+                            padding: "10px",
+                            border: "1px solid rgba(0,0,0,0.1)"
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="d-flex align-items-center mb-2">
+                          <FaClock className="text-primary me-2" />
+                          <span>Working Hours</span>
+                        </label>
+                        <div className="d-flex gap-2">
+                          <input
+                            type="time"
+                            value={formData.workingHours.from}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                workingHours: { ...formData.workingHours, from: e.target.value }
+                              })
+                            }
+                            className="form-control"
+                            style={{
+                              borderRadius: "10px",
+                              padding: "10px",
+                              border: "1px solid rgba(0,0,0,0.1)"
+                            }}
+                          />
+                          <span className="align-self-center">to</span>
+                          <input
+                            type="time"
+                            value={formData.workingHours.to}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                workingHours: { ...formData.workingHours, to: e.target.value }
+                              })
+                            }
+                            className="form-control"
+                            style={{
+                              borderRadius: "10px",
+                              padding: "10px",
+                              border: "1px solid rgba(0,0,0,0.1)"
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="d-flex align-items-center mb-3">
+                        <FaDollarSign className="text-primary me-2" />
+                        <div className="text-start">
+                          <small className="text-muted">Hourly Rate</small>
+                          <p className="mb-0">{developer?.hourlyRate ? `${developer.hourlyRate} PKR/hr` : "Not Set"}</p>
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center mb-3">
+                        <FaClock className="text-primary me-2" />
+                        <div className="text-start">
+                          <small className="text-muted">Working Hours</small>
+                          <p className="mb-0">
+                            {developer?.workingHours?.from && developer?.workingHours?.to
+                              ? `${convertTo12Hour(developer.workingHours.from)} - ${convertTo12Hour(developer.workingHours.to)}`
+                              : "Not Set"}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
 
+                {/* Social Links */}
+                <div className="social-links mt-4 d-flex justify-content-center gap-3">
+                  {developer?.linkedIn && (
+                    <a href={developer.linkedIn} target="_blank" rel="noopener noreferrer" 
+                       className="btn btn-light rounded-circle p-2">
+                      <FaLinkedin size={20} color="#0077b5" />
+                    </a>
+                  )}
+                  {developer?.github && (
+                    <a href={developer.github} target="_blank" rel="noopener noreferrer"
+                       className="btn btn-light rounded-circle p-2">
+                      <FaGithub size={20} color="#333" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
 
-          <div style={{ flex: 1 }}>
-          {loggedInUser && loggedInUser.role === 'student' && (
-            <button
-              onClick={() => navigate(`/booksession/${developer._id}`)}
-              style={{
-                background: "blue",
-                color: "white",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "5px",
-                cursor: "pointer",
-                marginBottom: "20px",
-                display: "block"
-              }}
-            >
-              Book Session
-            </button>
-          )}
-          <h3 style={{ borderBottom: "3px solid blue", paddingBottom: "5px", display: "inline-block" }}>
-        About Me
-    </h3>
-    {editMode ? (
-        <ReactQuill 
-            theme="snow" 
-            value={formData.about} 
-            onChange={(value) => setFormData({ ...formData, about: value })} 
-        />
-    ) : (
-        <div dangerouslySetInnerHTML={{ __html: developer?.about }} />
-    )}
+            {/* Delete Account Button */}
+            {isOwner && (
+              <div className="mt-3">
+                <button 
+                  className="btn btn-danger w-100"
+                  style={{
+                    borderRadius: "25px",
+                    background: "linear-gradient(135deg, #dc3545, #c82333)",
+                    border: "none",
+                    boxShadow: "0 4px 15px rgba(220,53,69,0.2)"
+                  }}
+                  onClick={handleDeleteAccount}
+                >
+                  Delete Account
+                </button>
+              </div>
+            )}
+          </div>
 
-<h3 style={{ borderBottom: "3px solid blue", paddingBottom: "5px", display: "inline-block", marginTop: "20px" }}>
-        Hourly Rate & Working Hours
-    </h3>
-    {editMode ? (
-        <>
-            <input
-                type="number"
-                placeholder="Hourly Rate (Pkr/hr)"
-                value={formData.hourlyRate}
-                onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
-                style={{ width: "100%", padding: "8px", marginBottom: "10px", borderRadius: "5px", border: "1px solid #ccc" }}
-            />
-            <div style={{ display: "flex", gap: "10px" }}>
-                <input
-                    type="time"
-                    value={formData.workingHours.from}
-                    onChange={(e) =>
-                        setFormData({ ...formData, workingHours: { ...formData.workingHours, from: e.target.value } })
-                    }
-                    style={{ flex: 1, padding: "8px", borderRadius: "5px", border: "1px solid #ccc" }}
+          {/* Right Column - Main Content */}
+          <div className="col-lg-8">
+            {/* About Section */}
+            <div className="card shadow-sm mb-4" style={{
+              background: "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "15px",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              padding: "2rem"
+            }}>
+              <h3 className="card-title mb-4" style={{ 
+                borderBottom: "3px solid #007bff",
+                paddingBottom: "10px",
+                display: "inline-block"
+              }}>
+                About Me
+              </h3>
+              {editMode ? (
+                <ReactQuill 
+                  theme="snow" 
+                  value={formData.about} 
+                  onChange={(value) => setFormData({ ...formData, about: value })} 
                 />
-                <input
-                    type="time"
-                    value={formData.workingHours.to}
-                    onChange={(e) =>
-                        setFormData({ ...formData, workingHours: { ...formData.workingHours, to: e.target.value } })
-                    }
-                    style={{ flex: 1, padding: "8px", borderRadius: "5px", border: "1px solid #ccc" }}
-                />
+              ) : (
+                <div className="about-content" dangerouslySetInnerHTML={{ __html: developer?.about }} />
+              )}
             </div>
-        </>
-    ) : (
-        <p>
-           {developer?.hourlyRate ? `${developer.hourlyRate} per hr` : "Not Set"} |{" "}
-{developer?.workingHours?.from && developer?.workingHours?.to
-  ? `${convertTo12Hour(developer.workingHours.from)} to ${convertTo12Hour(developer.workingHours.to)}`
-  : "No Working Hours Set"}
 
-        </p>
-    )}
-             <div style={{ marginBottom: "30px", paddingBottom: "20px", borderBottom: "1px solid #ddd" }}>
-    <h3 style={{
-        borderBottom: "3px solid blue",
-        paddingBottom: "5px",
-        display: "inline-block",
-        width: "50%"
-    }}>
-        Expertise
-    </h3>
-{expertise.map((exp, index) => (
-    <div key={index} className="border p-2 mb-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p><strong>{exp.domain}</strong> - {exp.experienceYears} years experience, {exp.projects} projects</p>
-        {editMode && (
-            <div style={{ display: "flex", gap: "5px" }}>
-                <button
-                    style={{
-                        background: "orange",
-                        color: "white",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        cursor: "pointer"
-                    }}
-                    onClick={() => handleEditExpertise(exp)}
-                >
-                    ✏ Edit
-                </button>
-                <button
-                    style={{
-                        background: "red",
-                        color: "white",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        cursor: "pointer"
-                    }}
-                    onClick={() => handleDeleteExpertise(exp._id)}
-                >
-                    ❌ Remove
-                </button>
+            {/* Expertise Section */}
+            <div className="card shadow-sm mb-4" style={{
+              background: "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "15px",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              padding: "2rem"
+            }}>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h3 className="card-title" style={{ 
+                  borderBottom: "3px solid #007bff",
+                  paddingBottom: "10px",
+                  display: "inline-block"
+                }}>
+                  <FaCode className="me-2" />Expertise
+                </h3>
+                {editMode && (
+                  <button
+                    className="btn btn-primary btn-sm rounded-pill"
+                    onClick={() => setShowExpertisePopup(true)}
+                  >
+                    <FaPlus className="me-1" /> Add
+                  </button>
+                )}
+              </div>
+              
+              <div className="row g-3">
+                {expertise.map((exp, index) => (
+                  <div key={index} className="col-md-6">
+                    <div className="expertise-card p-3" style={{
+                      background: "rgba(255, 255, 255, 0.5)",
+                      borderRadius: "10px",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      transition: "transform 0.2s",
+                      cursor: "default"
+                    }}>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h5 className="mb-1">{exp.domain}</h5>
+                          <p className="text-muted mb-0">
+                            {exp.experienceYears} years • {exp.projects} projects
+                          </p>
+                        </div>
+                        {editMode && (
+                          <div className="btn-group">
+                            <button
+                              className="btn btn-outline-primary btn-sm"
+                              onClick={() => handleEditExpertise(exp)}
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => handleDeleteExpertise(exp._id)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-        )}
-    </div>
-))}
 
+            {/* Job Experience Section */}
+            <div className="card shadow-sm mb-4" style={{
+              background: "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "15px",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              padding: "2rem"
+            }}>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h3 className="card-title" style={{ 
+                  borderBottom: "3px solid #007bff",
+                  paddingBottom: "10px",
+                  display: "inline-block"
+                }}>
+                  <FaBriefcase className="me-2" />Job Experience
+                </h3>
+                {editMode && (
+                  <button
+                    className="btn btn-primary btn-sm rounded-pill"
+                    onClick={() => setShowJobPopup(true)}
+                  >
+                    <FaPlus className="me-1" /> Add
+                  </button>
+                )}
+              </div>
 
-{editMode && (
-    <button
-        style={{
-            background: "blue",
-            color: "white",
-            border: "none",
-            padding: "10px",
-            borderRadius: "5px",
-            cursor: "pointer",
-            marginTop: "10px"
-        }}
-        onClick={() => setShowExpertisePopup(true)}
-    >
-        ➕ Add Expertise
-    </button>
-)}
-</div>
-
-
-{/* Edit Expertise Modal */}
-{showEditExpertisePopup && (
-    <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 1000
-    }}>
-        <div style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "10px",
-            width: "400px",
-            position: "relative",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
-        }}>
-            <button style={{
-                position: "absolute",
-                top: "10px",
-                right: "10px",
-                background: "transparent",
-                border: "none",
-                fontSize: "20px",
-                cursor: "pointer"
-            }} onClick={() => setShowEditExpertisePopup(false)}>X</button>
-
-            <h4>Edit Expertise</h4>
-            <input type="text" placeholder="Domain" value={editExpertise.domain} onChange={(e) => setEditExpertise({ ...editExpertise, domain: e.target.value })} style={{ width: "100%", padding: "8px", marginBottom: "10px" }} />
-            <input type="number" placeholder="Years of Experience" value={editExpertise.experienceYears} onChange={(e) => setEditExpertise({ ...editExpertise, experienceYears: e.target.value })} style={{ width: "100%", padding: "8px", marginBottom: "10px" }} />
-            <input type="number" placeholder="Number of Projects" value={editExpertise.projects} onChange={(e) => setEditExpertise({ ...editExpertise, projects: e.target.value })} style={{ width: "100%", padding: "8px", marginBottom: "10px" }} />
-            <button style={{
-                background: "blue",
-                color: "white",
-                padding: "10px",
-                width: "100%",
-                border: "none",
-                borderRadius: "5px"
-            }} onClick={handleUpdateExpertise}>Save</button>
-        </div>
-    </div>
-)}
-
-<div style={{ marginBottom: "30px", paddingBottom: "20px", borderBottom: "1px solid #ddd" }}>
-    <h3 style={{
-        borderBottom: "3px solid blue",
-        paddingBottom: "5px",
-        display: "inline-block",
-        width: "50%"
-    }}>
-        Social Media Links
-    </h3>
-{editMode ? (
-    <>
-        <label><strong>LinkedIn:</strong></label>
-        <input
-            type="text"
-            placeholder="LinkedIn Profile URL"
-            value={formData.linkedIn}
-            onChange={(e) => setFormData({ ...formData, linkedIn: e.target.value })}
-            className="form-control mb-2"
-        />
-
-        <label><strong>GitHub:</strong></label>
-        <input
-            type="text"
-            placeholder="GitHub Profile URL"
-            value={formData.github}
-            onChange={(e) => setFormData({ ...formData, github: e.target.value })}
-            className="form-control mb-2"
-        />
-    </>
-) : (
-    <>
-        <p><strong>LinkedIn:</strong> {developer?.linkedIn ? <a href={developer.linkedIn} target="_blank" rel="noopener noreferrer"><FaLinkedin size={20} color="blue" /></a> : "Not Set"}</p>
-        <p><strong>GitHub:</strong> {developer?.github ? <a href={developer.github} target="_blank" rel="noopener noreferrer"><FaGithub size={20} color="black" /></a> : "Not Set"}</p>
-    </>
-)}
-</div>
-
-<h3 style={{
-    borderBottom: "3px solid blue",
-    paddingBottom: "5px",
-    display: "inline-block",
-    width: "50%",
-    marginTop: "20px"
-}}>
-    Job Experience
-</h3>
-
-{jobExperience.map((job, index) => (
-    <div key={index} className="border p-2 mb-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p><strong>{job.companyName}</strong> as {job.position}</p>
-<p>
-  from {formatDate(job.startDate)} to {formatDate(job.endDate)}
-</p>
-
-        {editMode && (
-            <div style={{ display: "flex", gap: "5px" }}>
-                <button
-                    style={{
-                        background: "orange",
-                        color: "white",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        cursor: "pointer"
-                    }}
-                    onClick={() => handleEditJobExperience(job)} // ✅ Ensure job is passed
-                >
-                    ✏ Edit
-                </button>
-                <button
-                    style={{
-                        background: "red",
-                        color: "white",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        cursor: "pointer"
-                    }}
-                    onClick={() => handleDeleteJobExperience(job._id)}
-                >
-                    ❌ Remove
-                </button>
+              <div className="timeline">
+                {jobExperience.map((job, index) => (
+                  <div key={index} className="job-card mb-3 p-3" style={{
+                    background: "rgba(255, 255, 255, 0.5)",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    position: "relative"
+                  }}>
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h5 className="mb-1">{job.position}</h5>
+                        <h6 className="text-primary mb-2">{job.companyName}</h6>
+                        <p className="text-muted mb-0">
+                          {formatDate(job.startDate)} - {formatDate(job.endDate)}
+                        </p>
+                      </div>
+                      {editMode && (
+                        <div className="btn-group">
+                          <button
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => handleEditJobExperience(job)}
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleDeleteJobExperience(job._id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-        )}
-    </div>
-))}
 
+            {/* Social Media Section */}
+            <div className="card shadow-sm mb-4" style={{
+              background: "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "15px",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              padding: "2rem"
+            }}>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h3 className="card-title" style={{ 
+                  borderBottom: "3px solid #007bff",
+                  paddingBottom: "10px",
+                  display: "inline-block"
+                }}>
+                  Social Media Links
+                </h3>
+              </div>
 
-{editMode && (
-    <button
-        style={{
-            background: "blue",
-            color: "white",
-            border: "none",
-            padding: "10px",
-            borderRadius: "5px",
-            cursor: "pointer",
-            marginTop: "10px"
-        }}
-        onClick={() => setShowJobPopup(true)}
-    >
-        ➕ Add Job Experience
-    </button>
-)}
-{/* Edit Job Experience Modal */}
-{showEditJobPopup && (
-    <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 1000
-    }}>
-        <div style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "10px",
-            width: "400px",
-            position: "relative",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
-        }}>
-            <button style={{
-                position: "absolute",
-                top: "10px",
-                right: "10px",
-                background: "transparent",
-                border: "none",
-                fontSize: "20px",
-                cursor: "pointer"
-            }} onClick={() => setShowEditJobPopup(false)}>X</button>
+              {editMode ? (
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label className="d-flex align-items-center mb-2">
+                        <FaLinkedin className="text-primary me-2" size={20} />
+                        <span>LinkedIn Profile</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="LinkedIn Profile URL"
+                        value={formData.linkedIn}
+                        onChange={(e) => setFormData({ ...formData, linkedIn: e.target.value })}
+                        className="form-control"
+                        style={{
+                          borderRadius: "10px",
+                          padding: "10px",
+                          border: "1px solid rgba(0,0,0,0.1)"
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label className="d-flex align-items-center mb-2">
+                        <FaGithub className="me-2" size={20} />
+                        <span>GitHub Profile</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="GitHub Profile URL"
+                        value={formData.github}
+                        onChange={(e) => setFormData({ ...formData, github: e.target.value })}
+                        className="form-control"
+                        style={{
+                          borderRadius: "10px",
+                          padding: "10px",
+                          border: "1px solid rgba(0,0,0,0.1)"
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="social-link-card p-3" style={{
+                      background: "rgba(255, 255, 255, 0.5)",
+                      borderRadius: "10px",
+                      border: "1px solid rgba(255, 255, 255, 0.2)"
+                    }}>
+                      <div className="d-flex align-items-center">
+                        <FaLinkedin size={24} color="#0077b5" className="me-3" />
+                        <div>
+                          <h6 className="mb-1">LinkedIn</h6>
+                          {developer?.linkedIn ? (
+                            <a 
+                              href={developer.linkedIn} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-decoration-none"
+                              style={{ color: "#0077b5" }}
+                            >
+                              View Profile
+                            </a>
+                          ) : (
+                            <span className="text-muted">Not Set</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="social-link-card p-3" style={{
+                      background: "rgba(255, 255, 255, 0.5)",
+                      borderRadius: "10px",
+                      border: "1px solid rgba(255, 255, 255, 0.2)"
+                    }}>
+                      <div className="d-flex align-items-center">
+                        <FaGithub size={24} color="#333" className="me-3" />
+                        <div>
+                          <h6 className="mb-1">GitHub</h6>
+                          {developer?.github ? (
+                            <a 
+                              href={developer.github} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-decoration-none"
+                              style={{ color: "#333" }}
+                            >
+                              View Profile
+                            </a>
+                          ) : (
+                            <span className="text-muted">Not Set</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <h4>Edit Job Experience</h4>
-            <input type="text" placeholder="Company Name" 
-                value={editJob.companyName} 
-                onChange={(e) => setEditJob({ ...editJob, companyName: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
-            />
-            <input type="text" placeholder="Position" 
-                value={editJob.position} 
-                onChange={(e) => setEditJob({ ...editJob, position: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
-            />
-            <input type="date" 
-                value={editJob.startDate} 
-                onChange={(e) => setEditJob({ ...editJob, startDate: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
-            />
-            <input type="date" 
-                value={editJob.endDate} 
-                onChange={(e) => setEditJob({ ...editJob, endDate: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
-            />
-            
-            {/* ✅ Fix: Ensure Save button calls `handleUpdateJobExperience` */}
-            <button style={{
-                background: "blue",
-                color: "white",
-                padding: "10px",
-                width: "100%",
-                border: "none",
-                borderRadius: "5px",
-                cursor: "pointer"
-            }} 
-            onClick={handleUpdateJobExperience} // ✅ This calls the update function
-            >
-                Save
-            </button>
-        </div>
-    </div>
-)}
-
-
-{editMode && (
-    <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-start" }}>
-        <button className="btn btn-success mt-3" onClick={handleProfileUpdate}>Save Changes</button>
-    </div>
-)}
+            {editMode && (
+              <div className="text-end mt-4">
+                <button 
+                  className="btn btn-primary px-4"
+                  onClick={handleProfileUpdate}
+                  style={{
+                    borderRadius: "25px",
+                    background: "linear-gradient(135deg, #007bff, #0056b3)",
+                    border: "none",
+                    boxShadow: "0 4px 15px rgba(0,123,255,0.2)"
+                  }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-
-      {/* ✅ Expertise Popup Form */}
+      {/* Modals */}
       {showExpertisePopup && (
-    <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 1000
-    }}>
         <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
             background: "white",
             padding: "20px",
             borderRadius: "10px",
             width: "400px",
-            position: "relative",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
-        }}>
-            <button style={{
+            position: "relative"
+          }}>
+            <button
+              style={{
                 position: "absolute",
                 top: "10px",
                 right: "10px",
@@ -858,58 +939,72 @@ const convertTo12Hour = (time24) => {
                 border: "none",
                 fontSize: "20px",
                 cursor: "pointer"
-            }} onClick={() => setShowExpertisePopup(false)}>X</button>
-
-            <h4>Add Expertise</h4>
-            <select 
-                onChange={(e) => setNewExpertise({ ...newExpertise, domain: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+              }}
+              onClick={() => setShowExpertisePopup(false)}
             >
-                <option value="">Select Domain</option>
-                {expertiseOptions.map((exp) => (
-                    <option key={exp} value={exp}>{exp}</option>
-                ))}
+              ×
+            </button>
+            <h4>Add Expertise</h4>
+            <select
+              onChange={(e) => setNewExpertise({ ...newExpertise, domain: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            >
+              <option value="">Select Domain</option>
+              {expertiseOptions.map((exp) => (
+                <option key={exp} value={exp}>{exp}</option>
+              ))}
             </select>
-            <input type="number" placeholder="Years of Experience" onChange={(e) => setNewExpertise({ ...newExpertise, experienceYears: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
+            <input
+              type="number"
+              placeholder="Years of Experience"
+              onChange={(e) => setNewExpertise({ ...newExpertise, experienceYears: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
             />
-            <input type="number" placeholder="Number of Projects" onChange={(e) => setNewExpertise({ ...newExpertise, projects: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
+            <input
+              type="number"
+              placeholder="Number of Projects"
+              onChange={(e) => setNewExpertise({ ...newExpertise, projects: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
             />
-            <button style={{
+            <button
+              style={{
                 background: "blue",
                 color: "white",
                 padding: "10px",
                 width: "100%",
                 border: "none",
                 borderRadius: "5px"
-            }} onClick={addExpertise}>Save</button>
+              }}
+              onClick={addExpertise}
+            >
+              Save
+            </button>
+          </div>
         </div>
-    </div>
-)}
+      )}
 
-{showJobPopup && (
-    <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 1000
-    }}>
+      {showEditExpertisePopup && (
         <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
             background: "white",
             padding: "20px",
             borderRadius: "10px",
             width: "400px",
-            position: "relative",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
-        }}>
-            <button style={{
+            position: "relative"
+          }}>
+            <button
+              style={{
                 position: "absolute",
                 top: "10px",
                 right: "10px",
@@ -917,35 +1012,206 @@ const convertTo12Hour = (time24) => {
                 border: "none",
                 fontSize: "20px",
                 cursor: "pointer"
-            }} onClick={() => setShowJobPopup(false)}>X</button>
-
-            <h4>Add Job Experience</h4>
-            <input type="text" placeholder="Company Name" value={newJob.companyName} onChange={(e) => setNewJob({ ...newJob, companyName: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
+              }}
+              onClick={() => setShowEditExpertisePopup(false)}
+            >
+              ×
+            </button>
+            <h4>Edit Expertise</h4>
+            <input
+              type="text"
+              placeholder="Domain"
+              value={editExpertise.domain}
+              onChange={(e) => setEditExpertise({ ...editExpertise, domain: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
             />
-            <input type="text" placeholder="Position" value={newJob.position} onChange={(e) => setNewJob({ ...newJob, position: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
+            <input
+              type="number"
+              placeholder="Years of Experience"
+              value={editExpertise.experienceYears}
+              onChange={(e) => setEditExpertise({ ...editExpertise, experienceYears: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
             />
-            <input type="date" value={newJob.startDate} onChange={(e) => setNewJob({ ...newJob, startDate: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
+            <input
+              type="number"
+              placeholder="Number of Projects"
+              value={editExpertise.projects}
+              onChange={(e) => setEditExpertise({ ...editExpertise, projects: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
             />
-            <input type="date" value={newJob.endDate} onChange={(e) => setNewJob({ ...newJob, endDate: e.target.value })} 
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }} 
-            />
-            <button style={{
+            <button
+              style={{
                 background: "blue",
                 color: "white",
                 padding: "10px",
                 width: "100%",
                 border: "none",
                 borderRadius: "5px"
-            }} onClick={addJobExperience}>Save</button>
+              }}
+              onClick={handleUpdateExpertise}
+            >
+              Save
+            </button>
+          </div>
         </div>
-    </div>
-)}
+      )}
 
-      
-    </>
+      {showJobPopup && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: "white",
+            padding: "20px",
+            borderRadius: "10px",
+            width: "400px",
+            position: "relative"
+          }}>
+            <button
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "10px",
+                background: "transparent",
+                border: "none",
+                fontSize: "20px",
+                cursor: "pointer"
+              }}
+              onClick={() => setShowJobPopup(false)}
+            >
+              ×
+            </button>
+            <h4>Add Job Experience</h4>
+            <input
+              type="text"
+              placeholder="Company Name"
+              value={newJob.companyName}
+              onChange={(e) => setNewJob({ ...newJob, companyName: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <input
+              type="text"
+              placeholder="Position"
+              value={newJob.position}
+              onChange={(e) => setNewJob({ ...newJob, position: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <input
+              type="date"
+              value={newJob.startDate}
+              onChange={(e) => setNewJob({ ...newJob, startDate: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <input
+              type="date"
+              value={newJob.endDate}
+              onChange={(e) => setNewJob({ ...newJob, endDate: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <button
+              style={{
+                background: "blue",
+                color: "white",
+                padding: "10px",
+                width: "100%",
+                border: "none",
+                borderRadius: "5px"
+              }}
+              onClick={addJobExperience}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showEditJobPopup && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: "white",
+            padding: "20px",
+            borderRadius: "10px",
+            width: "400px",
+            position: "relative"
+          }}>
+            <button
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "10px",
+                background: "transparent",
+                border: "none",
+                fontSize: "20px",
+                cursor: "pointer"
+              }}
+              onClick={() => setShowEditJobPopup(false)}
+            >
+              ×
+            </button>
+            <h4>Edit Job Experience</h4>
+            <input
+              type="text"
+              placeholder="Company Name"
+              value={editJob.companyName}
+              onChange={(e) => setEditJob({ ...editJob, companyName: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <input
+              type="text"
+              placeholder="Position"
+              value={editJob.position}
+              onChange={(e) => setEditJob({ ...editJob, position: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <input
+              type="date"
+              value={editJob.startDate}
+              onChange={(e) => setEditJob({ ...editJob, startDate: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <input
+              type="date"
+              value={editJob.endDate}
+              onChange={(e) => setEditJob({ ...editJob, endDate: e.target.value })}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            />
+            <button
+              style={{
+                background: "blue",
+                color: "white",
+                padding: "10px",
+                width: "100%",
+                border: "none",
+                borderRadius: "5px"
+              }}
+              onClick={handleUpdateJobExperience}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
