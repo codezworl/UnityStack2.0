@@ -9,7 +9,10 @@ const {
   addTestReview,
   getReviews,
   getAverageRating,
-  getAssignedSessionReviews
+  getAssignedSessionReviews,
+  getDeveloperRatings,
+  getOrganizationRatings,
+  addTestOrganizationReview
 } = require('../Controllers/ReviewController');
 
 // Create a new review (for both projects and sessions)
@@ -30,10 +33,19 @@ router.get('/project/:projectId', authenticateToken, getProjectReview);
 // Get average rating for a project or session
 router.get('/average/:projectId?/:sessionId?', authenticateToken, getAverageRating);
 
-// Get reviews for a project or session
-router.get('/:projectId?/:sessionId?', authenticateToken, getReviews);
+// Get ratings and reviews for a specific developer (public endpoint)
+router.get('/developer/:developerId', getDeveloperRatings);
+
+// Get ratings and reviews for a specific organization (public endpoint)
+router.get('/organization/:organizationId', getOrganizationRatings);
 
 // Add a test review for debugging
 router.post('/test/:projectId', authenticateToken, addTestReview);
+
+// Add a test review for organization debugging
+router.post('/test-organization/:organizationId', authenticateToken, addTestOrganizationReview);
+
+// Get reviews for a project or session (this should be last to avoid conflicts)
+router.get('/:projectId?/:sessionId?', authenticateToken, getReviews);
 
 module.exports = router; 

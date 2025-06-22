@@ -96,6 +96,10 @@ const CompanyProfile = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   // Animation state
   const [tabAnim, setTabAnim] = useState("fadein 0.7s");
+  // Add organization ratings state
+  const [organizationRatings, setOrganizationRatings] = useState(null);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
+
   useEffect(() => {
     setTabAnim("fadein 0.7s");
   }, [activeTab]);
@@ -113,6 +117,9 @@ const CompanyProfile = () => {
         if (!response.ok) throw new Error("Failed to fetch company");
         const data = await response.json();
         setCompany(data);
+        
+        // Fetch organization ratings
+        await fetchOrganizationRatings(id);
       } catch (error) {
         console.error("Error fetching company:", error);
       } finally {
@@ -138,6 +145,43 @@ const CompanyProfile = () => {
     fetchUser();
   }, [id]);
 
+  // Fetch organization ratings
+  const fetchOrganizationRatings = async (organizationId) => {
+    try {
+      setRatingsLoading(true);
+      console.log('Fetching ratings for organization:', organizationId);
+      
+      const response = await fetch(`http://localhost:5000/api/reviews/organization/${organizationId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Organization ratings:', data);
+        setOrganizationRatings(data);
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Failed to fetch organization ratings:', response.status, response.statusText, errorText);
+        setOrganizationRatings({
+          reviews: [],
+          stats: { averageRating: 0, totalReviews: 0 }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error fetching organization ratings:', error);
+      setOrganizationRatings({
+        reviews: [],
+        stats: { averageRating: 0, totalReviews: 0 }
+      });
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
 
   const handleMessageClick = async () => {
     try {
@@ -249,6 +293,27 @@ const CompanyProfile = () => {
           >
             {company.companyName}
           </h3>
+          {/* Rating Display */}
+          {organizationRatings && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              <div style={{ color: "#facc15", fontSize: "1.2rem" }}>
+                {'★'.repeat(Math.floor(organizationRatings.stats?.averageRating || 0))}
+                {(organizationRatings.stats?.averageRating || 0) % 1 >= 0.5 ? '★' : ''}
+                <span style={{ color: "#e5e7eb" }}>{'★'.repeat(5 - Math.ceil(organizationRatings.stats?.averageRating || 0))}</span>
+              </div>
+              <span style={{ fontSize: "1rem", fontWeight: "600", color: "#1e293b" }}>
+                {organizationRatings.stats?.averageRating?.toFixed(1) || "0.0"}
+              </span>
+              <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                ({organizationRatings.stats?.totalReviews || 0})
+              </span>
+            </div>
+          )}
+          {ratingsLoading && (
+            <div style={{ color: "#64748b", fontSize: "0.9rem", fontStyle: "italic" }}>
+              Loading ratings...
+            </div>
+          )}
           <div
             style={{
               color: "#64748b",
@@ -431,7 +496,7 @@ const CompanyProfile = () => {
               borderBottom: "1px solid #e0e7ef",
             }}
           >
-            {["blogs", "services", "about"].map((tab) => (
+            {["blogs", "services", "about", "reviews"].map((tab) => (
               <button
                 key={tab}
                 style={{
@@ -594,6 +659,110 @@ const CompanyProfile = () => {
               >
                 {company.about}
               </div>
+            </div>
+          )}
+          {/* Reviews */}
+          {activeTab === "reviews" && (
+            <div
+              style={{
+                animation: tabAnim,
+              }}
+            >
+              {ratingsLoading ? (
+                <div style={{ textAlign: "center", padding: "2rem" }}>
+                  <div style={{ fontSize: "1.2em", color: "#64748b" }}>Loading reviews...</div>
+                </div>
+              ) : organizationRatings ? (
+                <>
+                  {/* Rating Summary */}
+                  <div style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "2rem", 
+                    marginBottom: "2rem",
+                    padding: "1.5rem",
+                    background: "rgba(255, 255, 255, 0.5)",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(255, 255, 255, 0.2)"
+                  }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "3rem", fontWeight: "700", color: "#1e293b", lineHeight: 1 }}>
+                        {organizationRatings.stats?.averageRating?.toFixed(1) || "0.0"}
+                      </div>
+                      <div style={{ fontSize: "1.5rem", color: "#facc15", marginBottom: "0.5rem" }}>
+                        {'★'.repeat(Math.floor(organizationRatings.stats?.averageRating || 0))}
+                        {(organizationRatings.stats?.averageRating || 0) % 1 >= 0.5 ? '★' : ''}
+                        <span style={{ color: "#e5e7eb" }}>{'★'.repeat(5 - Math.ceil(organizationRatings.stats?.averageRating || 0))}</span>
+                      </div>
+                      <div style={{ color: "#64748b", fontSize: "1rem" }}>
+                        {organizationRatings.stats?.totalReviews || 0} reviews
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reviews List */}
+                  {organizationRatings.reviews && organizationRatings.reviews.length > 0 ? (
+                    <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                      {organizationRatings.reviews.map((review, index) => (
+                        <div key={index} style={{
+                          padding: "1.5rem",
+                          marginBottom: "1rem",
+                          background: "rgba(255, 255, 255, 0.5)",
+                          borderRadius: "12px",
+                          border: "1px solid rgba(255, 255, 255, 0.2)"
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
+                            <div style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "50%",
+                              background: "#f3f4f6",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: "700",
+                              color: "#374151"
+                            }}>
+                              {review.reviewerName?.split(' ').map(n => n[0]).join('').toUpperCase() || "U"}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: "600", color: "#1e293b" }}>
+                                {review.reviewerName || "Anonymous"}
+                              </div>
+                              <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                                {review.reviewerRole || "Client"}
+                              </div>
+                            </div>
+                            <div style={{ marginLeft: "auto", color: "#facc15", fontSize: "1.2rem" }}>
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </div>
+                          </div>
+                          <div style={{ color: "#374151", lineHeight: 1.6 }}>
+                            {review.description}
+                          </div>
+                          <div style={{ color: "#64748b", fontSize: "0.9rem", marginTop: "0.5rem" }}>
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "3rem" }}>
+                      <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>💬</div>
+                      <div style={{ fontSize: "1.5rem", fontWeight: "600", color: "#1e293b", marginBottom: "0.5rem" }}>
+                        No Reviews Yet
+                      </div>
+                      <div style={{ color: "#64748b" }}>
+                        This company hasn't received any reviews yet.
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ textAlign: "center", padding: "2rem" }}>
+                  <div style={{ fontSize: "1.2em", color: "#64748b" }}>Failed to load reviews.</div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import { Modal, Button, Form, Spinner, Alert } from "react-bootstrap";
 import { FaEdit, FaTrashAlt, FaPlus, FaCheck, FaTrash } from "react-icons/fa";
@@ -233,36 +234,42 @@ const BlogsAndEvents = () => {
         ) : (
           blogs.map((blog) => (
             <div className="col-md-4" key={blog._id}>
-              <div className="card shadow-sm">
-                {/* ✅ Blog Image */}
-                <img
-                  src={`http://localhost:5000/uploads/${blog.image}`}
-                  alt={blog.title}
-                  className="card-img-top"
-                  style={{ height: "200px", objectFit: "cover" }}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://via.placeholder.com/300x200?text=No+Image';
-                  }}
-                />
-                {/* ✅ Blog Body */}
-                <div className="card-body">
-                  <h5 className="card-title">{blog.title}</h5>
-                  <p className="card-text text-muted">{blog.description.substring(0, 100)}...</p>
-                  <p className="text-muted">
-                    <small>🗓 {new Date(blog.createdAt).toLocaleDateString()}</small>
-                  </p>
-                  {/* ✅ Actions */}
-                  <div className="d-flex justify-content-between">
-                    <Button variant="warning" size="sm" onClick={() => handleEdit(blog)}>
-                      <FaEdit className="me-1" /> Edit
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => confirmDelete(blog)}>
-                      <FaTrashAlt className="me-1" /> Delete
-                    </Button>
+              <Link to={`/blog/${blog._id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                <div className="card shadow-sm h-100">
+                  {/* ✅ Blog Image */}
+                  <img
+                    src={`http://localhost:5000/${blog.image ? blog.image.replace(/\\/g, '/') : 'placeholder.jpg'}`}
+                    alt={blog.title}
+                    className="card-img-top"
+                    style={{ height: "200px", objectFit: "cover" }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                    }}
+                  />
+                  {/* ✅ Blog Body */}
+                  <div className="card-body">
+                    <h5 className="card-title">{blog.title}</h5>
+                    <div className="card-text text-muted" dangerouslySetInnerHTML={{ __html: blog.description.substring(0, 100) + '...' }} />
+                    <p className="text-muted">
+                      <small>🗓 {new Date(blog.createdAt).toLocaleDateString()}</small>
+                    </p>
+                  </div>
+                  <div className="card-footer bg-transparent border-top-0 d-flex justify-content-between">
+                    <div>
+                      <Button variant="warning" size="sm" onClick={(e) => { e.preventDefault(); handleEdit(blog); }}>
+                        <FaEdit className="me-1" /> Edit
+                      </Button>
+                      <Button variant="danger" size="sm" className="ms-2" onClick={(e) => { e.preventDefault(); confirmDelete(blog); }}>
+                        <FaTrashAlt className="me-1" /> Delete
+                      </Button>
+                    </div>
+                    <span className="btn btn-primary btn-sm">
+                      Read More
+                    </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             </div>
           ))
         )}

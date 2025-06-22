@@ -245,6 +245,23 @@ const getAllPosts = async (req, res) => {
   }
 };
 
+// ✅ Fetch a single post by ID
+const getPostById = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id).populate(
+      "organization",
+      "companyName logo"
+    );
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    res.status(200).json(post);
+  } catch (error) {
+    console.error("❌ Error fetching post by ID:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 
 // ✅ Update Post
@@ -470,6 +487,7 @@ module.exports = {
   getOrganizationProfile,
   createPost,
   getAllPosts,
+  getPostById,
   updatePost,
   deletePost,
   upload,

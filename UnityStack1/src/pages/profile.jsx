@@ -28,6 +28,9 @@ const [editExpertise, setEditExpertise] = useState({});
 const [showEditJobPopup, setShowEditJobPopup] = useState(false);
 const [editJob, setEditJob] = useState({});
 const [showLoginModal, setShowLoginModal] = useState(false);
+const [reviews, setReviews] = useState([]);
+const [averageRating, setAverageRating] = useState(0);
+const [totalRatings, setTotalRatings] = useState(0);
 
 // ✅ Open Edit Expertise Modal
 const handleEditExpertise = (expertise) => {
@@ -186,6 +189,44 @@ const handleUpdateJobExperience = async () => {
       }
     };
     fetchProfile();
+  }, [id]);
+
+  // Fetch developer reviews and ratings
+  useEffect(() => {
+    const fetchDeveloperReviews = async () => {
+      try {
+        console.log('Fetching reviews for developer:', id);
+        
+        // Use the public endpoint to get reviews for this specific developer
+        const response = await fetch(`http://localhost:5000/api/reviews/developer/${id}`);
+        
+        if (!response.ok) {
+          console.error('Failed to fetch reviews:', response.status, response.statusText);
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('Reviews data received:', data);
+        
+        setReviews(data.reviews || []);
+        setAverageRating(data.stats?.averageRating || 0);
+        setTotalRatings(data.stats?.totalReviews || 0);
+        
+        console.log('Reviews set:', data.reviews?.length || 0);
+        console.log('Average rating set:', data.stats?.averageRating || 0);
+        console.log('Total ratings set:', data.stats?.totalReviews || 0);
+        
+      } catch (error) {
+        console.error('Error fetching developer reviews:', error);
+        setReviews([]);
+        setAverageRating(0);
+        setTotalRatings(0);
+      }
+    };
+
+    if (id) {
+      fetchDeveloperReviews();
+    }
   }, [id]);
 
   if (loading) return <div>Loading...</div>;
@@ -440,6 +481,21 @@ const convertTo12Hour = (time24) => {
 
                 <h2 className="mt-3 mb-1" style={{ fontWeight: "600" }}>{developer?.firstName || "No Name"}</h2>
                 <p className="text-muted mb-3">Developer</p>
+
+                {/* Rating Display */}
+                <div className="d-flex align-items-center justify-content-center mb-3" style={{ gap: "8px" }}>
+                  <span style={{ fontSize: "24px", color: "#FFD600" }}>
+                    {'★'.repeat(Math.floor(averageRating))}
+                    {averageRating % 1 >= 0.5 ? '★' : ''}
+                    <span style={{ color: "#E5E7EB" }}>{'★'.repeat(5 - Math.ceil(averageRating))}</span>
+                  </span>
+                  <span style={{ fontSize: "18px", fontWeight: "600", color: "#111" }}>
+                    {averageRating.toFixed(1)}
+                  </span>
+                  <span style={{ color: "#6B7280", fontSize: "14px" }}>
+                    ({totalRatings} reviews)
+                  </span>
+                </div>
 
                 <div className="d-flex justify-content-center gap-2 mb-4">
                   <button
@@ -702,6 +758,120 @@ const convertTo12Hour = (time24) => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* User Feedback Section */}
+            <div className="card shadow-sm mb-4" style={{
+              background: "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "15px",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              padding: "2rem"
+            }}>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h3 className="card-title" style={{ 
+                  borderBottom: "3px solid #007bff",
+                  paddingBottom: "10px",
+                  display: "inline-block"
+                }}>
+                  User Feedback
+                </h3>
+              </div>
+
+              {reviews.length > 0 ? (
+                <>
+                  {/* Rating Summary */}
+                  <div className="row mb-4">
+                    <div className="col-md-6">
+                      <div className="d-flex align-items-center mb-3">
+                        <span style={{ fontSize: "48px", fontWeight: "700", color: "#111", lineHeight: 1, marginRight: "18px" }}>
+                          {averageRating.toFixed(1)}
+                        </span>
+                        <div>
+                          <div style={{ fontSize: "32px", color: "#FFD600", marginBottom: "8px" }}>
+                            {'★'.repeat(Math.floor(averageRating))}
+                            {averageRating % 1 >= 0.5 ? '★' : ''}
+                            <span style={{ color: "#E5E7EB" }}>{'★'.repeat(5 - Math.ceil(averageRating))}</span>
+                          </div>
+                          <div style={{ color: "#6B7280", fontWeight: "500", fontSize: "18px" }}>
+                            {totalRatings} ratings
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      {/* Star bars */}
+                      {[5, 4, 3, 2, 1].map((star, idx) => {
+                        const count = reviews.filter(review => review.rating === star).length;
+                        const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
+                        return (
+                          <div key={star} className="d-flex align-items-center mb-2" style={{ gap: "10px" }}>
+                            <span style={{ width: "60px", fontWeight: "500", color: "#222", fontSize: "16px" }}>
+                              {star} Star{star > 1 ? 's' : ''}:
+                            </span>
+                            <div style={{ flex: 1, background: "#F3F4F6", borderRadius: "8px", height: "10px", position: "relative" }}>
+                              <div style={{ width: `${percentage}%`, background: "#111", height: "10px", borderRadius: "8px" }}></div>
+                            </div>
+                            <span style={{ width: "40px", textAlign: "right", color: "#6B7280", fontSize: "14px" }}>
+                              {count}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Reviews List */}
+                  <div style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "8px" }}>
+                    {reviews.map((review, index) => (
+                      <div key={index} className="d-flex align-items-start mb-4" style={{ gap: "18px" }}>
+                        <div style={{ 
+                          width: "48px", 
+                          height: "48px", 
+                          borderRadius: "50%", 
+                          background: "#F3F4F6", 
+                          display: "flex", 
+                          alignItems: "center", 
+                          justifyContent: "center", 
+                          fontWeight: "700", 
+                          fontSize: "20", 
+                          color: "#222", 
+                          flexShrink: 0 
+                        }}>
+                          {review.reviewerName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: "700", fontSize: "18px", color: "#111", marginBottom: "2px" }}>
+                            {review.reviewerName}
+                          </div>
+                          <div style={{ color: "#6B7280", fontSize: "14px", marginBottom: "2px" }}>
+                            {review.reviewerRole}
+                          </div>
+                          <div style={{ color: "#FFD600", fontSize: "18px", marginBottom: "2px" }}>
+                            {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                          </div>
+                          <div style={{ color: "#222", fontSize: "16px", lineHeight: "1.5" }}>
+                            {review.description}
+                          </div>
+                          <div style={{ color: "#6B7280", fontSize: "14px", marginTop: "8px" }}>
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: "center", padding: "40px 0" }}>
+                  <div style={{ fontSize: "48px", color: "#E5E7EB", marginBottom: "16" }}>💬</div>
+                  <div style={{ fontSize: "20px", fontWeight: "600", color: "#111", marginBottom: "8" }}>
+                    No Feedback Yet
+                  </div>
+                  <div style={{ color: "#6B7280", fontSize: "16" }}>
+                    Complete projects and sessions to receive reviews from clients
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Job Experience Section */}

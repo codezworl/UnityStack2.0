@@ -12,6 +12,7 @@ const {
   updatePost,
   deletePost,
   getAllPosts,
+  getPostById,
   updateOrganizationProfile,
   updateOrganizationPassword,
   addSocialMediaLink,
@@ -101,6 +102,7 @@ router.put("/posts/:id", authenticateToken, upload.single("image"), updatePost);
 router.delete("/posts/:id", authenticateToken, deletePost);
 // ✅ Fetch only posts related to the authenticated organization
 router.get("/posts", authenticateToken, getAllPosts);
+router.get("/posts/:id", getPostById);
 router.get("/all", getAllOrganizations); // ✅ Public: Fetch all verified companies
 
 // ✅ Update Company Profile (with Logo)
@@ -155,7 +157,7 @@ router.get("/:id", async (req, res) => {
 
     // Get all posts (blogs) for this organization with complete information
     const posts = await post.find({ organization: req.params.id })
-      .select('image caption description createdAt')
+      .select('_id image caption description createdAt')
       .sort({ createdAt: -1 });
 
     // Format the response
@@ -171,6 +173,7 @@ router.get("/:id", async (req, res) => {
         return acc;
       }, {}),
       blogs: posts.map(post => ({
+        _id: post._id,
         image: post.image ? `http://localhost:5000/uploads/${post.image}` : null,
         caption: post.caption,
         description: post.description,

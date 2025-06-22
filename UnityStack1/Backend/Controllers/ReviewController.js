@@ -4,6 +4,7 @@ const Notification = require('../models/notification');
 const Session = require('../models/session');
 const Student = require('../models/Student');
 const Developer = require('../models/Develpor');
+const Organization = require('../models/Organization');
 
 // Create a new review (for both projects and sessions)
 const createReview = async (req, res) => {
@@ -370,6 +371,269 @@ const addTestReview = async (req, res) => {
   }
 };
 
+// Get ratings and reviews for a specific developer (public endpoint)
+const getDeveloperRatings = async (req, res) => {
+  try {
+    const { developerId } = req.params;
+    console.log('Fetching ratings for developer:', developerId);
+    
+    // Find all projects where this developer is assigned
+    const projects = await Project.find({ 
+      assignedDeveloper: developerId
+    });
+    console.log('Found assigned projects:', projects.length);
+
+    // Find all sessions where this developer is assigned
+    const sessions = await Session.find({ 
+      developerId: developerId
+    });
+    console.log('Found assigned sessions:', sessions.length);
+
+    // Get all project and session IDs
+    const projectIds = projects.map(project => project._id);
+    const sessionIds = sessions.map(session => session._id);
+
+    // Find all reviews for these projects and sessions where reviewer is NOT the developer
+    const [projectReviews, sessionReviews] = await Promise.all([
+      Review.find({
+        projectId: { $in: projectIds },
+        reviewerRole: { $ne: 'developer' }  // Only get reviews from clients/organizations
+      }).populate('projectId', 'title description'),
+      Review.find({
+        sessionId: { $in: sessionIds },
+        reviewerRole: { $ne: 'developer' }  // Only get reviews from students
+      }).populate('sessionId', 'title description')
+    ]);
+    
+    // Combine all reviews
+    const allReviews = [...projectReviews, ...sessionReviews];
+    console.log('Total reviews found:', allReviews.length);
+
+    // Calculate average rating
+    const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
+
+    // Calculate rating distribution
+    const ratingDistribution = {
+      5: allReviews.filter(r => r.rating === 5).length,
+      4: allReviews.filter(r => r.rating === 4).length,
+      3: allReviews.filter(r => r.rating === 3).length,
+      2: allReviews.filter(r => r.rating === 2).length,
+      1: allReviews.filter(r => r.rating === 1).length
+    };
+
+    res.status(200).json({
+      reviews: allReviews,
+      stats: {
+        totalReviews: allReviews.length,
+        averageRating: averageRating,
+        ratingDistribution
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching developer ratings:', error);
+    res.status(500).json({ message: 'Error fetching ratings', error: error.message });
+  }
+};
+
+// Get ratings and reviews for a specific organization (public endpoint)
+const getOrganizationRatings = async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+    console.log('Fetching ratings for organization:', organizationId);
+    
+    // First, let's check if this organizationId is valid
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      console.log('Organization not found:', organizationId);
+      return res.status(404).json({ 
+        message: 'Organization not found',
+        stats: {
+          totalReviews: 0,
+          averageRating: 0,
+          ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+        }
+      });
+    }
+    
+    // Find all projects where this organization is the company (project creator)
+    const projectsAsCompany = await Project.find({ 
+      companyId: organizationId 
+    });
+    console.log('Projects where organization is company:', projectsAsCompany.length);
+    
+    // Find all projects where this organization is the assigned developer
+    // But first check if the assignedDeveloper is actually an organization
+    const projectsAsAssigned = await Project.find({ 
+      assignedDeveloper: organizationId 
+    });
+    console.log('Projects where organization is assigned developer:', projectsAsAssigned.length);
+    
+    // Combine all projects
+    const allProjects = [...projectsAsCompany, ...projectsAsAssigned];
+    console.log('Total projects found:', allProjects.length);
+    
+    // Log project details for debugging
+    allProjects.forEach((project, index) => {
+      console.log(`Project ${index + 1}:`, {
+        id: project._id,
+        title: project.title,
+        companyId: project.companyId,
+        assignedDeveloper: project.assignedDeveloper,
+        status: project.status
+      });
+    });
+
+    // Get all project IDs
+    const projectIds = allProjects.map(project => project._id);
+    console.log('Project IDs to search for reviews:', projectIds);
+
+    if (projectIds.length === 0) {
+      console.log('No projects found for organization');
+      return res.status(200).json({
+        reviews: [],
+        stats: {
+          totalReviews: 0,
+          averageRating: 0,
+          ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+        }
+      });
+    }
+
+    // Find all reviews for these projects where reviewer is NOT the organization
+    const projectReviews = await Review.find({
+      projectId: { $in: projectIds },
+      reviewerRole: { $ne: 'organization' }  // Only get reviews from developers/students
+    }).populate('projectId', 'title description');
+    
+    console.log('Total reviews found for organization:', projectReviews.length);
+    
+    // Log review details for debugging
+    projectReviews.forEach((review, index) => {
+      console.log(`Review ${index + 1}:`, {
+        projectId: review.projectId,
+        reviewerRole: review.reviewerRole,
+        rating: review.rating,
+        description: review.description
+      });
+    });
+
+    // Calculate average rating
+    const totalRating = projectReviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = projectReviews.length > 0 ? totalRating / projectReviews.length : 0;
+
+    // Calculate rating distribution
+    const ratingDistribution = {
+      5: projectReviews.filter(r => r.rating === 5).length,
+      4: projectReviews.filter(r => r.rating === 4).length,
+      3: projectReviews.filter(r => r.rating === 3).length,
+      2: projectReviews.filter(r => r.rating === 2).length,
+      1: projectReviews.filter(r => r.rating === 1).length
+    };
+
+    console.log('Final stats:', {
+      totalReviews: projectReviews.length,
+      averageRating: averageRating,
+      ratingDistribution
+    });
+
+    res.status(200).json({
+      reviews: projectReviews,
+      stats: {
+        totalReviews: projectReviews.length,
+        averageRating: averageRating,
+        ratingDistribution
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching organization ratings:', error);
+    res.status(500).json({ message: 'Error fetching ratings', error: error.message });
+  }
+};
+
+// Add a test review for organization debugging
+const addTestOrganizationReview = async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+    const userId = req.user._id;
+
+    // Find a project for this organization
+    const project = await Project.findOne({ companyId: organizationId });
+    if (!project) {
+      return res.status(404).json({ message: 'No projects found for this organization' });
+    }
+
+    // Create a test review
+    const review = new Review({
+      projectId: project._id,
+      reviewerId: userId,
+      reviewerRole: 'developer',
+      reviewerName: 'Test Developer',
+      rating: 5,
+      description: 'This is a test review to verify the organization rating system is working correctly.',
+      reviewType: 'project'
+    });
+
+    await review.save();
+    console.log('Test organization review created:', review);
+
+    res.status(201).json(review);
+  } catch (error) {
+    console.error('Error creating test organization review:', error);
+    res.status(500).json({ message: 'Error creating test review', error: error.message });
+  }
+};
+
+// Debug function to check database state
+const debugDatabaseState = async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+    
+    // Check total projects
+    const totalProjects = await Project.countDocuments();
+    
+    // Check projects for this organization
+    const orgProjects = await Project.find({ 
+      $or: [
+        { companyId: organizationId },
+        { assignedDeveloper: organizationId }
+      ]
+    });
+    
+    // Check total reviews
+    const totalReviews = await Review.countDocuments();
+    
+    // Check reviews for this organization's projects
+    const projectIds = orgProjects.map(p => p._id);
+    const orgReviews = await Review.find({
+      projectId: { $in: projectIds }
+    });
+    
+    res.status(200).json({
+      debug: {
+        totalProjects,
+        organizationProjects: orgProjects.length,
+        totalReviews,
+        organizationReviews: orgReviews.length,
+        organizationProjects: orgProjects.map(p => ({
+          id: p._id,
+          title: p.title,
+          companyId: p.companyId,
+          assignedDeveloper: p.assignedDeveloper
+        })),
+        organizationReviews: orgReviews.map(r => ({
+          projectId: r.projectId,
+          reviewerRole: r.reviewerRole,
+          rating: r.rating
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error in debug function:', error);
+    res.status(500).json({ message: 'Error in debug function', error: error.message });
+  }
+};
+
 module.exports = {
   createReview,
   getProjectReview,
@@ -378,5 +642,9 @@ module.exports = {
   getAssignedSessionReviews,
   addTestReview,
   getReviews,
-  getAverageRating
+  getAverageRating,
+  getDeveloperRatings,
+  getOrganizationRatings,
+  addTestOrganizationReview,
+  debugDatabaseState
 }; 

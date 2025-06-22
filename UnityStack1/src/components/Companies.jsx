@@ -14,6 +14,9 @@ const Companies = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const companiesPerPage = 5;
+  // Add organization ratings state
+  const [organizationRatings, setOrganizationRatings] = useState({});
+  const [ratingsLoading, setRatingsLoading] = useState(false);
 
   // Define available service options for filtering
   const serviceOptions = [
@@ -58,6 +61,10 @@ const Companies = () => {
         const safeData = Array.isArray(data) ? data : [];
         setCompanies(safeData);
         setFilteredCompanies(safeData);
+
+        // Fetch ratings for all organizations
+        const organizationIds = safeData.map(org => org._id);
+        await fetchOrganizationRatings(organizationIds);
       } catch (err) {
         console.error("❌ Error fetching companies:", err);
       }
@@ -202,6 +209,98 @@ const Companies = () => {
 
     // Otherwise take first letter of first two words
     return (words[0][0] + (words[1] ? words[1][0] : "")).toUpperCase();
+  };
+
+  // Fetch ratings for all organizations
+  const fetchOrganizationRatings = async (organizationIds) => {
+    try {
+      setRatingsLoading(true);
+      console.log('Fetching ratings for organizations:', organizationIds.length, 'organizations');
+      const ratings = {};
+      
+      // Process organizations in smaller batches to avoid overwhelming the server
+      const batchSize = 5;
+      for (let i = 0; i < organizationIds.length; i += batchSize) {
+        const batch = organizationIds.slice(i, i + batchSize);
+        console.log(`Processing batch ${Math.floor(i/batchSize) + 1}:`, batch);
+        
+        await Promise.all(
+          batch.map(async (organizationId) => {
+            try {
+              console.log(`Fetching ratings for organization ${organizationId}...`);
+              const response = await fetch(`http://localhost:5000/api/reviews/organization/${organizationId}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                timeout: 10000 // 10 second timeout
+              });
+              
+              console.log(`Response status for ${organizationId}:`, response.status);
+              
+              if (response.ok) {
+                const data = await response.json();
+                console.log(`✅ Ratings for organization ${organizationId}:`, data);
+                ratings[organizationId] = {
+                  averageRating: data.stats?.averageRating || 0,
+                  totalReviews: data.stats?.totalReviews || 0
+                };
+              } else {
+                const errorText = await response.text();
+                console.error(`❌ Failed to fetch ratings for organization ${organizationId}:`, response.status, response.statusText, errorText);
+                ratings[organizationId] = {
+                  averageRating: 0,
+                  totalReviews: 0
+                };
+              }
+            } catch (error) {
+              console.error(`❌ Error fetching ratings for organization ${organizationId}:`, error);
+              ratings[organizationId] = {
+                averageRating: 0,
+                totalReviews: 0
+              };
+            }
+          })
+        );
+        
+        // Small delay between batches to avoid overwhelming the server
+        if (i + batchSize < organizationIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      console.log('✅ All organization ratings fetched successfully:', Object.keys(ratings).length, 'organizations');
+      console.log('Final ratings object:', ratings);
+      setOrganizationRatings(ratings);
+    } catch (error) {
+      console.error('❌ Error in fetchOrganizationRatings:', error);
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
+
+  // Get organization rating helper function
+  const getOrganizationRating = (organizationId) => {
+    if (ratingsLoading) {
+      return {
+        averageRating: "Loading...",
+        totalReviews: 0
+      };
+    }
+    
+    const rating = organizationRatings[organizationId];
+    if (rating) {
+      return {
+        averageRating: rating.averageRating.toFixed(1),
+        totalReviews: rating.totalReviews
+      };
+    } else {
+      // Return default values if ratings haven't loaded yet
+      return {
+        averageRating: "0.0",
+        totalReviews: 0
+      };
+    }
   };
 
   // Utility: Generate a random pastel color based on a string (company name)
@@ -819,15 +918,22 @@ const Companies = () => {
                       : "No description available."}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "6px 0 0 0" }}>
-                    {[1, 2, 3, 4, 5].map(star =>
-                      (company.rating || 4) >= star ? (
+                    {[1, 2, 3, 4, 5].map(star => {
+                      const rating = getOrganizationRating(company._id);
+                      const avgRating = parseFloat(rating.averageRating);
+                      return (avgRating >= star || (rating.averageRating === "Loading..." && 4 >= star)) ? (
                         <FaStar key={star} color="#FACC15" />
                       ) : (
                         <FaRegStar key={star} color="#FACC15" />
-                      )
-                    )}
-                    <span style={{ color: "#64748B", fontSize: 13, marginLeft: 2 }}>
-                      {company.reviewCount || 17} reviews
+                      );
+                    })}
+                    <span style={{ 
+                      color: "#64748B", 
+                      fontSize: 13, 
+                      marginLeft: 2,
+                      fontStyle: getOrganizationRating(company._id).averageRating === "Loading..." ? "italic" : "normal"
+                    }}>
+                      {getOrganizationRating(company._id).totalReviews} reviews
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: 8 }}>

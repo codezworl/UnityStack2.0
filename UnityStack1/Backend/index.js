@@ -37,7 +37,13 @@ app.use(helmet({
 
 // ✅ Improved CORS Configuration
 app.use(cors({
-  origin: "http://localhost:3000", // ✅ frontend URL
+  origin: [
+    "http://localhost:3000",
+    "http://192.168.1.5:3000",
+    "http://192.168.1.7:3000",
+    "http://192.168.1.5:5000",
+    "http://192.168.1.7:5000"
+  ], // ✅ Allow both localhost and local IP addresses
   credentials: true               // ✅ allow credentials
 }));
 
@@ -48,19 +54,44 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
-// ✅ Rate limiting (only for API routes)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Increased from 100 to 500 requests per window
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// ✅ Rate limiting (only for API routes) - Disabled in development
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// Apply rate limiting to all routes except file uploads
+let limiter, sessionLimiter;
+
+if (isDevelopment) {
+  // No rate limiting in development
+  limiter = (req, res, next) => next();
+  sessionLimiter = (req, res, next) => next();
+  console.log('🚀 Rate limiting disabled for development');
+} else {
+  // Rate limiting for production
+  limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10000, // Increased for development and session functionality
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // More lenient rate limiter for session routes
+  sessionLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50000, // Very high limit for session functionality
+    message: 'Too many session requests, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  console.log('🛡️ Rate limiting enabled for production');
+}
+
+// Apply rate limiting to all routes except file uploads and session-related routes
 app.use((req, res, next) => {
-  if (req.path.includes('/save-recording')) {
+  if (req.path.includes('/save-recording') || 
+      req.path.includes('/socket.io')) {
     next();
+  } else if (req.path.includes('/sessions') || req.path.includes('/api/sessions')) {
+    sessionLimiter(req, res, next);
   } else {
     limiter(req, res, next);
   }
@@ -103,7 +134,13 @@ const getRoomId = (userId1, userId2) => {
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "http://192.168.1.5:3000", 
+      "http://192.168.1.7:3000",
+      "http://192.168.1.5:5000",
+      "http://192.168.1.7:5000"
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -424,7 +461,7 @@ app.use((req, res, next) => {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; " +
     "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.stripe.com https://api.emailjs.com http://localhost:* https://js.stripe.com https://cdn.jsdelivr.net https://unpkg.com; " +
+    "connect-src 'self' https://api.stripe.com https://api.emailjs.com http://localhost:* http://192.168.*:* https://js.stripe.com https://cdn.jsdelivr.net https://unpkg.com; " +
     "frame-src 'self' https://js.stripe.com; " +
     "frame-ancestors 'self'; " +
     "form-action 'self' https://api.stripe.com;"
@@ -476,8 +513,9 @@ mongoose
     const PORT = process.env.PORT || 5000;
 
     // Start the server with Socket.io
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`🌐 Server accessible on network at http://192.168.1.5:${PORT}`);
     });
   })
   .catch((error) => {

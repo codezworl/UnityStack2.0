@@ -136,6 +136,8 @@ const GetHelp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedDeveloper, setSelectedDeveloper] = useState(null);
+  const [developerRatings, setDeveloperRatings] = useState({}); // Store ratings for each developer
+  const [ratingsLoading, setRatingsLoading] = useState(false); // Loading state for ratings
   const navigate = useNavigate();
 
   // Popup messages
@@ -309,6 +311,75 @@ const GetHelp = () => {
     setFilteredDevelopers(result);
   }, [developers, searchQuery, priceFilter, domainFilter]);
 
+  // Fetch ratings for all developers
+  const fetchDeveloperRatings = async (developerIds) => {
+    try {
+      setRatingsLoading(true);
+      console.log('Fetching ratings for developers:', developerIds.length, 'developers');
+      const ratings = {};
+      
+      // Process developers in smaller batches to avoid overwhelming the server
+      const batchSize = 5;
+      for (let i = 0; i < developerIds.length; i += batchSize) {
+        const batch = developerIds.slice(i, i + batchSize);
+        console.log(`Processing batch ${Math.floor(i/batchSize) + 1}:`, batch);
+        
+        await Promise.all(
+          batch.map(async (developerId) => {
+            try {
+              console.log(`Fetching ratings for developer ${developerId}...`);
+              const response = await fetch(`http://localhost:5000/api/reviews/developer/${developerId}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                timeout: 10000 // 10 second timeout
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                console.log(`✅ Ratings for developer ${developerId}:`, {
+                  averageRating: data.stats?.averageRating,
+                  totalReviews: data.stats?.totalReviews,
+                  reviewsCount: data.reviews?.length
+                });
+                ratings[developerId] = {
+                  averageRating: data.stats?.averageRating || 0,
+                  totalReviews: data.stats?.totalReviews || 0
+                };
+              } else {
+                console.error(`❌ Failed to fetch ratings for developer ${developerId}:`, response.status, response.statusText);
+                ratings[developerId] = {
+                  averageRating: 0,
+                  totalReviews: 0
+                };
+              }
+            } catch (error) {
+              console.error(`❌ Error fetching ratings for developer ${developerId}:`, error);
+              ratings[developerId] = {
+                averageRating: 0,
+                totalReviews: 0
+              };
+            }
+          })
+        );
+        
+        // Small delay between batches to avoid overwhelming the server
+        if (i + batchSize < developerIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      console.log('✅ All ratings fetched successfully:', Object.keys(ratings).length, 'developers');
+      console.log('Sample ratings:', Object.entries(ratings).slice(0, 3));
+      setDeveloperRatings(ratings);
+    } catch (error) {
+      console.error('❌ Error in fetchDeveloperRatings:', error);
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
+
   // Fetch developers on mount
   useEffect(() => {
     const fetchDevelopers = async () => {
@@ -377,6 +448,10 @@ const GetHelp = () => {
 
         setDevelopers(processedData);
         setFilteredDevelopers(processedData); // Initialize filtered list with all developers
+
+        // Fetch ratings for all developers
+        const developerIds = processedData.map(dev => dev._id);
+        await fetchDeveloperRatings(developerIds);
 
         // Optional: success popup
         setPopup({
@@ -623,6 +698,30 @@ const GetHelp = () => {
     }
 
     return tags;
+  };
+
+  // Update the developer cards to display real-time ratings
+  const getDeveloperRating = (developerId) => {
+    if (ratingsLoading) {
+      return {
+        averageRating: "Loading...",
+        totalReviews: 0
+      };
+    }
+    
+    const rating = developerRatings[developerId];
+    if (rating) {
+      return {
+        averageRating: rating.averageRating.toFixed(1),
+        totalReviews: rating.totalReviews
+      };
+    } else {
+      // Return default values if ratings haven't loaded yet
+      return {
+        averageRating: "0.0",
+        totalReviews: 0
+      };
+    }
   };
 
   return (
@@ -1594,11 +1693,16 @@ const GetHelp = () => {
                             }}
                           >
                             <Star size={16} />
-                            <span>{dev.rating || "0.0"}</span>
+                            <span style={{ 
+                              color: getDeveloperRating(dev._id).averageRating === "Loading..." ? "#6B7280" : "#F59E0B",
+                              fontStyle: getDeveloperRating(dev._id).averageRating === "Loading..." ? "italic" : "normal"
+                            }}>
+                              {getDeveloperRating(dev._id).averageRating}
+                            </span>
                             <span
                               style={{ color: "#D97706", fontWeight: "bold" }}
                             >
-                              ({dev.reviews || 0} reviews)
+                              ({getDeveloperRating(dev._id).totalReviews} reviews)
                             </span>
                           </div>
                         </div>
